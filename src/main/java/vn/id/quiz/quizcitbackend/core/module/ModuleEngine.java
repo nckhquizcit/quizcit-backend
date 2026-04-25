@@ -17,7 +17,7 @@ public class ModuleEngine {
     public ModuleEngine(List<AppModule> availableModules){
         this.availableModules = availableModules;
     }
-
+//Cái event bên dưới tự được spring publish sau khi khởi tạo xong các thành phần.
     @EventListener(ApplicationReadyEvent.class)
     public void runModules(){
         System.out.println("==== Đang bắt đầu kích hoạt các module ====");
