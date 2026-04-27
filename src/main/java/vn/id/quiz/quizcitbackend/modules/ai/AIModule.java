@@ -9,6 +9,7 @@ import vn.id.quiz.quizcitbackend.core.module.AppModule;
 public class AIModule implements AppModule
 {
     private final String name = "AI Module";
+
     @Override
     public void initialize() {
 

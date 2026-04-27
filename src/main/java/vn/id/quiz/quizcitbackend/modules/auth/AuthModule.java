@@ -7,7 +7,6 @@ import vn.id.quiz.quizcitbackend.core.module.AppModule;
 @Configuration
 public class AuthModule implements AppModule {
     private final String name = "Auth Module";
-
     @Override
     public void initialize() {
 

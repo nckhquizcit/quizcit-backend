@@ -7,7 +7,10 @@ import vn.id.quiz.quizcitbackend.core.module.AppModule;
 @Configuration
 public class ContentModule implements AppModule {
     private final String name = "Content Module";
-
+    @Override
+    public String getName() {
+        return "Contribution Module";
+    }
     @Override
     public void initialize() {
 
