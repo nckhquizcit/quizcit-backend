@@ -13,6 +13,7 @@ import java.util.List;
 @Builder
 public class Subject {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "subject_id", length = 50) // cơ bản mặc định length của UUID là 36 nhưng để vầy đề phòng đổi bên cung cấp UUID
     private String subjectId;
 

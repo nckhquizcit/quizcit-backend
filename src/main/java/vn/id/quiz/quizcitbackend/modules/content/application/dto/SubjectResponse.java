@@ -1,7 +1,5 @@
 package vn.id.quiz.quizcitbackend.modules.content.application.dto;
 
-import vn.id.quiz.quizcitbackend.modules.content.domain.entity.Chapter;
-
 import java.time.ZonedDateTime;
 
 public record SubjectResponse(
@@ -11,4 +9,9 @@ public record SubjectResponse(
         String description,
         ZonedDateTime createdAt
 ) {
+    public SubjectResponse{
+        if(createdAt==null){
+            createdAt=ZonedDateTime.now();
+        }
+    }
 }

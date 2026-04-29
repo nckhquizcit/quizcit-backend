@@ -1,10 +1,12 @@
 package vn.id.quiz.quizcitbackend.modules.content.application.dto;
 
-import java.time.ZonedDateTime;
+import jakarta.validation.constraints.NotBlank;
+
 
 public record CreateSubjectRequest(
-        String subjectId,
+        @NotBlank(message = "Mã học phần không được để trống")
         String courseCode,
+        @NotBlank(message="Tên học phần không được để trống")
         String name,
         String description
 ) {

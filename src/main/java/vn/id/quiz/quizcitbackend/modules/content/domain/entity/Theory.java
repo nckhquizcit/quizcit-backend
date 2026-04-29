@@ -13,6 +13,7 @@ import java.time.ZonedDateTime;
 @Builder
 public class Theory {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "theory_id", length = 50)
     private String theoryId;
 

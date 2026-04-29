@@ -14,6 +14,7 @@ import java.util.List;
 @Builder
 public class Chapter {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "chapter_id", length = 50)
     private String chapterId;
 
