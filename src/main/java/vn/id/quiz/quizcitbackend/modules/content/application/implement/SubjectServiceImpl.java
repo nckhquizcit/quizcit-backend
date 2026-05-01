@@ -1,6 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.content.application.implement;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.id.quiz.quizcitbackend.modules.content.application.dto.CreateSubjectRequest;
@@ -9,6 +10,7 @@ import vn.id.quiz.quizcitbackend.modules.content.application.mapper.SubjectMappe
 import vn.id.quiz.quizcitbackend.modules.content.application.service.SubjectService;
 import vn.id.quiz.quizcitbackend.modules.content.domain.entity.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.domain.repository.SubjectRepository;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,13 @@ public class SubjectServiceImpl implements SubjectService {
     public SubjectResponse createSubject(CreateSubjectRequest request){
         Subject subject = mapper.toEntity(request);
         repository.save(subject);
+        return mapper.toResponse(subject);
+    }
+    @Override
+    public SubjectResponse getSubject(String subjectId){
+        Subject subject = repository.findById(subjectId).orElseThrow(()->{
+            return new AppException("Không tìm thấy học phần được yêu cầu.", HttpStatus.NOT_FOUND);
+        });
         return mapper.toResponse(subject);
     }
 }
