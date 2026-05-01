@@ -10,4 +10,6 @@ public interface SubjectRepository {
     List<Subject> findAll();
     Subject save(Subject subject);
     void deleteById(String id);
+    boolean existsById(String id);
+
 }
