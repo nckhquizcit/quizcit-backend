@@ -21,7 +21,7 @@ public class SubjectController {
 
     // GET /api/subjects
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SubjectResponse>>> getAllSubject() {
+    public ResponseEntity<ApiResponse<List<SubjectResponse>>> getAllSubjects() {
         List<SubjectResponse> response = subjectService.getAllSubject();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success(response));

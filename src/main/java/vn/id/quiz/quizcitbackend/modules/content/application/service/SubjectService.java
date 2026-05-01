@@ -7,9 +7,9 @@ import vn.id.quiz.quizcitbackend.modules.content.application.dto.UpdateSubjectRe
 import java.util.List;
 
 public interface SubjectService {
-    public List<SubjectResponse> getAllSubject();
-    public SubjectResponse createSubject(CreateSubjectRequest request);
-    public SubjectResponse getSubject(String subjectId);
-    public void deleteSubject(String subjectId);
-    public SubjectResponse updateSubject(String subjectId, UpdateSubjectRequest request);
+    List<SubjectResponse> getAllSubject();
+    SubjectResponse createSubject(CreateSubjectRequest request);
+    SubjectResponse getSubject(String subjectId);
+    void deleteSubject(String subjectId);
+    SubjectResponse updateSubject(String subjectId, UpdateSubjectRequest request);
 }

@@ -13,8 +13,6 @@ import vn.id.quiz.quizcitbackend.modules.content.domain.entity.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.domain.repository.SubjectRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 @Service
@@ -31,6 +29,13 @@ public class SubjectServiceImpl implements SubjectService {
     @Transactional
     @Override
     public SubjectResponse createSubject(CreateSubjectRequest request){
+        /*
+        * Không cho phép để 2 mã hp cùng 1 lúc tồn tại, nhưng cho phép giống tên
+        * học phần do có trường hợp khác mã nhưng cùng tên
+        * */
+        if(repository.existsByCourseCode(request.courseCode())){
+            throw new AppException("Mã học phần đã tồn tại trên hệ thống", HttpStatus.BAD_REQUEST);
+        }
         Subject subject = mapper.toEntity(request);
         return mapper.toResponse(repository.save(subject));
     }
