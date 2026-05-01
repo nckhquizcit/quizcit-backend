@@ -11,32 +11,51 @@ import vn.id.quiz.quizcitbackend.modules.content.application.dto.UpdateSubjectRe
 import vn.id.quiz.quizcitbackend.modules.content.application.service.SubjectService;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/subjects")
 @RequiredArgsConstructor
 public class SubjectController {
     private final SubjectService subjectService;
 
+    // GET /api/subjects
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<SubjectResponse>>> getAllSubject() {
+        List<SubjectResponse> response = subjectService.getAllSubject();
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.success(response));
+    }
+
+    // POST /api/subjects
     @PostMapping
-    public ResponseEntity<ApiResponse<SubjectResponse>> createSubject(@RequestBody @Valid CreateSubjectRequest request){
+    public ResponseEntity<ApiResponse<SubjectResponse>> createSubject(@RequestBody @Valid CreateSubjectRequest request) {
         SubjectResponse response = subjectService.createSubject(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Tạo học phần thành công", response));
     }
-    @GetMapping
-    public ResponseEntity<ApiResponse<SubjectResponse>> getSubject(@RequestParam String subjectId){
+
+    // GET /api/subjects/{subjectId}
+    @GetMapping("/{subjectId}")
+    public ResponseEntity<ApiResponse<SubjectResponse>> getSubject(@PathVariable String subjectId) {
         SubjectResponse response = subjectService.getSubject(subjectId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success(response));
     }
-    @DeleteMapping
-    public ResponseEntity<ApiResponse<Void>> deleteSubject(@RequestParam String subjectId){
+
+    // DELETE /api/subjects/{subjectId}
+    @DeleteMapping("/{subjectId}")
+    public ResponseEntity<ApiResponse<Void>> deleteSubject(@PathVariable String subjectId) {
         subjectService.deleteSubject(subjectId);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Đã xóa thành công học phần.", null));
     }
-    @PatchMapping
-    public ResponseEntity<ApiResponse<SubjectResponse>> updateSubject(@RequestParam String subjectId, @RequestBody @Valid  UpdateSubjectRequest request){
+
+    // PATCH /api/subjects/{subjectId}
+    @PatchMapping("/{subjectId}")
+    public ResponseEntity<ApiResponse<SubjectResponse>> updateSubject(
+            @PathVariable String subjectId,
+            @RequestBody @Valid UpdateSubjectRequest request) {
         SubjectResponse response = subjectService.updateSubject(subjectId, request);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success("Đã cập nhật thông tin mới cho học phần thành công.", response));

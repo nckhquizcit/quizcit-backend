@@ -13,12 +13,21 @@ import vn.id.quiz.quizcitbackend.modules.content.domain.entity.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.domain.repository.SubjectRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class SubjectServiceImpl implements SubjectService {
     private final SubjectRepository repository;
     private final SubjectMapper mapper;
 
+    @Override
+    public List<SubjectResponse> getAllSubject(){
+        List<Subject> subjectList = repository.findAll();
+        return mapper.toResponseList(subjectList);
+    }
     @Transactional
     @Override
     public SubjectResponse createSubject(CreateSubjectRequest request){
@@ -37,6 +46,8 @@ public class SubjectServiceImpl implements SubjectService {
         }
         repository.deleteById(subjectId);
     }
+    @Transactional //Thật ra, cái transactional tự dirty checking dữ liệu khi findById và tự update rồi nên
+    //không cần cái .save, nó bị dư nhưng mà ghi vậy cho tường minh
     @Override
     public SubjectResponse updateSubject(String subjectId, UpdateSubjectRequest request){
         Subject subject = repository.findById(subjectId).orElseThrow(()-> new AppException("Không tìm thấy học phần được yêu cầu.", HttpStatus.NOT_FOUND));

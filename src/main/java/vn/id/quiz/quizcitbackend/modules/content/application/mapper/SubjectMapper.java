@@ -8,8 +8,10 @@ import vn.id.quiz.quizcitbackend.modules.content.application.dto.UpdateSubjectRe
 import vn.id.quiz.quizcitbackend.modules.content.domain.entity.Subject;
 import vn.id.quiz.quizcitbackend.shared.utils.BaseMapper;
 
+import java.util.List;
+
 @Mapper(componentModel = "spring")
 public interface SubjectMapper extends BaseMapper<Subject, SubjectResponse, CreateSubjectRequest> {
     void updateEntityFromRequest(UpdateSubjectRequest request, @MappingTarget Subject subject);
-
+    List<SubjectResponse> toResponseList(List<Subject> entities);
 }
