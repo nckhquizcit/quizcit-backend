@@ -7,7 +7,7 @@ import vn.id.quiz.quizcitbackend.modules.content.application.dto.UpdateChapterRe
 import java.util.List;
 
 public interface ChapterService {
-    List<ChapterResponse> getAllChapter();
+    List<ChapterResponse> getAllChapters();
     /**
      * Chuyển các chương từ học phần này sang học phần khác
      * @param sourceSubject: Id của học phần ban đầu

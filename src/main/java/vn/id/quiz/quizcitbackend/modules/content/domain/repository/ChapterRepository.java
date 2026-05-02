@@ -19,4 +19,5 @@ public interface ChapterRepository {
     Chapter save(Chapter chapter);
     void deleteById(String id);
     boolean existsById(String id);
+    Chapter getReferenceById(String chapterId);
 }

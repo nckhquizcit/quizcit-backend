@@ -13,5 +13,6 @@ public interface SubjectRepository {
     void deleteById(String id);
     boolean existsById(String id);
     boolean existsByCourseCode(String courseCode);
+    Subject getReferenceById(String subjectId);
 
 }

@@ -24,7 +24,7 @@ public class ChapterServiceImpl implements ChapterService {
     private final ChapterMapper mapper;
 
     @Override
-    public List<ChapterResponse> getAllChapter() {
+    public List<ChapterResponse> getAllChapters() {
         List<Chapter> chapters = repository.findAll();
         return mapper.toResponseList(chapters);
     }
@@ -73,7 +73,12 @@ public class ChapterServiceImpl implements ChapterService {
         Chapter chapter = repository.findById(chapterId).orElseThrow(()->{
             return new AppException("Không tìm thấy chương được yêu cầu", HttpStatus.NOT_FOUND);
         });
+        // 1. Update các field cơ bản (name, ...)
         mapper.updateEntityFromRequest(request, chapter);
+
+        // 2. Cập nhật quan hệ bằng Proxy (Tối ưu nhất)
+        // Thay vì tạo 'new Subject' thủ công, ta dùng Proxy của Hibernate
+        chapter.setSubject(subjectRepository.getReferenceById(request.subjectId()));
         return mapper.toResponse(repository.save(chapter));
 
     }

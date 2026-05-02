@@ -3,7 +3,6 @@ package vn.id.quiz.quizcitbackend.modules.content.api.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.id.quiz.quizcitbackend.modules.content.application.dto.ChangeSubjectRequest;
@@ -35,7 +34,7 @@ public class ChapterController {
     }
     @GetMapping
     public ResponseEntity<ApiResponse<List<ChapterResponse>>> getAllChapters(){
-        List<ChapterResponse> response = chapterService.getAllChapter();
+        List<ChapterResponse> response = chapterService.getAllChapters();
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.success(response));
     }
