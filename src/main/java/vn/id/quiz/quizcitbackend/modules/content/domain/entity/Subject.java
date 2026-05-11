@@ -2,18 +2,18 @@ package vn.id.quiz.quizcitbackend.modules.content.domain.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "subjects")
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 public class Subject {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "subject_id", length = 50) // cơ bản mặc định length của UUID là 36 nhưng để vầy đề phòng đổi bên cung cấp UUID
     private String subjectId;
 
@@ -29,11 +29,43 @@ public class Subject {
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
-    @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL) //map với field subject trong chapter
-    private List<Chapter> chapters;
+    @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL, orphanRemoval = true) //map với field subject trong chapter
+    @Builder.Default
+    private final List<Chapter> chapters = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
         createdAt = ZonedDateTime.now();
     }
+    public static Subject create(String courseCode, String name, String description){
+        if(courseCode==null||courseCode.isBlank()){
+            throw new IllegalArgumentException("Mã học phần không được để trống");
+        }
+        if(name==null||name.isBlank()){
+            throw new IllegalArgumentException("Tên học phần không được để trống");
+        }
+        return Subject.builder()
+                .subjectId(UUID.randomUUID().toString()) // Chủ động sinh ID
+                .courseCode(courseCode)
+                .name(name)
+                .description(description)
+                .createdAt(ZonedDateTime.now())
+                .build();
+    }
+    public Chapter addChapter(String chapterName){
+        if(chapterName == null || chapterName.isBlank()){
+            throw new IllegalArgumentException("Tên chương không được để trống");
+        }
+        Chapter newChapter = Chapter.create(this, chapterName);
+        this.chapters.add(newChapter);
+        return newChapter;
+    }
+    public Theory addTheory(String chapterId, String content){
+        Chapter targetChapter = this.chapters.stream()
+                .filter(c -> c.getChapterId().equals(chapterId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Chương không thuộc học phần này"));
+        return targetChapter.addTheory(content);
+    }
+
 }
