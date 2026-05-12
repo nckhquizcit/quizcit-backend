@@ -34,5 +34,8 @@ public class Theory {
                 .createdAt(ZonedDateTime.now())
                 .build();
     }
+    public void updateTheory(String content){
+        this.content = content;
+    }
 
 }

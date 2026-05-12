@@ -1,15 +1,15 @@
 package vn.id.quiz.quizcitbackend.modules.content.infrastructure.persistence;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
 import vn.id.quiz.quizcitbackend.modules.content.domain.entity.Subject;
-import vn.id.quiz.quizcitbackend.modules.content.domain.repository.SubjectRepository;
+import vn.id.quiz.quizcitbackend.modules.content.domain.entity.Theory;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface JpaSubjectRepository extends JpaRepository<Subject, String> {
     boolean existsByCourseCode(String courseCode);
+    @Query("SELECT t FROM Subject s JOIN s.chapters c JOIN c.theories t WHERE s.subjectId = :subjectId")
+    List<Theory> findAllTheoriesBySubjectId(String subjectId);
 }
 

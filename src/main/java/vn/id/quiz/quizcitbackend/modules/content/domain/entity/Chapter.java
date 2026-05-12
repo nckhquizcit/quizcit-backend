@@ -2,6 +2,9 @@ package vn.id.quiz.quizcitbackend.modules.content.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.http.HttpStatus;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,5 +51,32 @@ public class Chapter {
         Theory newTheory = Theory.create(this,content);
         this.theories.add(newTheory);
         return newTheory;
+    }
+    public List<Theory> getAllTheories(){
+        return this.theories;
+    }
+    private Theory findTheoryById(String theoryId) {
+        return this.theories.stream()
+                .filter(t -> t.getTheoryId().equals(theoryId))
+                .findFirst()
+                .orElseThrow(() -> new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu.", HttpStatus.NOT_FOUND));
+    }
+    /**
+     * Không đổi subject vì làm gì có vụ đổi chương của môn A sang môn B đc :D
+     * @param name
+     */
+    public void updateChapter(String name){
+        this.name = name;
+    }
+
+    public void updateTheory(String theoryId, String content){
+        Theory theory = findTheoryById(theoryId);
+        theory.updateTheory(content);
+    }
+    public void deleteTheory(String theoryId){
+        boolean removed = this.theories.removeIf(theory -> theory.getTheoryId().equals(theoryId));
+        if(!removed){
+            throw new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu", HttpStatus.NOT_FOUND);
+        }
     }
 }
