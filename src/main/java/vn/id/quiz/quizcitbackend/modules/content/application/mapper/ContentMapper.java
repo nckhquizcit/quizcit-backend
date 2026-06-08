@@ -28,6 +28,7 @@ public interface ContentMapper {
     // --- Theory Mapping ---
     @Mapping(target = "chapterId", source = "chapter.chapterId")
     TheoryResponse toTheoryResponse(Theory entity);
+    
 
     List<TheoryResponse> toTheoryResponseList(List<Theory> entities);
 
