@@ -60,6 +60,7 @@ public class Subject {
         this.chapters.add(newChapter);
         return newChapter;
     }
+
     public Theory addTheory(String chapterId, String content){
         Chapter targetChapter = this.chapters.stream()
                 .filter(c -> c.getChapterId().equals(chapterId))

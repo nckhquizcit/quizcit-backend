@@ -28,6 +28,7 @@ public class SubjectServiceImpl implements SubjectUseCase {
     }
     @Override
     public SubjectResponse getSubjectById(String subjectId){
+
         Subject subject = subjectRepository.findSubjectById(subjectId)
                 .orElseThrow(()-> new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND));
         return mapper.toSubjectResponse(subject);
@@ -48,6 +49,7 @@ public class SubjectServiceImpl implements SubjectUseCase {
     @Override
     @Transactional
     public SubjectResponse createSubject(CreateSubjectRequest request){
+
         if(subjectRepository.existsByCourseCode(request.courseCode())){
             throw new AppException("Mã học phần đã tồn tại.", HttpStatus.CONFLICT);
         }
