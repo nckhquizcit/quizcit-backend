@@ -1,0 +1,2 @@
+Chứa implement của repository, lí do: để sau này nếu không dùng jpa nữa thì service gọi repo vẫn đúng hàm
+chỉ cần đổi ruột impl
