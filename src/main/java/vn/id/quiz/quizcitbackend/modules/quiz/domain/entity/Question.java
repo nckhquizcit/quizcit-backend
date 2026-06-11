@@ -2,8 +2,8 @@ package vn.id.quiz.quizcitbackend.modules.quiz.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import vn.id.quiz.quizcitbackend.modules.content.domain.entity.Chapter;
-import vn.id.quiz.quizcitbackend.modules.content.domain.entity.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;
