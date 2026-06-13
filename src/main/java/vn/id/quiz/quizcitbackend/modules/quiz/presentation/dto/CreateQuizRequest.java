@@ -1,0 +1,21 @@
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+import lombok.Getter;
+import lombok.Setter;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
+
+@Getter
+@Setter
+public class CreateQuizRequest {
+
+    private String subjectId;
+
+    private String chapterId;
+
+    private String name;
+
+    private int totalQuestion;
+
+    private int duration;
+
+    private QuizType type;
+}
