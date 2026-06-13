@@ -5,7 +5,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 
 import java.util.List;
 
-public interface QuestionRepository extends JpaRepository<Question, String> {
+public interface JpaQuestionRepository extends JpaRepository<Question, String> {
 
     List<Question> findByChapterChapterId(String chapterId);
 };
