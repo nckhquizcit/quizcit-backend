@@ -19,13 +19,11 @@ public interface ContentMapper {
     List<SubjectResponse> toSubjectResponseList(List<Subject> entities);
 
     // --- Chapter Mapping ---
-    @Mapping(target = "subjectId", source = "subject.subjectId")
     ChapterResponse toChapterResponse(Chapter entity);
 
     List<ChapterResponse> toChapterResponseList(List<Chapter> entities);
 
     // --- Theory Mapping ---
-    @Mapping(target = "chapterId", source = "chapter.chapterId")
     TheoryResponse toTheoryResponse(Theory entity);
     
 

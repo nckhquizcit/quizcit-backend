@@ -31,6 +31,5 @@ public interface ContentRepository {
     void deleteChapterById(String chapterId);
     void deleteTheoryById(String theoryId);
 
-    List<Theory> findAllTheoriesBySubjectId(String subjectId);
 
 }

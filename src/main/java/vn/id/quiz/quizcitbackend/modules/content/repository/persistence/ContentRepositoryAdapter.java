@@ -78,8 +78,7 @@ public class ContentRepositoryAdapter implements ContentRepository {
         jpaTheoryRepository.deleteById(theoryId);
     }
 
-    @Override
-    public List<Theory> findAllTheoriesBySubjectId(String subjectId){return jpaSubjectRepository.findAllTheoriesBySubjectId(subjectId);}
+
 
 
     @Override

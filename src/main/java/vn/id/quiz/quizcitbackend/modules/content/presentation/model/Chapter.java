@@ -28,9 +28,6 @@ public class Chapter {
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
-    @OneToMany(mappedBy = "chapter", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private final List<Theory> theories = new ArrayList<>();
 
     public static Chapter create(String subjectId, String name){
         return Chapter.builder()
