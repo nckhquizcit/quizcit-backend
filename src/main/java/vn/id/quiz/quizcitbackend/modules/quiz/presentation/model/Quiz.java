@@ -22,11 +22,11 @@ public class Quiz {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id")
-    private Subject subject;
+    private Subject subject; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chapter_id")
-    private Chapter chapter;
+    private Chapter chapter; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
 
     private String name;
 

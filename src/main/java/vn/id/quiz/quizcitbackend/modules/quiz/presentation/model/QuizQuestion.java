@@ -17,11 +17,11 @@ public class QuizQuestion {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "quiz_id")
-    private Quiz quiz;
+    private Quiz quiz; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id")
-    private Question question;
+    private Question question; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
 
     @Column(name = "index_order")
     private int indexOrder;
