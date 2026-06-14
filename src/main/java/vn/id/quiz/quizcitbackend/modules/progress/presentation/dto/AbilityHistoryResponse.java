@@ -1,0 +1,14 @@
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.dto;
+
+import java.time.LocalDateTime;
+
+public record AbilityHistoryResponse(
+        String id,
+        String userId,
+        String skillId,
+        double theta,
+        double delta,
+        Double standardError,
+        String sourceAttemptId,
+        LocalDateTime createdAt) {
+}
