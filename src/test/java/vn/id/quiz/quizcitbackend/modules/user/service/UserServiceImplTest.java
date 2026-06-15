@@ -1,110 +1,179 @@
 package vn.id.quiz.quizcitbackend.modules.user.service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import vn.id.quiz.quizcitbackend.modules.auth.service.PasswordService;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangePasswordRequest;
-import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangeUserRoleRequest;
-import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.CreateUserRequest;
-import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UserResponse;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserProfileRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignment;
 import vn.id.quiz.quizcitbackend.modules.user.repository.UserRepository;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
-import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private UserMapper mapper;
-
-    @InjectMocks
+    private FakeUserRepository userRepository;
+    private PasswordService passwordService;
     private UserServiceImpl service;
 
-    @Test
-    void createUserShouldSavePasswordAndAssignDefaultUserRole() {
-        Role defaultRole = Role.create(UserRole.USER);
-        CreateUserRequest request = new CreateUserRequest(
-                "student01",
-                "secret123",
-                "student01@example.com",
-                "Student One"
-        );
-
-        when(userRepository.existsByUsername(request.username())).thenReturn(false);
-        when(userRepository.existsByEmail(request.email())).thenReturn(false);
-        when(userRepository.findRoleByName(UserRole.USER)).thenReturn(Optional.of(defaultRole));
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(userRepository.save(any(UserRoleAssignment.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(mapper.toUserResponse(any(User.class), eq(UserRole.USER))).thenAnswer(invocation -> {
-            User user = invocation.getArgument(0);
-            return new UserResponse(
-                    user.getUserId(),
-                    user.getUsername(),
-                    user.getEmail(),
-                    user.getDisplayName(),
-                    UserRole.USER,
-                    user.getStatus(),
-                    user.getCreatedAt(),
-                    user.getUpdatedAt()
-            );
-        });
-
-        UserResponse response = service.createUser(request);
-
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        assertThat(userCaptor.getValue().getPassword()).isEqualTo("secret123");
-
-        ArgumentCaptor<UserRoleAssignment> assignmentCaptor = ArgumentCaptor.forClass(UserRoleAssignment.class);
-        verify(userRepository).save(assignmentCaptor.capture());
-        assertThat(assignmentCaptor.getValue().getUserId()).isEqualTo(response.userId());
-        assertThat(assignmentCaptor.getValue().getRoleId()).isEqualTo(defaultRole.getRoleId());
+    @BeforeEach
+    void setUp() {
+        userRepository = new FakeUserRepository();
+        passwordService = new PasswordService();
+        service = new UserServiceImpl(userRepository, new UserMapper() {}, passwordService);
     }
 
     @Test
-    void changeUserRoleShouldReplaceUserRoleAssignment() {
-        User user = User.create("student01", "secret123", "student01@example.com", "Student One");
-        Role adminRole = Role.create(UserRole.ADMINISTRATOR);
+    void updateUserProfileShouldOnlyChangeDisplayName() {
+        User user = User.create("student01", "hashed-password", "student01@example.com", "Student One");
+        userRepository.user = user;
 
-        when(userRepository.findUserById(user.getUserId())).thenReturn(Optional.of(user));
-        when(userRepository.findRoleByName(UserRole.ADMINISTRATOR)).thenReturn(Optional.of(adminRole));
-        when(userRepository.save(any(UserRoleAssignment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        service.updateUserProfile(user.getUserId(), new UpdateUserProfileRequest("  Student Updated  "));
 
-        service.changeUserRole(user.getUserId(), new ChangeUserRoleRequest(UserRole.ADMINISTRATOR));
-
-        verify(userRepository).deleteRolesByUserId(user.getUserId());
-        ArgumentCaptor<UserRoleAssignment> assignmentCaptor = ArgumentCaptor.forClass(UserRoleAssignment.class);
-        verify(userRepository).save(assignmentCaptor.capture());
-        assertThat(assignmentCaptor.getValue().getUserId()).isEqualTo(user.getUserId());
-        assertThat(assignmentCaptor.getValue().getRoleId()).isEqualTo(adminRole.getRoleId());
+        assertThat(user.getUsername()).isEqualTo("student01");
+        assertThat(user.getEmail()).isEqualTo("student01@example.com");
+        assertThat(user.getDisplayName()).isEqualTo("Student Updated");
+        assertThat(user.getUpdatedAt()).isAfterOrEqualTo(user.getCreatedAt());
+        assertThat(userRepository.savedUser).isSameAs(user);
     }
 
     @Test
-    void changePasswordShouldPersistNewPassword() {
-        User user = User.create("student01", "secret123", "student01@example.com", "Student One");
+    void updateUserProfileShouldRejectBlankDisplayNameBeforeSaving() {
+        assertThatThrownBy(() -> service.updateUserProfile("user-id", new UpdateUserProfileRequest(" ")))
+                .isInstanceOf(AppException.class)
+                .extracting("status")
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
 
-        when(userRepository.findUserById(user.getUserId())).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        assertThat(userRepository.savedUser).isNull();
+    }
+
+    @Test
+    void changePasswordShouldHashAndPersistNewPassword() {
+        User user = User.create("student01", "old-hashed-password", "student01@example.com", "Student One");
+        userRepository.user = user;
 
         service.changePassword(user.getUserId(), new ChangePasswordRequest("newSecret123"));
 
-        assertThat(user.getPassword()).isEqualTo("newSecret123");
-        verify(userRepository).save(user);
+        assertThat(user.getPassword()).startsWith("pbkdf2$");
+        assertThat(user.getPassword()).isNotEqualTo("newSecret123");
+        assertThat(passwordService.matches("newSecret123", user.getPassword())).isTrue();
+        assertThat(user.getUpdatedAt()).isAfterOrEqualTo(user.getCreatedAt());
+        assertThat(userRepository.savedUser).isSameAs(user);
+    }
+
+    @Test
+    void changePasswordShouldRejectBlankPasswordBeforeHashing() {
+        assertThatThrownBy(() -> service.changePassword("user-id", new ChangePasswordRequest(" ")))
+                .isInstanceOf(AppException.class)
+                .extracting("status")
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+
+        assertThat(userRepository.savedUser).isNull();
+    }
+
+    @Test
+    void deleteUserShouldDeleteExistingUser() {
+        userRepository.existsById = true;
+
+        service.deleteUser("user-id");
+
+        assertThat(userRepository.deletedUserId).isEqualTo("user-id");
+    }
+
+    @Test
+    void deleteUserShouldRejectMissingUser() {
+        userRepository.existsById = false;
+
+        assertThatThrownBy(() -> service.deleteUser("missing-user"))
+                .isInstanceOf(AppException.class)
+                .extracting("status")
+                .isEqualTo(HttpStatus.NOT_FOUND.value());
+
+        assertThat(userRepository.deletedUserId).isNull();
+    }
+
+    private static class FakeUserRepository implements UserRepository {
+        private User user;
+        private User savedUser;
+        private boolean existsById;
+        private String deletedUserId;
+
+        @Override
+        public List<User> findAll() {
+            return user == null ? List.of() : List.of(user);
+        }
+
+        @Override
+        public User save(User user) {
+            this.savedUser = user;
+            return user;
+        }
+
+        @Override
+        public Role save(Role role) {
+            return role;
+        }
+
+        @Override
+        public UserRoleAssignment save(UserRoleAssignment userRoleAssignment) {
+            return userRoleAssignment;
+        }
+
+        @Override
+        public Optional<User> findUserById(String userId) {
+            return Optional.ofNullable(user);
+        }
+
+        @Override
+        public Optional<Role> findRoleByName(UserRole name) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<Role> findRoleByUserId(String userId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public boolean existsById(String userId) {
+            return existsById;
+        }
+
+        @Override
+        public boolean existsByUsername(String username) {
+            return false;
+        }
+
+        @Override
+        public boolean existsByEmail(String email) {
+            return false;
+        }
+
+        @Override
+        public boolean existsByUsernameAndUserIdNot(String username, String userId) {
+            return false;
+        }
+
+        @Override
+        public boolean existsByEmailAndUserIdNot(String email, String userId) {
+            return false;
+        }
+
+        @Override
+        public void deleteRolesByUserId(String userId) {
+        }
+
+        @Override
+        public void deleteById(String userId) {
+            this.deletedUserId = userId;
+        }
     }
 }

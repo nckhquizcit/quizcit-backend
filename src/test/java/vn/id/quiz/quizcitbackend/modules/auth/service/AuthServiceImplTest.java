@@ -14,6 +14,7 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignment;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 import java.util.Optional;
@@ -99,7 +100,7 @@ class AuthServiceImplTest {
     @Test
     void loginShouldRejectBannedUser() {
         User user = User.create("student01", passwordService.hash("secret123"), "student01@example.com", "Student One");
-        user.ban();
+        user.setStatus(UserStatus.BANNED);
         when(authRepository.findUserByUsername("student01")).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> service().login(new LoginRequest("student01", "secret123")))

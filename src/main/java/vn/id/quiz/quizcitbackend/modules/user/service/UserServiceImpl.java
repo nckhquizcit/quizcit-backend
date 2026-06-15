@@ -4,26 +4,29 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.id.quiz.quizcitbackend.modules.auth.service.PasswordService;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangePasswordRequest;
-import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangeUserRoleRequest;
-import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangeUserStatusRequest;
-import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.CreateUserRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserProfileRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UserResponse;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
-import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignment;
 import vn.id.quiz.quizcitbackend.modules.user.repository.UserRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserUseCase {
+    private static final int PASSWORD_MIN_LENGTH = 6;
+    private static final int PASSWORD_MAX_LENGTH = 255;
+    private static final int DISPLAY_NAME_MAX_LENGTH = 100;
+
     private final UserRepository userRepository;
     private final UserMapper mapper;
+    private final PasswordService passwordService;
 
     // Doc danh sach users va gan role hien tai vao DTO cho frontend.
     @Override
@@ -43,86 +46,29 @@ public class UserServiceImpl implements UserUseCase {
         return mapper.toUserResponse(user, resolveUserRole(userId));
     }
 
-    // Tao user trong bang users, sau do gan role mac dinh USER trong bang user_roles.
-    @Override
-    @Transactional
-    public UserResponse createUser(CreateUserRequest request) {
-        if (userRepository.existsByUsername(request.username())) {
-            throw new AppException("Ten dang nhap da ton tai", HttpStatus.CONFLICT);
-        }
-        if (userRepository.existsByEmail(request.email())) {
-            throw new AppException("Email da ton tai", HttpStatus.CONFLICT);
-        }
-
-        User user = User.create(request.username(), request.password(), request.email(), request.displayName());
-        User savedUser = userRepository.save(user);
-
-        Role defaultRole = getOrCreateRole(UserRole.USER);
-        userRepository.save(UserRoleAssignment.assign(savedUser.getUserId(), defaultRole.getRoleId()));
-
-        return mapper.toUserResponse(savedUser, defaultRole.getName());
-    }
-
-    // Chi cap nhat thong tin profile, khong doi role/status/password tai endpoint nay.
+    // Chi cap nhat ten hien thi theo tai lieu kien truc.
     @Override
     @Transactional
     public void updateUserProfile(String userId, UpdateUserProfileRequest request) {
-        User user = getRequiredUser(userId);
-        if (userRepository.existsByUsernameAndUserIdNot(request.username(), userId)) {
-            throw new AppException("Ten dang nhap da ton tai", HttpStatus.CONFLICT);
-        }
-        if (userRepository.existsByEmailAndUserIdNot(request.email(), userId)) {
-            throw new AppException("Email da ton tai", HttpStatus.CONFLICT);
-        }
+        request = requireRequest(request);
+        String displayName = validateDisplayName(request.displayName());
 
-        user.updateProfile(request.username(), request.email(), request.displayName());
+        User user = getRequiredUser(userId);
+        user.setDisplayName(displayName);
+        touch(user);
         userRepository.save(user);
     }
 
-    // RBAC duoc tach bang: doi role bang cach thay ban ghi trong user_roles.
-    @Override
-    @Transactional
-    public void changeUserRole(String userId, ChangeUserRoleRequest request) {
-        getRequiredUser(userId);
-        Role role = getOrCreateRole(request.role());
-
-        userRepository.deleteRolesByUserId(userId);
-        userRepository.save(UserRoleAssignment.assign(userId, role.getRoleId()));
-    }
-
-    // Trang thai tai khoan van nam truc tiep trong bang users.
-    @Override
-    @Transactional
-    public void changeUserStatus(String userId, ChangeUserStatusRequest request) {
-        User user = getRequiredUser(userId);
-        user.changeStatus(request.status());
-        userRepository.save(user);
-    }
-
-    // Hien tai password duoc luu theo schema hien co; nen hash truoc khi dung production.
+    // Doi mat khau va luu dang hash, cung co che voi module auth.
     @Override
     @Transactional
     public void changePassword(String userId, ChangePasswordRequest request) {
-        User user = getRequiredUser(userId);
-        user.changePassword(request.password());
-        userRepository.save(user);
-    }
+        request = requireRequest(request);
+        String password = validatePassword(request.password());
 
-    // Shortcut nghiep vu: khoa tai khoan bang status BANNED.
-    @Override
-    @Transactional
-    public void banUser(String userId) {
         User user = getRequiredUser(userId);
-        user.ban();
-        userRepository.save(user);
-    }
-
-    // Shortcut nghiep vu: xac minh tai khoan bang status VERIFIED.
-    @Override
-    @Transactional
-    public void verifyUser(String userId) {
-        User user = getRequiredUser(userId);
-        user.verify();
+        user.setPassword(passwordService.hash(password));
+        touch(user);
         userRepository.save(user);
     }
 
@@ -142,14 +88,38 @@ public class UserServiceImpl implements UserUseCase {
                 .orElseThrow(() -> new AppException("Khong tim thay nguoi dung duoc yeu cau", HttpStatus.NOT_FOUND));
     }
 
-    // Neu bang roles chua co role can dung thi tao moi theo enum UserRole.
-    private Role getOrCreateRole(UserRole roleName) {
-        if (roleName == null) {
-            throw new AppException("Vai tro nguoi dung khong hop le", HttpStatus.BAD_REQUEST);
+    private <T> T requireRequest(T request) {
+        if (request == null) {
+            throw new AppException("Yeu cau khong hop le", HttpStatus.BAD_REQUEST);
         }
+        return request;
+    }
 
-        return userRepository.findRoleByName(roleName)
-                .orElseGet(() -> userRepository.save(Role.create(roleName)));
+    private String validatePassword(String password) {
+        String value = requireNotBlank(password, "Mat khau khong duoc de trong");
+        if (value.length() < PASSWORD_MIN_LENGTH || value.length() > PASSWORD_MAX_LENGTH) {
+            throw new AppException("Mat khau phai tu 6 den 255 ky tu", HttpStatus.BAD_REQUEST);
+        }
+        return value;
+    }
+
+    private String validateDisplayName(String displayName) {
+        String normalized = requireNotBlank(displayName, "Ten hien thi khong duoc de trong").trim();
+        if (normalized.length() > DISPLAY_NAME_MAX_LENGTH) {
+            throw new AppException("Ten hien thi khong duoc vuot qua 100 ky tu", HttpStatus.BAD_REQUEST);
+        }
+        return normalized;
+    }
+
+    private String requireNotBlank(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new AppException(message, HttpStatus.BAD_REQUEST);
+        }
+        return value;
+    }
+
+    private void touch(User user) {
+        user.setUpdatedAt(ZonedDateTime.now());
     }
 
     // Lay role hien tai cua user tu bang noi user_roles.

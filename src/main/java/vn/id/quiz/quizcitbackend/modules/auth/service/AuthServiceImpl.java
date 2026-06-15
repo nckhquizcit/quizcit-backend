@@ -15,6 +15,7 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignm
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 @Service
@@ -85,7 +86,8 @@ public class AuthServiceImpl implements AuthUseCase {
 
     private void upgradeLegacyPasswordIfNeeded(User user, String rawPassword) {
         if (!passwordService.isHashed(user.getPassword())) {
-            user.changePassword(passwordService.hash(rawPassword));
+            user.setPassword(passwordService.hash(rawPassword));
+            user.setUpdatedAt(ZonedDateTime.now());
             authRepository.save(user);
         }
     }
