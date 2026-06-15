@@ -38,18 +38,8 @@ public class Attempt {
 
     @Column(name = "total_question")
     private int totalQuestion;
-
-    @Column(name = "theta_before")
-    private double thetaBefore;
-
-    @Column(name = "theta_after")
-    private double thetaAfter;
-
-    @Column(name = "theta_smoothed")
-    private double thetaSmoothed;
-
-    @Column(name = "standard_error")
-    private double standardError;
+    @Column(name = "overall_theta")
+    private double overallTheta;
 
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
@@ -57,26 +47,22 @@ public class Attempt {
     public static Attempt create(
             String userId,
             String quizId,
-            int totalQuestion,
-            double thetaBefore) {
+            int totalQuestion) {
+
         return Attempt.builder()
                 .attemptId(UUID.randomUUID().toString())
                 .userId(userId)
                 .quizId(quizId)
                 .totalQuestion(totalQuestion)
-                .thetaBefore(thetaBefore)
                 .createdAt(ZonedDateTime.now())
                 .build();
     }
 
     public void complete(
             double rawScore,
-            double thetaAfter,
-            double thetaSmoothed,
-            double standardError) {
+            double overallTheta) {
+
         this.rawScore = rawScore;
-        this.thetaAfter = thetaAfter;
-        this.thetaSmoothed = thetaSmoothed;
-        this.standardError = standardError;
+        this.overallTheta = overallTheta;
     }
 }

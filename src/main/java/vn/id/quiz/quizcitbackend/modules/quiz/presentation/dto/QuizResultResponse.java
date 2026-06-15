@@ -1,5 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
 
+import java.util.List;
+
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,11 +17,7 @@ public class QuizResultResponse {
 
     private int totalQuestion;
 
-    private double thetaBefore;
-
-    private double thetaAfter;
-
-    private double thetaSmoothed;
-
-    private double standardError;
+    private double overallTheta;
+    
+    private List<SkillResultResponse> skillResults;
 }

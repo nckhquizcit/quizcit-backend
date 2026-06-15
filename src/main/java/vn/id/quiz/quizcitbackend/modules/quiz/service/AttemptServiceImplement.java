@@ -64,8 +64,7 @@ public class AttemptServiceImplement
         Attempt attempt = Attempt.create(
                 userId,
                 quizId,
-                questions.size(),
-                0.0);
+                questions.size());
 
         quizRepository.save(attempt);
 
@@ -182,7 +181,7 @@ public class AttemptServiceImplement
             progressRepository.save(
                     history);
         }
-        double thetaAfter = skillThetaMap.values()
+        double overallTheta = skillThetaMap.values()
                 .stream()
                 .mapToDouble(Double::doubleValue)
                 .average()
@@ -191,9 +190,7 @@ public class AttemptServiceImplement
                 / attempt.getTotalQuestion();
         attempt.complete(
                 rawScore,
-                thetaAfter,
-                thetaAfter,
-                0.0);
+                overallTheta);
 
         quizRepository.save(
                 attempt);
