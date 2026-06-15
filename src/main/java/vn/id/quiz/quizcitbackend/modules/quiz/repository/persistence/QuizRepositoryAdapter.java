@@ -12,6 +12,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 //Adapter đóng vai trò là cầu nối, cho phép Repository cha gọi gián tiếp đến Repository con
 
@@ -26,6 +27,7 @@ public class QuizRepositoryAdapter implements QuizRepository {
     private final JpaAttemptRepository jpaAttemptRepository;
     private final JpaResponseRepository jpaResponseRepository;
 
+    // Question
     @Override
     public List<Question> findQuestionsByChapterId(String chapterId) {
         return jpaQuestionRepository.findByChapterChapterId(chapterId);
@@ -36,6 +38,23 @@ public class QuizRepositoryAdapter implements QuizRepository {
         return jpaQuestionRepository.save(question);
     }
 
+    @Override
+    public Optional<Question> findQuestionById(
+            String questionId) {
+
+        return jpaQuestionRepository
+                .findByQuestionId(questionId);
+    }
+
+    @Override
+    public void deleteQuestionById(
+            String questionId) {
+
+        jpaQuestionRepository
+                .deleteByQuestionId(questionId);
+    }
+
+    // Quiz
     @Override
     public Quiz save(Quiz quiz) {
         return jpaQuizRepository.save(quiz);
@@ -52,6 +71,31 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public Optional<Quiz> findQuizById(
+            String quizId) {
+
+        return jpaQuizRepository
+                .findByQuizId(quizId);
+    }
+
+    @Override
+    public List<Quiz> findQuizzesByChapterId(
+            String chapterId) {
+
+        return jpaQuizRepository
+                .findByChapterChapterId(chapterId);
+    }
+
+    @Override
+    public void deleteQuizById(
+            String quizId) {
+
+        jpaQuizRepository
+                .deleteByQuizId(quizId);
+    }
+
+    // Option
+    @Override
     public Option save(Option option) {
         return jpaOptionRepository.save(option);
     }
@@ -62,10 +106,36 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public Optional<Option> findOptionById(
+            String optionId) {
+
+        return jpaOptionRepository
+                .findByOptionId(optionId);
+    }
+
+    // Attempt
+    @Override
     public Attempt save(Attempt attempt) {
         return jpaAttemptRepository.save(attempt);
     }
 
+    @Override
+    public Optional<Attempt> findAttemptById(
+            String attemptId) {
+
+        return jpaAttemptRepository
+                .findByAttemptId(attemptId);
+    }
+
+    @Override
+    public List<Attempt> findAttemptsByUserId(
+            String userId) {
+
+        return jpaAttemptRepository
+                .findByUserId(userId);
+    }
+
+    // Response
     @Override
     public Response save(Response response) {
         return jpaResponseRepository.save(response);
@@ -74,5 +144,14 @@ public class QuizRepositoryAdapter implements QuizRepository {
     @Override
     public List<Response> findResponsesByAttemptId(String attemptId) {
         return jpaResponseRepository.findByAttemptId(attemptId);
+    }
+
+    // QuizQuestion
+    @Override
+    public void deleteQuizQuestionsByQuizId(
+            String quizId) {
+
+        jpaQuizQuestionRepository
+                .deleteByQuizQuizId(quizId);
     }
 }

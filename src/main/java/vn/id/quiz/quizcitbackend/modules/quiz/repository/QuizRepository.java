@@ -1,5 +1,8 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.repository;
 
+import java.util.List;
+import java.util.Optional;
+
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
@@ -7,34 +10,86 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 
-import java.util.List;
-
-
 public interface QuizRepository {
 
- // Question
-    List<Question> findQuestionsByChapterId(String chapterId);
+    // =========================================================================
+    // Question
+    // =========================================================================
 
-    Question save(Question question);
+    Question save(
+            Question question);
 
+    Optional<Question> findQuestionById(
+            String questionId);
+
+    List<Question> findQuestionsByChapterId(
+            String chapterId);
+
+    void deleteQuestionById(
+            String questionId);
+
+    // =========================================================================
     // Quiz
-    Quiz save(Quiz quiz);
+    // =========================================================================
 
-    // QuizQuestion
-    QuizQuestion save(QuizQuestion quizQuestion);
+    Quiz save(
+            Quiz quiz);
 
-    List<QuizQuestion> findQuizQuestionsByQuizId(String quizId);
+    Optional<Quiz> findQuizById(
+            String quizId);
 
+    List<Quiz> findQuizzesByChapterId(
+            String chapterId);
+
+    void deleteQuizById(
+            String quizId);
+
+    // =========================================================================
+    // Quiz Question
+    // =========================================================================
+
+    QuizQuestion save(
+            QuizQuestion quizQuestion);
+
+    List<QuizQuestion> findQuizQuestionsByQuizId(
+            String quizId);
+
+    void deleteQuizQuestionsByQuizId(
+            String quizId);
+
+    // =========================================================================
     // Option
-    Option save(Option option);
+    // =========================================================================
 
-    List<Option> findOptionsByQuestionId(String questionId);
+    Option save(
+            Option option);
 
+    Optional<Option> findOptionById(
+            String optionId);
+
+    List<Option> findOptionsByQuestionId(
+            String questionId);
+
+    // =========================================================================
     // Attempt
-    Attempt save(Attempt attempt);
+    // =========================================================================
 
+    Attempt save(
+            Attempt attempt);
+
+    Optional<Attempt> findAttemptById(
+            String attemptId);
+
+    List<Attempt> findAttemptsByUserId(
+            String userId);
+
+    // =========================================================================
     // Response
-    Response save(Response response);
+    // =========================================================================
 
-    List<Response> findResponsesByAttemptId(String attemptId);
+    Response save(
+            Response response);
+
+    List<Response> findResponsesByAttemptId(
+            String attemptId);
 }

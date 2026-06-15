@@ -9,4 +9,6 @@ public interface JpaQuizQuestionRepository
         extends JpaRepository<QuizQuestion, String> {
             List<QuizQuestion> findByQuizQuizIdOrderByIndexOrder(String quizId);
 
+            void deleteByQuizQuizId(
+                    String quizId);
 }
