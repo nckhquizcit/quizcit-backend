@@ -16,4 +16,7 @@ public interface JpaAbilityHistoryRepository
 
     AbilityHistory save(
             AbilityHistory history);
+
+    List<AbilityHistory> findByAttemptId(
+            String attemptId);
 }
