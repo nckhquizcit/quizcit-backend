@@ -78,4 +78,14 @@ public class ProgressRepositoryAdapter
             String skillId) {
         return abilityHistoryRepository.findByUserIdAndSkillId(userId, skillId);
     }
+
+    @Override
+    public Double getAverageAbility(
+            String userId) {
+
+        return Optional.ofNullable(
+                userSkillAbilityRepository
+                        .getAverageAbility(userId))
+                .orElse(0.0);
+    }
 }

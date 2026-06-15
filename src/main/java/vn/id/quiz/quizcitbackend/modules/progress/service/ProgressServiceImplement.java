@@ -65,4 +65,13 @@ public class ProgressServiceImplement implements ProgressService {
                                 userId,
                                 skillId));
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public double getAverageAbility(
+            String userId) {
+
+        return progressRepository
+                .getAverageAbility(userId);
+    }
 }

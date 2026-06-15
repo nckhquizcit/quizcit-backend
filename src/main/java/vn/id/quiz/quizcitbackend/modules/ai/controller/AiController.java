@@ -2,24 +2,26 @@ package vn.id.quiz.quizcitbackend.modules.ai.controller;
 
 import java.util.List;
 
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
-import vn.id.quiz.quizcitbackend.modules.ai.infrastructure.RaschClient;
+import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 
 @RestController
+@RequestMapping("/api/ai")
 @RequiredArgsConstructor
-public class AiController {
+public class AIController {
 
-    private final RaschClient raschClient;
+    private final AIService aiService;
 
-    @GetMapping("/test-ai")
-    public Double test() {
+    @PostMapping("/estimate")
+    public double estimate() {
 
-        return raschClient.estimateTheta(
+        return aiService.estimateTheta(
                 List.of(1, 0, 1, 1),
-                List.of(0.2, -0.5, 1.0, 0.3),
-                List.of(0.8, 0.3, 1.0, 0.7));
+                List.of(0.2, -0.5, 0.1, 1.2),
+                List.of(1.0, 1.0, 1.0, 1.0));
     }
 }

@@ -13,4 +13,6 @@ public interface JpaAbilityHistoryRepository
     List<AbilityHistory> findByUserIdAndSkillId(
             String userId,
             String skillId);
+
+    
 }

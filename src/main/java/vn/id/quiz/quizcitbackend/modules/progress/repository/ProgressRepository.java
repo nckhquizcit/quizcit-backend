@@ -34,4 +34,6 @@ public interface ProgressRepository {
     List<AbilityHistory> findAbilityHistoriesByUserIdAndSkillId(
             String userId,
             String skillId);
+
+    Double getAverageAbility(String userId);
 }

@@ -20,5 +20,6 @@ public interface ProgressService {
     List<AbilityHistoryResponse> getAbilityHistoriesBySkill(
             String userId,
             String skillId);
-
+    
+    double getAverageAbility(String userId);
 }
