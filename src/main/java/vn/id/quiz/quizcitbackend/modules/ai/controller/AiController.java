@@ -12,7 +12,7 @@ import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
-public class AIController {
+public class AiController {
 
     private final AIService aiService;
 

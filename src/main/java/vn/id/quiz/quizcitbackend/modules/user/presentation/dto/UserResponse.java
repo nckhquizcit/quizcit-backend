@@ -12,11 +12,15 @@ public record UserResponse(
         String displayName,
         UserRole role,
         UserStatus status,
-        ZonedDateTime createdAt
+        ZonedDateTime createdAt,
+        ZonedDateTime updatedAt
 ) {
     public UserResponse {
         if (createdAt == null) {
             createdAt = ZonedDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = createdAt;
         }
     }
 }
