@@ -22,4 +22,6 @@ public interface ProgressService {
             String skillId);
     
     double getAverageAbility(String userId);
+
+    
 }

@@ -37,8 +37,8 @@ public class AbilityHistory {
     @Column(name = "standard_error")
     private Double standardError;
 
-    @Column(name = "source_attempt_id", length = 50)
-    private String sourceAttemptId;
+    @Column(name = "attempt_id", length = 50)
+    private String attemptId;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -49,14 +49,14 @@ public class AbilityHistory {
             double theta,
             double delta,
             Double standardError,
-            String sourceAttemptId) {
+            String attemptId) {
         return AbilityHistory.builder()
                 .userId(userId)
                 .skillId(skillId)
                 .theta(theta)
                 .delta(delta)
                 .standardError(standardError)
-                .sourceAttemptId(sourceAttemptId)
+                .attemptId(attemptId)
                 .createdAt(LocalDateTime.now())
                 .build();
     }

@@ -17,6 +17,7 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSki
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SkillResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SkillThetaData;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.StartQuizResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SubmitAnswerRequest;
@@ -203,8 +204,32 @@ public class AttemptServiceImplement
     public QuizResultResponse getResult(
             String attemptId) {
 
-        throw new UnsupportedOperationException(
-                "Not implemented yet");
+        Attempt attempt = quizRepository
+                .findAttemptById(attemptId)
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy kết quả bài thi",
+                        HttpStatus.NOT_FOUND));
+
+        List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByAttemptId(
+                attemptId);
+
+        List<SkillResultResponse> skillResults = histories.stream()
+                .map(history -> SkillResultResponse.builder()
+                        .skillId(history.getSkillId())
+                        .theta(history.getTheta())
+                        .standardError(
+                                history.getStandardError())
+                        .build())
+                .toList();
+
+        return QuizResultResponse.builder()
+                .attemptId(attempt.getAttemptId())
+                .quizId(attempt.getQuizId())
+                .rawScore(attempt.getRawScore())
+                .totalQuestion(attempt.getTotalQuestion())
+                .overallTheta(attempt.getOverallTheta())
+                .skillResults(skillResults)
+                .build();
     }
 
     @Override
@@ -212,7 +237,10 @@ public class AttemptServiceImplement
     public List<QuizResultResponse> getUserResults(
             String userId) {
 
-        throw new UnsupportedOperationException(
-                "Not implemented yet");
+        List<Attempt> attempts = quizRepository.findAttemptsByUserId(
+                userId);
+
+        return mapper.toQuizResultResponseList(
+                attempts);
     }
 }

@@ -28,7 +28,7 @@ public interface ProgressRepository {
 
     List<UserSkillAbility> findUserSkillAbilities(
             String userId);
-            
+
     List<AbilityHistory> findAbilityHistoriesByUserId(String userId);
 
     List<AbilityHistory> findAbilityHistoriesByUserIdAndSkillId(
@@ -39,4 +39,7 @@ public interface ProgressRepository {
 
     AbilityHistory save(
             AbilityHistory history);
+
+    List<AbilityHistory> findAbilityHistoriesByAttemptId(
+            String attemptId);
 }

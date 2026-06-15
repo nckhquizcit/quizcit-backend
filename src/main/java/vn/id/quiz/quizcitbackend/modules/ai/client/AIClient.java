@@ -17,7 +17,7 @@ public class AIClient {
             EstimateThetaRequest request) {
 
         EstimateThetaResponse response = aiRestClient.post()
-                .uri("/estimate")
+                .uri("https://quizcit-ai.onrender.com")
                 .body(request)
                 .retrieve()
                 .body(EstimateThetaResponse.class);

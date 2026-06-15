@@ -95,4 +95,12 @@ public class ProgressRepositoryAdapter
 
         return abilityHistoryRepository.save(history);
     }
+
+    @Override
+    public List<AbilityHistory> findAbilityHistoriesByAttemptId(
+            String attemptId) {
+
+        return abilityHistoryRepository.findByAttemptId(
+                attemptId);
+    }
 }
