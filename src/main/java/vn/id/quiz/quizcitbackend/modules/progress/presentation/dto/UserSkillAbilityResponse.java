@@ -6,7 +6,7 @@ public record UserSkillAbilityResponse(
         String id,
         String userId,
         String skillId,
-        double theta,
-        double standardError,
+        Double theta,
+        Double standardError,
         ZonedDateTime updatedAt) {
 }

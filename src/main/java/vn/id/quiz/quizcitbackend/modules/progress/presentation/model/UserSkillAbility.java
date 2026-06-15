@@ -7,6 +7,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,7 +15,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "user_skill_ability")
+@Table(
+        name = "user_skill_ability",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "skill_id"})
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -22,18 +26,19 @@ import lombok.NoArgsConstructor;
 public class UserSkillAbility {
 
     @Id
+    @Column(name = "id", length = 50)
     private String id;
 
-    @Column(name = "user_id", nullable = false, length = 50)
+    @Column(name = "user_id", length = 50)
     private String userId;
 
-    @Column(name = "skill_id", nullable = false, length = 50)
+    @Column(name = "skill_id", length = 50)
     private String skillId;
 
-    private double theta;
+    private Double theta;
 
     @Column(name = "standard_error")
-    private double standardError;
+    private Double standardError;
 
     @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
