@@ -14,5 +14,6 @@ public interface JpaAbilityHistoryRepository
             String userId,
             String skillId);
 
-    
+    AbilityHistory save(
+            AbilityHistory history);
 }

@@ -36,4 +36,7 @@ public interface ProgressRepository {
             String skillId);
 
     Double getAverageAbility(String userId);
+
+    AbilityHistory save(
+            AbilityHistory history);
 }

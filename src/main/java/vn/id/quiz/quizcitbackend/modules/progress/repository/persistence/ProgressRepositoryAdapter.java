@@ -88,4 +88,11 @@ public class ProgressRepositoryAdapter
                         .getAverageAbility(userId))
                 .orElse(0.0);
     }
+    
+    @Override
+    public AbilityHistory save(
+            AbilityHistory history) {
+
+        return abilityHistoryRepository.save(history);
+    }
 }
