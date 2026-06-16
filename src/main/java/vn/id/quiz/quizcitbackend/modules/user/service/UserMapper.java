@@ -20,8 +20,7 @@ public interface UserMapper {
                 entity.getDisplayName(),
                 role,
                 entity.getStatus(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getCreatedAt()
         );
     }
 }

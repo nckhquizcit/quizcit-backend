@@ -55,7 +55,6 @@ public class UserServiceImpl implements UserUseCase {
 
         User user = getRequiredUser(userId);
         user.setDisplayName(displayName);
-        touch(user);
         userRepository.save(user);
     }
 
@@ -68,7 +67,6 @@ public class UserServiceImpl implements UserUseCase {
 
         User user = getRequiredUser(userId);
         user.setPassword(passwordService.hash(password));
-        touch(user);
         userRepository.save(user);
     }
 
@@ -118,9 +116,6 @@ public class UserServiceImpl implements UserUseCase {
         return value;
     }
 
-    private void touch(User user) {
-        user.setUpdatedAt(ZonedDateTime.now());
-    }
 
     // Lay role hien tai cua user tu bang noi user_roles.
     private UserRole resolveUserRole(String userId) {

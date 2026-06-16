@@ -41,7 +41,6 @@ class UserServiceImplTest {
         assertThat(user.getUsername()).isEqualTo("student01");
         assertThat(user.getEmail()).isEqualTo("student01@example.com");
         assertThat(user.getDisplayName()).isEqualTo("Student Updated");
-        assertThat(user.getUpdatedAt()).isAfterOrEqualTo(user.getCreatedAt());
         assertThat(userRepository.savedUser).isSameAs(user);
     }
 
@@ -65,7 +64,6 @@ class UserServiceImplTest {
         assertThat(user.getPassword()).startsWith("pbkdf2$");
         assertThat(user.getPassword()).isNotEqualTo("newSecret123");
         assertThat(passwordService.matches("newSecret123", user.getPassword())).isTrue();
-        assertThat(user.getUpdatedAt()).isAfterOrEqualTo(user.getCreatedAt());
         assertThat(userRepository.savedUser).isSameAs(user);
     }
 

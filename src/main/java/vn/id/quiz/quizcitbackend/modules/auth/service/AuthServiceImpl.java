@@ -87,7 +87,6 @@ public class AuthServiceImpl implements AuthUseCase {
     private void upgradeLegacyPasswordIfNeeded(User user, String rawPassword) {
         if (!passwordService.isHashed(user.getPassword())) {
             user.setPassword(passwordService.hash(rawPassword));
-            user.setUpdatedAt(ZonedDateTime.now());
             authRepository.save(user);
         }
     }

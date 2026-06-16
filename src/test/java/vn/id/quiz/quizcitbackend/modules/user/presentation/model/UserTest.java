@@ -17,6 +17,5 @@ class UserTest {
         assertThat(user.getDisplayName()).isEqualTo("student01");
         assertThat(user.getStatus()).isEqualTo(UserStatus.UNVERIFIED);
         assertThat(user.getCreatedAt()).isNotNull();
-        assertThat(user.getUpdatedAt()).isNotNull();
     }
 }

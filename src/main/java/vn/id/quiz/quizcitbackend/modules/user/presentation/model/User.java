@@ -52,9 +52,6 @@ public class User {
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
-    @Setter
-    @Column(name = "updated_at")
-    private ZonedDateTime updatedAt;
 
     // Factory chi tao entity theo schema users va gan gia tri mac dinh.
     // Validation va nghiep vu chinh nam o service.
@@ -69,7 +66,6 @@ public class User {
                 .displayName(normalizeDisplayName(displayName, username))
                 .status(UserStatus.UNVERIFIED)
                 .createdAt(now)
-                .updatedAt(now)
                 .build();
     }
 

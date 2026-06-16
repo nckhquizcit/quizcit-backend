@@ -22,8 +22,7 @@ public interface AuthMapper {
                 user.getDisplayName(),
                 role,
                 user.getStatus(),
-                user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getCreatedAt()
         );
     }
 }

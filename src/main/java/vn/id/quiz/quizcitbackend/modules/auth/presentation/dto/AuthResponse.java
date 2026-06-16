@@ -15,7 +15,6 @@ public record AuthResponse(
         String displayName,
         UserRole role,
         UserStatus status,
-        ZonedDateTime createdAt,
-        ZonedDateTime updatedAt
+        ZonedDateTime createdAt
 ) {
 }
