@@ -46,7 +46,7 @@ public class User {
 
     @Setter
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 20, columnDefinition = "user_status_enum")
     private UserStatus status;
 
     @Column(name = "created_at")
