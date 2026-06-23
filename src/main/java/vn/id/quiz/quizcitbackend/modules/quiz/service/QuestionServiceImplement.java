@@ -117,6 +117,8 @@ public class QuestionServiceImplement implements QuestionService {
     @Override
     @Transactional
     public void deleteQuestion(String questionId) {
+        quizRepository.deleteResponsesByQuestionId(questionId);
+        quizRepository.deleteQuizQuestionsByQuestionId(questionId);
         quizRepository.deleteQuestionSkillsByQuestionId(questionId);
         quizRepository.deleteOptionsByQuestionId(questionId);
         quizRepository.deleteQuestionById(questionId);

@@ -6,18 +6,7 @@ import lombok.*;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
-/**
- * Entity cho bảng {@code questions}.
- *
- * <p><b>Fix bug:</b> Trước đây column được map là {@code explaination} (sai
- * chính tả). Database thực tế chỉ có cột {@code explanation}. Khi JPA cố gắng
- * truy vấn sẽ ném lỗi "column explaination does not exist" và API tạo/sửa
- * câu hỏi hoặc tạo quiz trả về 500. Tên cột đã được chuẩn hoá về
- * {@code explanation} và field Java cũng đổi sang {@code explanation} để
- * code rõ ràng. Một file migration SQL
- * ({@code V3__rename_questions_explaination.sql}) được cung cấp để
- * rename cột trong database nếu schema cũ vẫn dùng {@code explaination}.</p>
- */
+
 @Entity
 @Table(name = "questions")
 @Getter
@@ -48,9 +37,6 @@ public class Question {
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
-    @Column(name = "is_active")
-    private boolean isActive;
-
     public static Question create(
             String subjectId,
             String chapterId,
@@ -66,7 +52,6 @@ public class Question {
                 .explanation(explanation)
                 .difficultyB(difficultyB)
                 .createdAt(ZonedDateTime.now())
-                .isActive(true)
                 .build();
     }
 }

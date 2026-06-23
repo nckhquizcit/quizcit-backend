@@ -73,6 +73,11 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public void deleteQuizQuestionsByQuestionId(String questionId) {
+        jpaQuizQuestionRepository.deleteByQuestionId(questionId);
+    }
+
+    @Override
     public Optional<Quiz> findQuizById(
             String quizId) {
 
@@ -157,6 +162,11 @@ public class QuizRepositoryAdapter implements QuizRepository {
     @Override
     public List<Response> findResponsesByAttemptId(String attemptId) {
         return jpaResponseRepository.findByAttemptId(attemptId);
+    }
+
+    @Override
+    public void deleteResponsesByQuestionId(String questionId) {
+        jpaResponseRepository.deleteByQuestionId(questionId);
     }
 
     // QuizQuestion

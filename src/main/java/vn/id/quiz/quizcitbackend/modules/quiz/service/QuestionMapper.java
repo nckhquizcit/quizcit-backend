@@ -12,7 +12,6 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 @Mapper(componentModel = "spring")
 public interface QuestionMapper {
 
-    @Mapping(target = "active", source = "active")
     @Mapping(target = "options", ignore = true)
     @Mapping(target = "correctOptionId", ignore = true)
     QuestionResponse toResponse(Question question);

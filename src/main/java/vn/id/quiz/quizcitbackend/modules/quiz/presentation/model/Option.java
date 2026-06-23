@@ -22,7 +22,7 @@ public class Option {
     @Column(name = "content", columnDefinition = "TEXT") // Thêm text để không bị tràng content của cột
     private String content;
 
-    @Column(name = "is_corrected")
+    @Column(name = "is_correct")
     private boolean isCorrected;
 
     public static Option create(

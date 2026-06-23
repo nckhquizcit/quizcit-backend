@@ -1,0 +1,3018 @@
+############################################################
+COMBINED PRESENTATION LAYER DUMP
+DATE: Thứ ba, 23 Tháng 6 năm 2026 15:11:18 +07
+############################################################
+
+
+
+============================================================
+FILE: auth/presentation/controller/AuthController.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.auth.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthResponse;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.LoginRequest;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RegisterRequest;
+import vn.id.quiz.quizcitbackend.modules.auth.service.AuthUseCase;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+@Validated
+public class AuthController {
+    private final AuthUseCase authUseCase;
+
+    // Dang ky tai khoan moi tren bang users va gan role USER mac dinh.
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<AuthResponse>> register(
+            @Valid @RequestBody RegisterRequest request
+    ) {
+        AuthResponse response = authUseCase.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    // Dang nhap bang username/email va password trong bang users.
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<AuthResponse>> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        AuthResponse response = authUseCase.login(request);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+}
+
+
+============================================================
+FILE: auth/presentation/dto/AuthResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.auth.presentation.dto;
+
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
+
+import java.time.ZonedDateTime;
+
+public record AuthResponse(
+        String accessToken,
+        String tokenType,
+        ZonedDateTime expiresAt,
+        String userId,
+        String username,
+        String email,
+        String displayName,
+        UserRole role,
+        UserStatus status,
+        ZonedDateTime createdAt
+) {
+}
+
+
+============================================================
+FILE: auth/presentation/dto/LoginRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.auth.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record LoginRequest(
+        @NotBlank(message = "Ten dang nhap hoac email khong duoc de trong")
+        @Size(max = 100, message = "Ten dang nhap hoac email khong duoc vuot qua 100 ky tu")
+        String identifier,
+
+        @NotBlank(message = "Mat khau khong duoc de trong")
+        @Size(min = 6, max = 255, message = "Mat khau phai tu 6 den 255 ky tu")
+        String password
+) {
+}
+
+
+============================================================
+FILE: auth/presentation/dto/RegisterRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.auth.presentation.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record RegisterRequest(
+        @NotBlank(message = "Ten dang nhap khong duoc de trong")
+        @Size(max = 50, message = "Ten dang nhap khong duoc vuot qua 50 ky tu")
+        String username,
+
+        @NotBlank(message = "Mat khau khong duoc de trong")
+        @Size(min = 6, max = 255, message = "Mat khau phai tu 6 den 255 ky tu")
+        String password,
+
+        @NotBlank(message = "Email khong duoc de trong")
+        @Email(message = "Email khong hop le")
+        @Size(max = 100, message = "Email khong duoc vuot qua 100 ky tu")
+        String email,
+
+        @Size(max = 100, message = "Ten hien thi khong duoc vuot qua 100 ky tu")
+        String displayName
+) {
+}
+
+
+============================================================
+FILE: content/presentation/controller/ContentController.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import vn.id.quiz.quizcitbackend.modules.content.service.ContentService;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.QuizSummaryResponse;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api") // Đổi thành /api để quản lý chung các resource phẳng
+@RequiredArgsConstructor
+@Validated
+public class ContentController {
+    private final ContentService subjectUseCase;
+
+    // =========================================================================
+    // SUBJECT ENDPOINTS (/api/subjects)
+    // =========================================================================
+
+    @GetMapping("/subjects")
+    public ResponseEntity<ApiResponse<List<SubjectResponse>>> getAllSubject() {
+        List<SubjectResponse> responses = subjectUseCase.getAllSubject();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    @GetMapping("/subjects/{subjectId}")
+    public ResponseEntity<ApiResponse<SubjectResponse>> getSubjectById(@PathVariable String subjectId) {
+        SubjectResponse response = subjectUseCase.getSubjectById(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/subjects")
+    public ResponseEntity<ApiResponse<SubjectResponse>> createSubject(
+            @Valid @RequestBody CreateSubjectRequest request
+    ) {
+        SubjectResponse response = subjectUseCase.createSubject(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    @PutMapping("/subjects/{subjectId}")
+    public ResponseEntity<ApiResponse<Void>> updateSubject(
+            @PathVariable String subjectId,
+            @Valid @RequestBody UpdateSubjectRequest request
+    ) {
+        subjectUseCase.updateSubject(subjectId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật học phần thành công", null));
+    }
+
+    @DeleteMapping("/subjects/{subjectId}")
+    public ResponseEntity<ApiResponse<Void>> deleteSubject(@PathVariable String subjectId) {
+        subjectUseCase.deleteSubject(subjectId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success("Đã xóa thành công học phần", null));
+    }
+
+    // =========================================================================
+    // CHAPTER ENDPOINTS (/api/chapters)
+    // =========================================================================
+
+    // Nested Route: Lấy danh sách chương CỦA 1 môn học
+    @GetMapping("/subjects/{subjectId}/chapters")
+    public ResponseEntity<ApiResponse<List<ChapterResponse>>> getAllChapters(@PathVariable String subjectId) {
+        List<ChapterResponse> response = subjectUseCase.getAllChapters(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Nested Route: Thêm chương VÀO 1 môn học
+    @PostMapping("/subjects/{subjectId}/chapters")
+    public ResponseEntity<ApiResponse<ChapterResponse>> addChapter(
+            @PathVariable String subjectId,
+            @Valid @RequestBody CreateChapterRequest request
+    ) {
+        ChapterResponse response = subjectUseCase.addChapter(subjectId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    // Flat Route: Lấy chi tiết 1 chương bằng ID
+    @GetMapping("/chapters/{chapterId}")
+    public ResponseEntity<ApiResponse<ChapterResponse>> getChapterById(@PathVariable String chapterId) {
+        ChapterResponse response = subjectUseCase.getChapterById(chapterId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Flat Route: Cập nhật chương
+    @PutMapping("/chapters/{chapterId}")
+    public ResponseEntity<ApiResponse<Void>> updateChapter(
+            @PathVariable String chapterId,
+            @Valid @RequestBody UpdateChapterRequest request
+    ) {
+        subjectUseCase.updateChapter(chapterId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật chương thành công", null));
+    }
+
+    // Flat Route: Xóa chương
+    @DeleteMapping("/chapters/{chapterId}")
+    public ResponseEntity<ApiResponse<Void>> deleteChapter(@PathVariable String chapterId) {
+        subjectUseCase.deleteChapter(chapterId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success("Đã xóa chương thành công", null));
+    }
+
+    // =========================================================================
+    // THEORY ENDPOINTS (/api/theories)
+    // =========================================================================
+
+    // Nested Route: Lấy danh sách lý thuyết CỦA 1 chương
+    @GetMapping("/chapters/{chapterId}/theories")
+    public ResponseEntity<ApiResponse<List<TheoryResponse>>> getAllTheories(@PathVariable String chapterId) {
+        List<TheoryResponse> response = subjectUseCase.getAllTheories(chapterId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Nested Route: Thêm lý thuyết VÀO 1 chương
+    @PostMapping("/chapters/{chapterId}/theories")
+    public ResponseEntity<ApiResponse<TheoryResponse>> addTheory(
+            @PathVariable String chapterId,
+            @Valid @RequestBody CreateTheoryRequest request
+    ) {
+        TheoryResponse response = subjectUseCase.addTheory(chapterId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    // Flat Route: Lấy chi tiết lý thuyết
+    @GetMapping("/theories/{theoryId}")
+    public ResponseEntity<ApiResponse<TheoryResponse>> getTheoryById(@PathVariable String theoryId) {
+        TheoryResponse response = subjectUseCase.getTheoryById(theoryId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Flat Route: Cập nhật lý thuyết
+    @PutMapping("/theories/{theoryId}")
+    public ResponseEntity<ApiResponse<Void>> updateTheory(
+            @PathVariable String theoryId,
+            @Valid @RequestBody UpdateTheoryRequest request
+    ) {
+        subjectUseCase.updateTheory(theoryId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật nội dung lý thuyết thành công", null));
+    }
+
+    // Flat Route: Xóa lý thuyết
+    @DeleteMapping("/theories/{theoryId}")
+    public ResponseEntity<ApiResponse<Void>> deleteTheory(@PathVariable String theoryId) {
+        subjectUseCase.deleteTheory(theoryId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success("Đã xóa nội dung lý thuyết thành công", null));
+    }
+
+    // =========================================================================
+    // Phase 2 (P1): Danh sách đề thi theo môn học
+    // =========================================================================
+    @GetMapping("/subjects/{subjectId}/quizzes")
+    public ResponseEntity<ApiResponse<List<QuizSummaryResponse>>> getQuizzesBySubject(
+            @PathVariable String subjectId) {
+        List<QuizSummaryResponse> responses = subjectUseCase.getQuizzesBySubject(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+}
+
+
+============================================================
+FILE: content/presentation/dto/ChangeSubjectRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+public record ChangeSubjectRequest (
+
+        String sourceSubject,
+        String targetSubject
+){
+}
+
+
+============================================================
+FILE: content/presentation/dto/ChapterResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import java.time.ZonedDateTime;
+
+public record ChapterResponse(
+        String chapterId,
+        String subjectId,
+        String name,
+        ZonedDateTime createdAt
+) {
+    public ChapterResponse{
+        if(createdAt==null){
+            createdAt=ZonedDateTime.now();
+        }
+    }
+}
+
+
+============================================================
+FILE: content/presentation/dto/CreateChapterRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record CreateChapterRequest (
+
+        @NotBlank(message="Tên chương không được để trống")
+        @Size(max=200, message="Tên chương không được vượt quá 200 ký tự")
+        String name
+){
+}
+
+
+============================================================
+FILE: content/presentation/dto/CreateSubjectRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+
+public record CreateSubjectRequest(
+        @NotBlank(message = "Mã học phần không được để trống")
+        @Size(max = 20, message = "Mã học phần không được vượt quá 20 ký tự")
+        String courseCode,
+        @NotBlank(message="Tên học phần không được để trống")
+        @Size(max = 200, message = "Tên học phần không được vượt quá 200 ký tự")
+        String name,
+        String description
+) {
+}
+
+
+============================================================
+FILE: content/presentation/dto/CreateTheoryRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record CreateTheoryRequest(
+        @NotBlank(message = "Nội dung lý thuyết không được để trống")
+        String content
+) {
+}
+
+
+============================================================
+FILE: content/presentation/dto/QuizSummaryResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+
+/**
+ * Phase 2 (P1) - Response rút gọn cho {@code Quiz}.
+ *
+ * <p>Được trả về khi gọi {@code GET /api/subjects/{subjectId}/quizzes} để
+ * liệt kê các đề thi thuộc một môn học mà không cần đính kèm toàn bộ câu hỏi.</p>
+ */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class QuizSummaryResponse {
+    private String quizId;
+    private String name;
+    private String subjectId;
+    private String chapterId;
+    private Integer totalQuestion;
+    private Integer duration;
+    private String type;
+
+    public static QuizSummaryResponse from(Quiz quiz) {
+        if (quiz == null) {
+            return null;
+        }
+        return QuizSummaryResponse.builder()
+                .quizId(quiz.getQuizId())
+                .name(quiz.getName())
+                .subjectId(quiz.getSubjectId())
+                .chapterId(quiz.getChapterId())
+                .totalQuestion(quiz.getTotalQuestion())
+                .duration(quiz.getDuration())
+                .type(quiz.getType() != null ? quiz.getType().name() : null)
+                .build();
+    }
+}
+
+
+============================================================
+FILE: content/presentation/dto/SubjectResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import java.time.ZonedDateTime;
+
+public record SubjectResponse(
+        String subjectId,
+        String courseCode,
+        String name,
+        String description,
+        ZonedDateTime createdAt
+) {
+    public SubjectResponse{
+        if(createdAt==null){
+            createdAt=ZonedDateTime.now();
+        }
+    }
+}
+
+
+============================================================
+FILE: content/presentation/dto/TheoryResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import java.time.ZonedDateTime;
+
+public record TheoryResponse (
+    String theoryId,
+    String chapterId,
+    String content,
+    ZonedDateTime createdAt
+){
+    public TheoryResponse{
+        if(createdAt==null){
+            createdAt=ZonedDateTime.now();
+        }
+    }
+}
+
+
+============================================================
+FILE: content/presentation/dto/UpdateChapterRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record UpdateChapterRequest(
+        @NotBlank(message="Tên chương không được để trống")
+        @Size(max=200, message="Tên chương không được vượt quá 200 ký tự")
+        String name
+) {
+}
+
+
+============================================================
+FILE: content/presentation/dto/UpdateSubjectRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record UpdateSubjectRequest (
+        @NotBlank(message = "Mã học phần không được để trống")
+        @Size(max = 20, message = "Mã học phần không được vượt quá 20 ký tự")
+        String courseCode,
+        @NotBlank(message="Tên học phần không được để trống")
+        @Size(max = 200, message = "Tên học phần không được vượt quá 200 ký tự")
+        String name,
+        String description
+) {
+}
+
+
+============================================================
+FILE: content/presentation/dto/UpdateTheoryRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record UpdateTheoryRequest(
+        @NotBlank(message = "Nội dung lý thuyết không được để trống")
+        String content
+) {
+}
+
+
+============================================================
+FILE: content/presentation/model/Chapter.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "chapters")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Chapter {
+    @Id
+    @Column(name = "chapter_id", length = 50)
+    private String chapterId;
+
+    @Column(name = "subject_id", nullable = false, length = 50)
+    private String subjectId;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+
+    public static Chapter create(String subjectId, String name){
+        return Chapter.builder()
+                .chapterId(UUID.randomUUID().toString())
+                .subjectId(subjectId)
+                .name(name)
+                .createdAt(ZonedDateTime.now())
+                .build();
+    }
+    public void updateChapter(String name){
+        this.name=name;
+    }
+}
+
+============================================================
+FILE: content/presentation/model/Subject.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.model;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "subjects")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Subject {
+    @Id
+    @Column(name = "subject_id", length = 50) // cơ bản mặc định length của UUID là 36 nhưng để vầy đề phòng đổi bên cung cấp UUID
+    private String subjectId;
+
+    @Column(name = "course_code", unique = true, nullable = false, length = 20)
+    private String courseCode;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+    @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL, orphanRemoval = true) //map với field subject trong chapter
+
+    public static Subject create(String courseCode, String name, String description){
+        if(courseCode==null||courseCode.isBlank()){
+            throw new IllegalArgumentException("Mã học phần không được để trống");
+        }
+        if(name==null||name.isBlank()){
+            throw new IllegalArgumentException("Tên học phần không được để trống");
+        }
+        return Subject.builder()
+                .subjectId(UUID.randomUUID().toString()) // Chủ động sinh ID
+                .courseCode(courseCode)
+                .name(name)
+                .description(description)
+                .createdAt(ZonedDateTime.now())
+                .build();
+    }
+    public void updateSubject(String courseCode, String name, String description){
+        this.courseCode = courseCode;
+        this.name = name;
+        this.description = description;
+    }
+
+}
+
+============================================================
+FILE: content/presentation/model/Theory.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.content.presentation.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.ZonedDateTime;
+import java.util.UUID;
+
+@Entity
+@Table(name = "theories")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Theory {
+    @Id
+    @Column(name = "theory_id", length = 50)
+    private String theoryId;
+
+    @Column(name = "chapter_id", nullable = false)
+    private String chapterId;
+
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String content;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+    public static Theory create(String chapterId, String content) {
+        return Theory.builder()
+                .theoryId(UUID.randomUUID().toString())
+                .chapterId(chapterId)
+                .content(content)
+                .createdAt(ZonedDateTime.now())
+                .build();
+    }
+    public void updateTheory(String content){
+        this.content = content;
+    }
+}
+
+============================================================
+FILE: progress/presentation/controller/ProgressController.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.controller;
+
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import lombok.RequiredArgsConstructor;
+
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.AbilityHistoryResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.UserSkillAbilityResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.service.ProgressService;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+@Validated
+public class ProgressController {
+
+    private final ProgressService progressService;
+
+    // ============================================================
+    // USER SKILL ABILITY
+    // ============================================================
+
+    @GetMapping("/users/{userId}/skills")
+    public ResponseEntity<ApiResponse<List<UserSkillAbilityResponse>>> getUserSkillAbilities(
+            @PathVariable String userId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        progressService.getUserSkillAbilities(userId)));
+    }
+
+    @GetMapping("/users/{userId}/skills/{skillId}")
+    public ResponseEntity<ApiResponse<UserSkillAbilityResponse>> getUserSkillAbility(
+            @PathVariable String userId,
+            @PathVariable String skillId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        progressService.getUserSkillAbility(
+                                userId,
+                                skillId)));
+    }
+
+    // ============================================================
+    // ABILITY HISTORY
+    // ============================================================
+
+    @GetMapping("/users/{userId}/abilities/history")
+    public ResponseEntity<ApiResponse<List<AbilityHistoryResponse>>> getAbilityHistories(
+            @PathVariable String userId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        progressService.getAbilityHistories(userId)));
+    }
+
+    @GetMapping("/users/{userId}/skills/{skillId}/history")
+    public ResponseEntity<ApiResponse<List<AbilityHistoryResponse>>> getAbilityHistoriesBySkill(
+            @PathVariable String userId,
+            @PathVariable String skillId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        progressService.getAbilityHistoriesBySkill(
+                                userId,
+                                skillId)));
+    }
+
+    // ============================================================
+    // SUMMARY
+    // ============================================================
+
+    @GetMapping("/users/{userId}/abilities/average")
+    public ResponseEntity<ApiResponse<Double>> getAverageAbility(
+            @PathVariable String userId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        progressService.getAverageAbility(userId)));
+    }
+}
+
+============================================================
+FILE: progress/presentation/controller/SkillController.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.controller;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillRequest;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.service.SkillService;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+/**
+ * Phase 2 (P1) - CRUD API cho {@code Skill}.
+ *
+ * <p>Quy tắc phân quyền (P1):</p>
+ * <ul>
+ *   <li>{@code GET} - Ai cũng có thể xem danh sách skill.</li>
+ *   <li>{@code POST / PUT / DELETE} - Chỉ {@code ADMINISTRATOR}.</li>
+ * </ul>
+ */
+@RestController
+@RequestMapping("/api/skills")
+@RequiredArgsConstructor
+public class SkillController {
+
+    private final SkillService skillService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<SkillResponse>>> getAllSkills() {
+        return ResponseEntity.ok(ApiResponse.success(skillService.getAllSkills()));
+    }
+
+    @GetMapping("/{skillId}")
+    public ResponseEntity<ApiResponse<SkillResponse>> getSkillById(
+            @PathVariable String skillId) {
+        return ResponseEntity.ok(ApiResponse.success(skillService.getSkillById(skillId)));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<SkillResponse>> createSkill(
+            @Valid @RequestBody SkillRequest request) {
+        SkillResponse created = skillService.createSkill(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(created));
+    }
+
+    @PutMapping("/{skillId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<SkillResponse>> updateSkill(
+            @PathVariable String skillId,
+            @Valid @RequestBody SkillRequest request) {
+        SkillResponse updated = skillService.updateSkill(skillId, request);
+        return ResponseEntity.ok(ApiResponse.success(updated));
+    }
+
+    @DeleteMapping("/{skillId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> deleteSkill(@PathVariable String skillId) {
+        skillService.deleteSkill(skillId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success("Đã xóa kỹ năng thành công", null));
+    }
+}
+
+
+============================================================
+FILE: progress/presentation/dto/AbilityHistoryResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.dto;
+
+import java.time.LocalDateTime;
+
+public record AbilityHistoryResponse(
+        String id,
+        String userId,
+        String skillId,
+        double theta,
+        double delta,
+        Double standardError,
+        String sourceAttemptId,
+        LocalDateTime createdAt) {
+}
+
+============================================================
+FILE: progress/presentation/dto/SkillRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * Request tạo / cập nhật một {@link Skill}.
+ *
+ * <p>Phase 2 (P1) - CRUD API cho Skill.</p>
+ */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SkillRequest {
+
+    @NotBlank(message = "Tên kỹ năng không được để trống")
+    @Size(max = 200, message = "Tên kỹ năng tối đa 200 ký tự")
+    private String name;
+
+    @Size(max = 2000, message = "Mô tả kỹ năng tối đa 2000 ký tự")
+    private String description;
+}
+
+
+============================================================
+FILE: progress/presentation/dto/SkillResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
+
+/**
+ * Response trả về thông tin một {@link Skill}.
+ */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SkillResponse {
+
+    private String skillId;
+    private String name;
+    private String description;
+
+    public static SkillResponse from(Skill skill) {
+        if (skill == null) {
+            return null;
+        }
+        return SkillResponse.builder()
+                .skillId(skill.getSkillId())
+                .name(skill.getName())
+                .description(skill.getDescription())
+                .build();
+    }
+}
+
+
+============================================================
+FILE: progress/presentation/dto/UserSkillAbilityResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.dto;
+
+import java.time.ZonedDateTime;
+
+public record UserSkillAbilityResponse(
+        String id,
+        String userId,
+        String skillId,
+        Double theta,
+        Double standardError,
+        ZonedDateTime updatedAt) {
+}
+
+
+============================================================
+FILE: progress/presentation/model/AbilityHistory.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "ability_history")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class AbilityHistory {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+
+    @Column(name = "user_id", nullable = false, length = 50)
+    private String userId;
+
+    @Column(name = "skill_id", nullable = false, length = 50)
+    private String skillId;
+
+    @Column(nullable = false)
+    private double theta;
+
+    @Column(nullable = false)
+    private double delta;
+    
+    @Column(name = "standard_error")
+    private Double standardError;
+
+    @Column(name = "attempt_id", length = 50)
+    private String attemptId;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    public static AbilityHistory create(
+            String userId,
+            String skillId,
+            double theta,
+            double delta,
+            Double standardError,
+            String attemptId) {
+        return AbilityHistory.builder()
+                .userId(userId)
+                .skillId(skillId)
+                .theta(theta)
+                .delta(delta)
+                .standardError(standardError)
+                .attemptId(attemptId)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+}
+
+============================================================
+FILE: progress/presentation/model/QuestionSkill.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "question_skills")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class QuestionSkill {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+
+    @Column(name = "question_id", nullable = false, length = 50)
+    private String questionId;
+
+    @Column(name = "skill_id", nullable = false, length = 50)
+    private String skillId;
+
+    @Column(nullable = false)
+    private double weight;
+
+    @Column(name = "is_primary")
+    private boolean isPrimary;
+
+    public static QuestionSkill create(
+            String questionId,
+            String skillId,
+            double weight,
+            boolean isPrimary) {
+        return QuestionSkill.builder()
+                .questionId(questionId)
+                .skillId(skillId)
+                .weight(weight)
+                .isPrimary(isPrimary)
+                .build();
+    }
+}
+
+============================================================
+FILE: progress/presentation/model/Skill.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.model;
+
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "skills")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Skill {
+
+    @Id
+    @Column(name = "skill_id", length = 50)
+    private String skillId;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    public static Skill create(
+            String name,
+            String description) {
+        return Skill.builder()
+                .skillId(UUID.randomUUID().toString())
+                .name(name)
+                .description(description)
+                .build();
+    }
+
+    public void updateSkill(
+            String name,
+            String description) {
+        this.name = name;
+        this.description = description;
+    }
+}
+
+============================================================
+FILE: progress/presentation/model/UserSkillAbility.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.progress.presentation.model;
+
+import java.time.ZonedDateTime;
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(
+        name = "user_skill_ability",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "skill_id"})
+)
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class UserSkillAbility {
+
+    @Id
+    @Column(name = "id", length = 50)
+    private String id;
+
+    @Column(name = "user_id", length = 50)
+    private String userId;
+
+    @Column(name = "skill_id", length = 50)
+    private String skillId;
+
+    private Double theta;
+
+    @Column(name = "standard_error")
+    private Double standardError;
+
+    @Column(name = "updated_at")
+    private ZonedDateTime updatedAt;
+
+    public static UserSkillAbility create(
+            String userId,
+            String skillId) {
+        return UserSkillAbility.builder()
+                .id(UUID.randomUUID().toString())
+                .userId(userId)
+                .skillId(skillId)
+                .theta(0.0)
+                .standardError(1.0)
+                .updatedAt(ZonedDateTime.now())
+                .build();
+    }
+
+    public void updateAbility(
+            double theta,
+            double standardError) {
+        this.theta = theta;
+        this.standardError = standardError;
+        this.updatedAt = ZonedDateTime.now();
+    }
+}
+
+
+============================================================
+FILE: quiz/presentation/controller/AttemptController.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.StartQuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SubmitQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.service.AttemptService;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+@Validated
+public class AttemptController {
+
+    private final AttemptService attemptService;
+
+    @PostMapping("/quizzes/{quizId}/start")
+    public ResponseEntity<ApiResponse<StartQuizResponse>> startQuiz(
+            @PathVariable String quizId,
+            @RequestParam String userId) {
+
+        StartQuizResponse response = attemptService.startQuiz(userId, quizId);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response));
+    }
+
+    @PostMapping("/attempts/submit")
+    public ResponseEntity<ApiResponse<QuizResultResponse>> submitQuiz(
+            @Valid @RequestBody SubmitQuizRequest request) {
+
+        QuizResultResponse response = attemptService.submitQuiz(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response));
+    }
+
+    @GetMapping("/attempts/{attemptId}/result")
+    public ResponseEntity<ApiResponse<QuizResultResponse>> getResult(
+            @PathVariable String attemptId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        attemptService.getResult(attemptId)));
+    }
+
+    @GetMapping("/users/{userId}/attempts")
+    public ResponseEntity<ApiResponse<List<QuizResultResponse>>> getUserResults(
+            @PathVariable String userId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        attemptService.getUserResults(userId)));
+    }
+}
+
+============================================================
+FILE: quiz/presentation/controller/QuestionController.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+@Validated
+public class QuestionController {
+
+    private final QuestionService questionService;
+
+    @GetMapping("/chapters/{chapterId}/questions")
+    public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestionsByChapter(
+            @PathVariable String chapterId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        questionService.getQuestionsByChapter(chapterId)));
+    }
+
+    @PostMapping("/questions")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<QuestionResponse>> createQuestion(
+            @Valid @RequestBody CreateQuestionRequest request) {
+
+        QuestionResponse response = questionService.createQuestion(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/questions/{questionId}")
+    public ResponseEntity<ApiResponse<QuestionResponse>> getQuestionById(
+            @PathVariable String questionId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        questionService.getQuestionById(questionId)));
+    }
+
+    @PutMapping("/questions/{questionId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> updateQuestion(
+            @PathVariable String questionId,
+            @Valid @RequestBody UpdateQuestionRequest request) {
+
+        questionService.updateQuestion(questionId, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Cập nhật câu hỏi thành công",
+                        null));
+    }
+
+    @DeleteMapping("/questions/{questionId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> deleteQuestion(
+            @PathVariable String questionId) {
+
+        questionService.deleteQuestion(questionId);
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success(
+                        "Xóa câu hỏi thành công",
+                        null));
+    }
+}
+
+
+============================================================
+FILE: quiz/presentation/controller/QuizController.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
+import vn.id.quiz.quizcitbackend.modules.quiz.service.QuizService;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+@Validated
+public class QuizController {
+
+    private final QuizService quizService;
+    private final QuestionService questionService;
+
+    @GetMapping("/chapters/{chapterId}/quizzes")
+    public ResponseEntity<ApiResponse<List<QuizResponse>>> getQuizzesByChapter(
+            @PathVariable String chapterId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        quizService.getQuizzesByChapter(chapterId)));
+    }
+
+    @PostMapping("/quizzes")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<QuizResponse>> createQuiz(
+            @Valid @RequestBody CreateQuizRequest request) {
+
+        QuizResponse response = quizService.createQuiz(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/quizzes/{quizId}")
+    public ResponseEntity<ApiResponse<QuizResponse>> getQuizById(
+            @PathVariable String quizId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        quizService.getQuizById(quizId)));
+    }
+
+    /**
+     * Phase 2 (P0 - Blocker): API trả về câu hỏi + lựa chọn cho FE làm bài.
+     */
+    @GetMapping("/quizzes/{quizId}/questions")
+    public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestionsByQuiz(
+            @PathVariable String quizId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        questionService.getQuestionsByQuiz(quizId)));
+    }
+
+    @PutMapping("/quizzes/{quizId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> updateQuiz(
+            @PathVariable String quizId,
+            @Valid @RequestBody UpdateQuizRequest request) {
+
+        quizService.updateQuiz(quizId, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Cập nhật đề thi thành công",
+                        null));
+    }
+
+    @DeleteMapping("/quizzes/{quizId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> deleteQuiz(
+            @PathVariable String quizId) {
+
+        quizService.deleteQuiz(quizId);
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success(
+                        "Xóa đề thi thành công",
+                        null));
+    }
+}
+
+
+============================================================
+FILE: quiz/presentation/dto/CreateOptionRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class CreateOptionRequest {
+
+    private String content;
+
+    private boolean corrected;
+}
+
+============================================================
+FILE: quiz/presentation/dto/CreateQuestionRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.List;
+
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * Request body cho {@code POST /api/questions}.
+ *
+ * <p><b>Fix bug:</b> Trước đây field là {@code explaination}. Đổi sang
+ * {@code explanation} cho đúng schema.</p>
+ */
+@Getter
+@Setter
+public class CreateQuestionRequest {
+
+    private String subjectId;
+
+    private String chapterId;
+
+    private String content;
+
+    private String explanation;
+
+    private double difficultyB;
+
+    private List<CreateOptionRequest> options;
+
+    /**
+     * Danh sách ID kỹ năng (skill) gắn với câu hỏi.
+     * Hỗ trợ Phase 2 (P1): API quản lý kỹ năng / IRT.
+     */
+    private List<QuestionSkillMappingRequest> skills;
+}
+
+
+============================================================
+FILE: quiz/presentation/dto/CreateQuizRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+import lombok.Getter;
+import lombok.Setter;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
+
+@Getter
+@Setter
+public class CreateQuizRequest {
+
+    private String subjectId;
+
+    private String chapterId;
+
+    private String name;
+
+    private int totalQuestion;
+
+    private int duration;
+
+    private QuizType type;
+}
+
+============================================================
+FILE: quiz/presentation/dto/OptionResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * DTO trả về thông tin một lựa chọn (option) của câu hỏi.
+ *
+ * <p>Trước đây QuestionResponse không có field options, khiến frontend
+ * không lấy được đáp án cho câu hỏi trắc nghiệm. DTO này được sử dụng
+ * trong QuestionResponse.options.</p>
+ */
+@Getter
+@Setter
+@Builder
+public class OptionResponse {
+
+    private String optionId;
+
+    private String content;
+
+    /**
+     * Cờ đánh dấu đáp án đúng. Tuỳ theo ngữ cảnh (làm bài / xem chi tiết)
+     * mà service có thể ẩn/hiện cờ này.
+     */
+    private boolean corrected;
+}
+
+
+============================================================
+FILE: quiz/presentation/dto/QuestionResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.List;
+
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * Response trả về thông tin một câu hỏi.
+ *
+ * <p><b>Fix bug (Phase 1):</b> Đổi {@code explaination} -> {@code explanation}
+ * cho đúng schema database.</p>
+ *
+ * <p><b>Phase 2 (P0):</b> Bổ sung trường {@code options} để frontend có
+ * thể lấy danh sách lựa chọn kèm theo câu hỏi (dùng cho
+ * {@code GET /api/quizzes/{quizId}/questions} và {@code GET /api/questions/{id}}).
+ * Trường {@code correctOptionId} cho phép frontend xác định đáp án đúng
+ * mà không cần gọi thêm API.</p>
+ */
+@Getter
+@Setter
+@Builder
+public class QuestionResponse {
+
+    private String questionId;
+
+    private String subjectId;
+
+    private String chapterId;
+
+    private String content;
+
+    private String explanation;
+
+    private double difficultyB;
+
+    private boolean active;
+
+    /**
+     * Danh sách lựa chọn của câu hỏi. Có thể null khi câu hỏi chưa gán option.
+     */
+    private List<OptionResponse> options;
+
+    /**
+     * ID của lựa chọn đúng (chỉ trả về khi người gọi có quyền xem đáp án,
+     * ví dụ: khi xem chi tiết câu hỏi ngoài ngữ cảnh làm bài).
+     */
+    private String correctOptionId;
+}
+
+
+============================================================
+FILE: quiz/presentation/dto/QuestionSkillMappingRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * DTO mapping giữa câu hỏi và kỹ năng (skill). Dùng cho Phase 2 (P1):
+ * API quản lý kỹ năng / IRT - cho phép gắn / cập nhật trọng số kỹ năng
+ * cho một câu hỏi trắc nghiệm.
+ */
+@Getter
+@Setter
+public class QuestionSkillMappingRequest {
+
+    private String skillId;
+
+    private double weight;
+
+    private boolean primary;
+}
+
+
+============================================================
+FILE: quiz/presentation/dto/QuizResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
+
+@Getter
+@Builder
+public class QuizResponse {
+
+    private String quizId;
+
+    private String subjectId;
+
+    private String chapterId;
+
+    private String name;
+
+    private QuizType type;
+
+    private int totalQuestion;
+
+    private int duration;
+}
+
+============================================================
+FILE: quiz/presentation/dto/QuizResultResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.List;
+
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class QuizResultResponse {
+
+    private String attemptId;
+
+    private String quizId;
+
+    private double rawScore;
+
+    private int totalQuestion;
+
+    private double overallTheta;
+    
+    private List<SkillResultResponse> skillResults;
+}
+
+============================================================
+FILE: quiz/presentation/dto/SkillResultResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class SkillResultResponse {
+
+    private String skillId;
+
+    private double theta;
+
+    private double standardError;
+
+}
+
+
+============================================================
+FILE: quiz/presentation/dto/SkillThetaData.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class SkillThetaData {
+
+    private List<Integer> responses = new ArrayList<>();
+
+    private List<Double> difficulties = new ArrayList<>();
+
+    private List<Double> weights = new ArrayList<>();
+}
+
+============================================================
+FILE: quiz/presentation/dto/StartQuizResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class StartQuizResponse {
+
+    private String attemptId;
+
+    private String quizId;
+
+    private int totalQuestion;
+}
+
+============================================================
+FILE: quiz/presentation/dto/SubmitAnswerRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class SubmitAnswerRequest {
+
+    private String questionId;
+
+    private String optionId;
+}
+
+
+============================================================
+FILE: quiz/presentation/dto/SubmitQuizRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.List;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class SubmitQuizRequest {
+
+    private String attemptId;
+
+    private List<SubmitAnswerRequest> answers;
+}
+
+============================================================
+FILE: quiz/presentation/dto/UpdateQuestionRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.List;
+
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * Request body cho {@code PUT /api/questions/{id}}.
+ *
+ * <p><b>Fix bug:</b> Trước đây field là {@code explaination}. Đổi sang
+ * {@code explanation}.</p>
+ *
+ * <p><b>Phase 2 (P1):</b> Nâng cấp API cập nhật câu hỏi để đồng thời
+ * thay thế danh sách {@code options} và {@code skills} (skill mapping)
+ * trong cùng một request.</p>
+ */
+@Getter
+@Setter
+public class UpdateQuestionRequest {
+
+    private String content;
+
+    private String explanation;
+
+    private double difficultyB;
+
+    /**
+     * Nếu khác null, danh sách option của câu hỏi sẽ được thay thế hoàn toàn
+     * bằng danh sách này (xoá option cũ, insert lại). Cho phép null để giữ
+     * nguyên option hiện tại.
+     */
+    private List<CreateOptionRequest> options;
+
+    /**
+     * Nếu khác null, ánh xạ skill của câu hỏi sẽ được thay thế bằng danh sách
+     * này. Cho phép null để giữ nguyên.
+     */
+    private List<QuestionSkillMappingRequest> skills;
+}
+
+
+============================================================
+FILE: quiz/presentation/dto/UpdateQuizRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class UpdateQuizRequest {
+
+    private String name;
+
+    private Integer duration;
+
+    private String chapterId;
+}
+
+============================================================
+FILE: quiz/presentation/model/Attempt.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import java.time.ZonedDateTime;
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
+
+@Entity
+@Table(name = "attempts")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Attempt {
+
+    @Id
+    @Column(name = "attempt_id", length = 50)
+    private String attemptId;
+
+    @Column(name = "user_id", nullable = false, length = 50)
+    private String userId;
+
+    @Column(name = "quiz_id", nullable = false, length = 50)
+    private String quizId;
+
+    @Column(name = "raw_score")
+    private double rawScore;
+
+    @Column(name = "total_question")
+    private int totalQuestion;
+    @Column(name = "overall_theta")
+    private double overallTheta;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+    public static Attempt create(
+            String userId,
+            String quizId,
+            int totalQuestion) {
+
+        return Attempt.builder()
+                .attemptId(UUID.randomUUID().toString())
+                .userId(userId)
+                .quizId(quizId)
+                .totalQuestion(totalQuestion)
+                .createdAt(ZonedDateTime.now())
+                .build();
+    }
+
+    public void complete(
+            double rawScore,
+            double overallTheta) {
+
+        this.rawScore = rawScore;
+        this.overallTheta = overallTheta;
+    }
+}
+
+============================================================
+FILE: quiz/presentation/model/Option.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import java.util.UUID;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "options")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Option {
+    @Id
+    @Column(name = "option_id", length = 50)
+    private String optionId;
+
+    @Column(name = "question_id", nullable = false)
+    private String questionId;
+
+    @Column(name = "content", columnDefinition = "TEXT") // Thêm text để không bị tràng content của cột
+    private String content;
+
+    @Column(name = "is_corrected")
+    private boolean isCorrected;
+
+    public static Option create(
+            String questionId,
+            String content,
+            boolean isCorrected) {
+        return Option.builder()
+                .optionId(UUID.randomUUID().toString())
+                .questionId(questionId)
+                .content(content)
+                .isCorrected(isCorrected)
+                .build();
+    }
+}
+
+
+============================================================
+FILE: quiz/presentation/model/Question.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.ZonedDateTime;
+import java.util.UUID;
+
+/**
+ * Entity cho bảng {@code questions}.
+ *
+ * <p><b>Fix bug:</b> Trước đây column được map là {@code explaination} (sai
+ * chính tả). Database thực tế chỉ có cột {@code explanation}. Khi JPA cố gắng
+ * truy vấn sẽ ném lỗi "column explaination does not exist" và API tạo/sửa
+ * câu hỏi hoặc tạo quiz trả về 500. Tên cột đã được chuẩn hoá về
+ * {@code explanation} và field Java cũng đổi sang {@code explanation} để
+ * code rõ ràng. Một file migration SQL
+ * ({@code V3__rename_questions_explaination.sql}) được cung cấp để
+ * rename cột trong database nếu schema cũ vẫn dùng {@code explaination}.</p>
+ */
+@Entity
+@Table(name = "questions")
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Question {
+    @Id
+    @Column(name = "question_id", length = 50)
+    private String questionId;
+
+    @Column(name = "subject_id", nullable = false, length = 50)
+    private String subjectId;
+
+    @Column(name = "chapter_id", nullable = false, length = 50)
+    private String chapterId;
+
+    @Column(name = "content", columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "explanation", columnDefinition = "TEXT")
+    private String explanation;
+
+    @Column(name = "difficulty_b")
+    private double difficultyB;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+    @Column(name = "is_active")
+    private boolean isActive;
+
+    public static Question create(
+            String subjectId,
+            String chapterId,
+            String content,
+            String explanation,
+            double difficultyB) {
+
+        return Question.builder()
+                .questionId(UUID.randomUUID().toString())
+                .subjectId(subjectId)
+                .chapterId(chapterId)
+                .content(content)
+                .explanation(explanation)
+                .difficultyB(difficultyB)
+                .createdAt(ZonedDateTime.now())
+                .isActive(true)
+                .build();
+    }
+}
+
+
+============================================================
+FILE: quiz/presentation/model/Quiz.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import java.util.UUID;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "quizzes")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Quiz {
+
+    @Id
+    @Column(name = "quiz_id", length = 50)
+    private String quizId;
+
+    @Column(name = "subject_id", nullable = false, length = 50)
+    private String subjectId;
+
+    @Column(name = "chapter_id", nullable = false, length = 50)
+    private String chapterId;
+
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    private QuizType type;
+
+    @Column(name = "total_question")
+    private int totalQuestion;
+
+    private int duration;
+
+    public static Quiz create(
+            String subjectId,
+            String chapterId,
+            String name,
+            int totalQuestion,
+            QuizType type,
+            int duration) {
+
+        return Quiz.builder()
+                .quizId(UUID.randomUUID().toString())
+                .subjectId(subjectId)
+                .chapterId(chapterId)
+                .name(name)
+                .totalQuestion(totalQuestion)
+                .type(type)
+                .duration(duration)
+                .build();
+    }
+}
+
+============================================================
+FILE: quiz/presentation/model/QuizQuestion.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "quiz_questions")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class QuizQuestion {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", length = 50)
+    private String id;
+
+    @Column(name = "quiz_id", nullable = false, length = 50)
+    private String quizId;
+
+    @Column(name = "question_id", nullable = false, length = 50)
+    private String questionId;
+
+    @Column(name = "index_order")
+    private int indexOrder;
+
+    public static QuizQuestion create(
+            String quizId,
+            String questionId,
+            int indexOrder) {
+
+        return QuizQuestion.builder()
+                .quizId(quizId)
+                .questionId(questionId)
+                .indexOrder(indexOrder)
+                .build();
+    }
+}
+
+
+============================================================
+FILE: quiz/presentation/model/QuizType.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+public enum QuizType {
+    CHAPTER,
+    FINAL
+}
+
+
+============================================================
+FILE: quiz/presentation/model/Response.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "responses")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Response {
+
+    @Id
+    @Column(name = "response_id", length = 50)
+    private String responseId;
+
+    @Column(name = "attempt_id", nullable = false, length = 50)
+    private String attemptId;
+
+    @Column(name = "question_id", nullable = false, length = 50)
+    private String questionId;
+
+    @Column(name = "option_id", nullable = false, length = 50)
+    private String optionId;
+
+    @Column(name = "score")
+    private boolean score;
+
+    public static Response create(
+            String attemptId,
+            String questionId,
+            String optionId,
+            boolean score) {
+        return Response.builder()
+                .responseId(UUID.randomUUID().toString())
+                .attemptId(attemptId)
+                .questionId(questionId)
+                .optionId(optionId)
+                .score(score)
+                .build();
+    }
+}
+
+============================================================
+FILE: user/presentation/controller/UserController.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangePasswordRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangeUserRoleRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserProfileRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserStatusRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UserResponse;
+import vn.id.quiz.quizcitbackend.modules.user.service.UserUseCase;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+@Validated
+public class UserController {
+    private final UserUseCase userUseCase;
+
+    // =========================================================================
+    // USER ENDPOINTS (/api/users)
+    // =========================================================================
+
+    // Liet ke danh sach nguoi dung - chi Admin.
+    @GetMapping
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
+        List<UserResponse> responses = userUseCase.getAllUsers();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    // Lay chi tiet nguoi dung - chi Admin.
+    @GetMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable String userId) {
+        UserResponse response = userUseCase.getUserById(userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Cap nhat ten hien thi (admin duoc phep sua bat ky user nao).
+    @PutMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> updateUserProfile(
+            @PathVariable String userId,
+            @Valid @RequestBody UpdateUserProfileRequest request
+    ) {
+        userUseCase.updateUserProfile(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat nguoi dung thanh cong", null));
+    }
+
+    // Doi mat khau (admin doi ho user tu doi).
+    @PatchMapping("/{userId}/password")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @PathVariable String userId,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        userUseCase.changePassword(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat mat khau nguoi dung thanh cong", null));
+    }
+
+    // Xoa nguoi dung (admin only).
+    @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable String userId) {
+        userUseCase.deleteUser(userId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success("Da xoa nguoi dung thanh cong", null));
+    }
+
+    // =========================================================================
+    // Phase 2 (P1): ADMIN-ONLY - Lock / Unlock tai khoan
+    // =========================================================================
+    @PatchMapping("/{userId}/status")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUserStatus(
+            @PathVariable String userId,
+            @Valid @RequestBody UpdateUserStatusRequest request
+    ) {
+        UserResponse response = userUseCase.updateUserStatus(userId, request);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Cap nhat trang thai nguoi dung thanh cong", response));
+    }
+
+    // =========================================================================
+    // Phase 2 (P1): ADMIN-ONLY - Thay doi role / phan quyen
+    // =========================================================================
+    @PatchMapping("/{userId}/role")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<UserResponse>> changeUserRole(
+            @PathVariable String userId,
+            @Valid @RequestBody ChangeUserRoleRequest request
+    ) {
+        UserResponse response = userUseCase.changeUserRole(userId, request);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Cap nhat vai tro nguoi dung thanh cong", response));
+    }
+}
+
+
+============================================================
+FILE: user/presentation/dto/ChangePasswordRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record ChangePasswordRequest(
+        @NotBlank(message = "Mật khẩu không được để trống")
+        @Size(min = 6, max = 255, message = "Mật khẩu phải từ 6 đến 255 ký tự")
+        String password
+) {
+}
+
+
+============================================================
+FILE: user/presentation/dto/ChangeUserRoleRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.dto;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
+
+/**
+ * Phase 2 (P1) - Dùng cho admin đổi role của một user.
+ *
+ * <p>Chỉ chấp nhận {@code USER} hoặc {@code ADMINISTRATOR}.</p>
+ */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ChangeUserRoleRequest {
+
+    @NotNull(message = "Vai trò người dùng không được để trống")
+    private UserRole role;
+}
+
+
+============================================================
+FILE: user/presentation/dto/UpdateUserProfileRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record UpdateUserProfileRequest(
+        @NotBlank(message = "Ten hien thi khong duoc de trong")
+        @Size(max = 100, message = "Ten hien thi khong duoc vuot qua 100 ky tu")
+        String displayName
+) {
+}
+
+
+============================================================
+FILE: user/presentation/dto/UpdateUserStatusRequest.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.dto;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
+
+/**
+ * Phase 2 (P1) - Dùng cho admin khoá / mở khoá tài khoản.
+ */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UpdateUserStatusRequest {
+
+    @NotNull(message = "Trạng thái tài khoản không được để trống")
+    private UserStatus status;
+}
+
+
+============================================================
+FILE: user/presentation/dto/UserResponse.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.dto;
+
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
+
+import java.time.ZonedDateTime;
+
+public record UserResponse(
+        String userId,
+        String username,
+        String email,
+        String displayName,
+        UserRole role,
+        UserStatus status,
+        ZonedDateTime createdAt
+) {
+    public UserResponse {
+        if (createdAt == null) {
+            createdAt = ZonedDateTime.now();
+        }
+
+    }
+}
+
+
+============================================================
+FILE: user/presentation/model/Permission.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.http.HttpStatus;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
+import java.util.UUID;
+
+@Entity
+@Table(name = "permissions")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Permission {
+    @Id
+    @Column(name = "permission_id", length = 50)
+    private String permissionId;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    public static Permission create(String name) {
+        if (name == null || name.isBlank()) {
+            throw new AppException("Quyền không hợp lệ", HttpStatus.BAD_REQUEST);
+        }
+
+        return Permission.builder()
+                .permissionId(UUID.randomUUID().toString())
+                .name(name.trim())
+                .build();
+    }
+}
+
+
+============================================================
+FILE: user/presentation/model/Role.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.http.HttpStatus;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
+import java.util.UUID;
+
+@Entity
+@Table(name = "roles")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Role {
+    @Id
+    @Column(name = "role_id", length = 50)
+    private String roleId;
+
+    /**
+     * Mapping chính xác tên cột trong DB. Trước đây annotation
+     * {@code @Column} không khai báo {@code name} nên Hibernate tự derive
+     * thành {@code name} (khớp) nhưng cũng tạo cơ chế ambiguous. Ta chỉ định
+     * rõ để chắc chắn mapping với cột {@code roles.name}.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "name", nullable = false, length = 50, unique = true)
+    private UserRole name;
+
+    public static Role create(UserRole name) {
+        if (name == null) {
+            throw new AppException("Vai trò người dùng không hợp lệ", HttpStatus.BAD_REQUEST);
+        }
+
+        return Role.builder()
+                .roleId(UUID.randomUUID().toString())
+                .name(name)
+                .build();
+    }
+}
+
+
+============================================================
+FILE: user/presentation/model/RolePermissionAssignmentId.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class RolePermissionAssignmentId implements Serializable {
+    private String roleId;
+    private String permissionId;
+}
+
+
+============================================================
+FILE: user/presentation/model/RolePermissionAssignment.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.http.HttpStatus;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
+@Entity
+@Table(name = "role_permissions")
+@IdClass(RolePermissionAssignmentId.class)
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class RolePermissionAssignment {
+    @Id
+    @Column(name = "role_id", length = 50)
+    private String roleId;
+
+    @Id
+    @Column(name = "permission_id", length = 50)
+    private String permissionId;
+
+    public static RolePermissionAssignment assign(String roleId, String permissionId) {
+        if (roleId == null || roleId.isBlank()) {
+            throw new AppException("Vai trò người dùng không hợp lệ", HttpStatus.BAD_REQUEST);
+        }
+        if (permissionId == null || permissionId.isBlank()) {
+            throw new AppException("Quyền không hợp lệ", HttpStatus.BAD_REQUEST);
+        }
+
+        return RolePermissionAssignment.builder()
+                .roleId(roleId)
+                .permissionId(permissionId)
+                .build();
+    }
+}
+
+
+============================================================
+FILE: user/presentation/model/UserAchievementId.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserAchievementId implements Serializable {
+    private String userId;
+    private String achieveId;
+}
+
+
+============================================================
+FILE: user/presentation/model/UserAchievement.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.http.HttpStatus;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
+import java.time.ZonedDateTime;
+
+@Entity
+@Table(name = "user_achievement")
+@IdClass(UserAchievementId.class)
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class UserAchievement {
+    // Bang user_achievement dung khoa chinh ghep user_id + achieve_id.
+    @Id
+    @Column(name = "user_id", length = 50)
+    private String userId;
+
+    @Id
+    @Column(name = "achieve_id", length = 50)
+    private String achieveId;
+
+    @Column(name = "is_achieved")
+    private Boolean achieved;
+
+    @Column(length = 100)
+    private String badge;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "condition_type", length = 50)
+    private String conditionType;
+
+    @Column(name = "condition_value")
+    private Integer conditionValue;
+
+    @Column(name = "achieved_at")
+    private ZonedDateTime achievedAt;
+
+    // Tao thanh tuu chua dat; khi user dat dieu kien se goi markAchieved().
+    public static UserAchievement create(
+            String userId,
+            String achieveId,
+            String badge,
+            String description,
+            String conditionType,
+            Integer conditionValue) {
+        validateId(userId, "Nguoi dung khong hop le");
+        validateId(achieveId, "Thanh tuu khong hop le");
+
+        return UserAchievement.builder()
+                .userId(userId)
+                .achieveId(achieveId)
+                .achieved(false)
+                .badge(badge)
+                .description(description)
+                .conditionType(conditionType)
+                .conditionValue(conditionValue)
+                .build();
+    }
+
+    // Danh dau user da dat thanh tuu va luu thoi diem dat.
+    public void markAchieved() {
+        this.achieved = true;
+        this.achievedAt = ZonedDateTime.now();
+    }
+
+    // Reset trang thai thanh tuu neu can tinh lai dieu kien.
+    public void markUnachieved() {
+        this.achieved = false;
+        this.achievedAt = null;
+    }
+
+    private static void validateId(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new AppException(message, HttpStatus.BAD_REQUEST);
+        }
+    }
+}
+
+
+============================================================
+FILE: user/presentation/model/User.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.ZonedDateTime;
+import java.util.UUID;
+
+@Entity
+@Table(name = "users")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class User {
+    @Id
+    // Khoa chinh cua bang users, tu sinh bang UUID dang String.
+    @Column(name = "user_id", length = 50)
+    private String userId;
+
+    @Setter
+    @Column(nullable = false, unique = true, length = 50)
+    private String username;
+
+    @Setter
+    @Column(nullable = false, length = 255)
+    private String password;
+
+    @Setter
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+
+    @Setter
+    @Column(name = "display_name", length = 100)
+    private String displayName;
+
+    @Setter
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, columnDefinition = "user_status_enum")
+    private UserStatus status;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+
+    // Factory chi tao entity theo schema users va gan gia tri mac dinh.
+    // Validation va nghiep vu chinh nam o service.
+    public static User create(String username, String password, String email, String displayName) {
+        ZonedDateTime now = ZonedDateTime.now();
+
+        return User.builder()
+                .userId(UUID.randomUUID().toString())
+                .username(username.trim())
+                .password(password)
+                .email(email.trim())
+                .displayName(normalizeDisplayName(displayName, username))
+                .status(UserStatus.UNVERIFIED)
+                .createdAt(now)
+                .build();
+    }
+
+    private static String normalizeDisplayName(String displayName, String username) {
+        if (displayName == null || displayName.isBlank()) {
+            return username.trim();
+        }
+        return displayName.trim();
+    }
+}
+
+
+============================================================
+FILE: user/presentation/model/UserRoleAssignmentId.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
+public class UserRoleAssignmentId implements Serializable {
+    private String userId;
+    private String roleId;
+}
+
+
+============================================================
+FILE: user/presentation/model/UserRoleAssignment.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.http.HttpStatus;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
+@Entity
+@Table(name = "user_roles")
+@IdClass(UserRoleAssignmentId.class)
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class UserRoleAssignment {
+    // Bang noi user_roles dung khoa chinh ghep user_id + role_id.
+    @Id
+    @Column(name = "user_id", length = 50)
+    private String userId;
+
+    @Id
+    @Column(name = "role_id", length = 50)
+    private String roleId;
+
+    // Tao ban ghi gan vai tro cho user trong bang user_roles.
+    public static UserRoleAssignment assign(String userId, String roleId) {
+        if (userId == null || userId.isBlank()) {
+            throw new AppException("Người dùng không hợp lệ", HttpStatus.BAD_REQUEST);
+        }
+        if (roleId == null || roleId.isBlank()) {
+            throw new AppException("Vai trò người dùng không hợp lệ", HttpStatus.BAD_REQUEST);
+        }
+
+        return UserRoleAssignment.builder()
+                .userId(userId)
+                .roleId(roleId)
+                .build();
+    }
+}
+
+
+============================================================
+FILE: user/presentation/model/UserRole.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+/**
+ * Các vai trò có trong hệ thống QuizCIT.
+ *
+ * <p>Hệ thống chỉ hỗ trợ 2 vai trò: {@code USER} (người dùng phổ thông) và
+ * {@code ADMINISTRATOR} (quản trị viên). Tên enum phải trùng với giá trị
+ * lưu trong cột {@code roles.name} trong database.</p>
+ *
+ * <p>Vấn đề trước đây: DB tồn tại role tên {@code Student} (chuỗi thường)
+ * nhưng enum Java chỉ có {@code USER} và {@code ADMINISTRATOR}. Khi Hibernate
+ * đọc danh sách user, mapping enum bị vỡ, dẫn tới lỗi 500 cho
+ * {@code GET /api/users}. File migration {@code V2__sync_roles.sql} sẽ
+ * chuẩn hoá các giá trị cũ về {@code USER}.</p>
+ */
+public enum UserRole {
+    USER,
+    ADMINISTRATOR
+}
+
+
+============================================================
+FILE: user/presentation/model/UserStatus.java
+============================================================
+
+package vn.id.quiz.quizcitbackend.modules.user.presentation.model;
+
+public enum UserStatus {
+    UNVERIFIED,
+    VERIFIED,
+    BANNED
+}

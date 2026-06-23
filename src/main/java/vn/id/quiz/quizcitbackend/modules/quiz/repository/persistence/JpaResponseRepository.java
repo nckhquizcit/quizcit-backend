@@ -9,4 +9,6 @@ public interface JpaResponseRepository extends JpaRepository<Response, String> {
 
     List<Response> findByAttemptId(String attemptId);
 
+    void deleteByQuestionId(String questionId);
+
 }

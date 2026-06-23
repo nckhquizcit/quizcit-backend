@@ -61,6 +61,9 @@ public interface QuizRepository {
     List<QuizQuestion> findQuizQuestionsByQuizId(
             String quizId);
 
+    void deleteQuizQuestionsByQuestionId(
+            String questionId);
+
     void deleteQuizQuestionsByQuizId(
             String quizId);
 
@@ -102,6 +105,9 @@ public interface QuizRepository {
 
     List<Response> findResponsesByAttemptId(
             String attemptId);
+
+    void deleteResponsesByQuestionId(
+            String questionId);
 
     // =========================================================================
     // Phase 2 (P0): API lấy câu hỏi trong 1 quiz kèm option

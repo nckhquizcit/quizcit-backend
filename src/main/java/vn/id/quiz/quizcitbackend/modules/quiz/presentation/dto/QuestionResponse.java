@@ -35,8 +35,6 @@ public class QuestionResponse {
 
     private double difficultyB;
 
-    private boolean active;
-
     /**
      * Danh sách lựa chọn của câu hỏi. Có thể null khi câu hỏi chưa gán option.
      */

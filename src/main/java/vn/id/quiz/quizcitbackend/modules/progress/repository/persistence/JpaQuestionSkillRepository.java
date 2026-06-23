@@ -5,9 +5,10 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkillId;
 
 public interface JpaQuestionSkillRepository
-        extends JpaRepository<QuestionSkill, String> {
+        extends JpaRepository<QuestionSkill, QuestionSkillId> {
 
     List<QuestionSkill> findByQuestionId(String questionId);
 
