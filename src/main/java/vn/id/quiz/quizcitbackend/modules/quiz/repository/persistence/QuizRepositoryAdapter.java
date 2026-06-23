@@ -205,6 +205,11 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public List<QuestionSkill> findQuestionSkillsByQuestionId(String questionId) {
+        return jpaQuestionSkillRepository.findByQuestionId(questionId);
+    }
+
+    @Override
     public void deleteQuestionSkillsByQuestionId(String questionId) {
         jpaQuestionSkillRepository.deleteByQuestionId(questionId);
     }

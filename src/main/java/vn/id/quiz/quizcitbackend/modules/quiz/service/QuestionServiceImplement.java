@@ -36,6 +36,8 @@ public class QuestionServiceImplement implements QuestionService {
     public QuestionResponse createQuestion(
             CreateQuestionRequest request) {
 
+        validatePrimarySkill(request.getSkills());
+
         contentRepository.findSubjectById(request.getSubjectId())
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy môn học",
@@ -74,6 +76,7 @@ public class QuestionServiceImplement implements QuestionService {
         QuestionResponse response = mapper.toResponse(question);
         response.setOptions(optionResponses);
         response.setCorrectOptionId(extractCorrectOptionId(optionResponses));
+        response.setSkills(toSkillResponses(quizRepository.findQuestionSkillsByQuestionId(question.getQuestionId())));
         return response;
     }
 
@@ -82,6 +85,8 @@ public class QuestionServiceImplement implements QuestionService {
     public void updateQuestion(
             String questionId,
             UpdateQuestionRequest request) {
+
+        validatePrimarySkill(request.getSkills());
 
         Question question = quizRepository.findQuestionById(
                 questionId)
@@ -136,6 +141,7 @@ public class QuestionServiceImplement implements QuestionService {
         QuestionResponse response = mapper.toResponse(question);
         response.setOptions(optionResponses);
         response.setCorrectOptionId(extractCorrectOptionId(optionResponses));
+        response.setSkills(toSkillResponses(quizRepository.findQuestionSkillsByQuestionId(questionId)));
         return response;
     }
 
@@ -147,6 +153,7 @@ public class QuestionServiceImplement implements QuestionService {
                 .map(q -> {
                     QuestionResponse r = mapper.toResponse(q);
                     r.setOptions(Collections.emptyList());
+                    r.setSkills(toSkillResponses(quizRepository.findQuestionSkillsByQuestionId(q.getQuestionId())));
                     return r;
                 })
                 .toList();
@@ -204,5 +211,37 @@ public class QuestionServiceImplement implements QuestionService {
                 .filter(OptionResponse::isCorrected)
                 .findFirst();
         return correct.map(OptionResponse::getOptionId).orElse(null);
+    }
+
+    private List<QuestionSkillMappingRequest> toSkillResponses(List<QuestionSkill> questionSkills) {
+        if (questionSkills == null) {
+            return Collections.emptyList();
+        }
+
+        return questionSkills.stream()
+                .map(questionSkill -> {
+                    QuestionSkillMappingRequest response = new QuestionSkillMappingRequest();
+                    response.setSkillId(questionSkill.getSkillId());
+                    response.setWeight(questionSkill.getWeight());
+                    response.setPrimary(questionSkill.isPrimary());
+                    return response;
+                })
+                .toList();
+    }
+
+    private void validatePrimarySkill(List<QuestionSkillMappingRequest> skills) {
+        if (skills == null || skills.isEmpty()) {
+            return;
+        }
+
+        long primaryCount = skills.stream()
+                .filter(QuestionSkillMappingRequest::isPrimary)
+                .count();
+
+        if (primaryCount != 1) {
+            throw new AppException(
+                    "Câu hỏi có kỹ năng phải có đúng một kỹ năng chính",
+                    HttpStatus.BAD_REQUEST);
+        }
     }
 }

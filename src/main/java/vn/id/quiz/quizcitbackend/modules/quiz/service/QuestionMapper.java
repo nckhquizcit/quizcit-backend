@@ -14,6 +14,7 @@ public interface QuestionMapper {
 
     @Mapping(target = "options", ignore = true)
     @Mapping(target = "correctOptionId", ignore = true)
+    @Mapping(target = "skills", ignore = true)
     QuestionResponse toResponse(Question question);
 
     List<QuestionResponse> toResponseList(List<Question> questions);

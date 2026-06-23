@@ -45,4 +45,6 @@ public class QuestionResponse {
      * ví dụ: khi xem chi tiết câu hỏi ngoài ngữ cảnh làm bài).
      */
     private String correctOptionId;
+
+    private List<QuestionSkillMappingRequest> skills;
 }

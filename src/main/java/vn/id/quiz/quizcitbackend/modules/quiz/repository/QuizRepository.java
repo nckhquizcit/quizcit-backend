@@ -124,5 +124,7 @@ public interface QuizRepository {
 
     QuestionSkill saveQuestionSkill(QuestionSkill questionSkill);
 
+    List<QuestionSkill> findQuestionSkillsByQuestionId(String questionId);
+
     void deleteQuestionSkillsByQuestionId(String questionId);
 }
