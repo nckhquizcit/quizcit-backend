@@ -1,13 +1,1 @@
-I am refactoring the QuizCIT backend from Domain-Driven Design (DDD) to a standard Layered Architecture.
-
-I have consolidated the source code for the "quiz" module (which needs review) and the "content" module (which is the golden sample of our Layered Architecture) into a single file at `review_architecture.txt`.
-
-Please perform the following steps using minimal tool calls:
-1. Read `review_architecture.txt` to understand the current implementation.
-2. Analyze the "quiz" module and check if it is still using DDD patterns. Specifically, look for:
-   - Business logic placed inside Entities instead of Service Implementations.
-   - Heavy object mapping/associations (e.g., embedding an entire Entity inside another Entity as a field instead of using ID references).
-3. Compare it with the "content" module to see how we handle Layered Architecture, Service Impls, and ID-based connections.
-4. Provide a detailed report of what needs to be changed in the "quiz" module.
-
-Do NOT attempt to refactor the files yet. Just give me the analysis and a step-by-step migration plan first.
+.
