@@ -8,6 +8,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.id.quiz.quizcitbackend.modules.content.service.ContentService;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.QuizSummaryResponse;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 import java.util.List;
@@ -149,5 +150,15 @@ public class ContentController {
         subjectUseCase.deleteTheory(theoryId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Đã xóa nội dung lý thuyết thành công", null));
+    }
+
+    // =========================================================================
+    // Phase 2 (P1): Danh sách đề thi theo môn học
+    // =========================================================================
+    @GetMapping("/subjects/{subjectId}/quizzes")
+    public ResponseEntity<ApiResponse<List<QuizSummaryResponse>>> getQuizzesBySubject(
+            @PathVariable String subjectId) {
+        List<QuizSummaryResponse> responses = subjectUseCase.getQuizzesBySubject(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(responses));
     }
 }

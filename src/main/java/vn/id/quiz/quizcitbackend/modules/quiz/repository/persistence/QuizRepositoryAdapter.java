@@ -3,6 +3,7 @@ package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
@@ -11,10 +12,10 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-
-//Adapter đóng vai trò là cầu nối, cho phép Repository cha gọi gián tiếp đến Repository con
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +27,7 @@ public class QuizRepositoryAdapter implements QuizRepository {
     private final JpaOptionRepository jpaOptionRepository;
     private final JpaAttemptRepository jpaAttemptRepository;
     private final JpaResponseRepository jpaResponseRepository;
+    private final vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaQuestionSkillRepository jpaQuestionSkillRepository;
 
     // Question
     @Override
@@ -86,6 +88,12 @@ public class QuizRepositoryAdapter implements QuizRepository {
                 .findByChapterId(chapterId);
     }
 
+    // Phase 2 (P1): danh sách đề của một môn học
+    @Override
+    public List<Quiz> findQuizzesBySubjectId(String subjectId) {
+        return jpaQuizRepository.findBySubjectId(subjectId);
+    }
+
     @Override
     public void deleteQuizById(
             String quizId) {
@@ -103,6 +111,11 @@ public class QuizRepositoryAdapter implements QuizRepository {
     @Override
     public List<Option> findOptionsByQuestionId(String questionId) {
         return jpaOptionRepository.findByQuestionId(questionId);
+    }
+
+    @Override
+    public void deleteOptionsByQuestionId(String questionId) {
+        jpaOptionRepository.deleteByQuestionId(questionId);
     }
 
     @Override
@@ -153,5 +166,36 @@ public class QuizRepositoryAdapter implements QuizRepository {
 
         jpaQuizQuestionRepository
                 .deleteByQuizId(quizId);
+    }
+
+    // =========================================================================
+    // Phase 2 (P0)
+    // =========================================================================
+
+    @Override
+    public List<Question> findQuestionsByQuizId(String quizId) {
+        // Lấy quan hệ quiz-question đã sắp xếp theo index, rồi map sang Question
+        List<QuizQuestion> quizQuestions =
+                jpaQuizQuestionRepository.findByQuizIdOrderByIndexOrder(quizId);
+        return quizQuestions.stream()
+                .map(qq -> jpaQuestionRepository
+                        .findByQuestionId(qq.getQuestionId())
+                        .orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    // =========================================================================
+    // Phase 2 (P1): Skill mapping
+    // =========================================================================
+
+    @Override
+    public QuestionSkill saveQuestionSkill(QuestionSkill questionSkill) {
+        return jpaQuestionSkillRepository.save(questionSkill);
+    }
+
+    @Override
+    public void deleteQuestionSkillsByQuestionId(String questionId) {
+        jpaQuestionSkillRepository.deleteByQuestionId(questionId);
     }
 }

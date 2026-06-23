@@ -27,8 +27,14 @@ public class Role {
     @Column(name = "role_id", length = 50)
     private String roleId;
 
+    /**
+     * Mapping chính xác tên cột trong DB. Trước đây annotation
+     * {@code @Column} không khai báo {@code name} nên Hibernate tự derive
+     * thành {@code name} (khớp) nhưng cũng tạo cơ chế ambiguous. Ta chỉ định
+     * rõ để chắc chắn mapping với cột {@code roles.name}.
+     */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
+    @Column(name = "name", nullable = false, length = 50, unique = true)
     private UserRole name;
 
     public static Role create(UserRole name) {

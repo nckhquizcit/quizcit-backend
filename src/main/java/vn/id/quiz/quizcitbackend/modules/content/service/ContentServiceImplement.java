@@ -9,6 +9,8 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 import java.util.List;
@@ -18,6 +20,22 @@ import java.util.List;
 public class ContentServiceImplement implements ContentService {
     private final ContentRepository contentRepository;
     private final ContentMapper mapper;
+    private final QuizRepository quizRepository;
+
+    // =========================================================================
+    // Phase 2 (P1): Lấy danh sách đề thi thuộc về 1 môn học
+    // =========================================================================
+    @Override
+    @Transactional(readOnly = true)
+    public List<QuizSummaryResponse> getQuizzesBySubject(String subjectId) {
+        if (!contentRepository.existsBySubjectId(subjectId)) {
+            throw new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND);
+        }
+        List<Quiz> quizzes = quizRepository.findQuizzesBySubjectId(subjectId);
+        return quizzes.stream()
+                .map(QuizSummaryResponse::from)
+                .toList();
+    }
 
     @Override
     @Transactional(readOnly = true)

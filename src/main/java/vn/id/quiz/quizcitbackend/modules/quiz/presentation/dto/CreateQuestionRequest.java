@@ -5,6 +5,12 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Request body cho {@code POST /api/questions}.
+ *
+ * <p><b>Fix bug:</b> Trước đây field là {@code explaination}. Đổi sang
+ * {@code explanation} cho đúng schema.</p>
+ */
 @Getter
 @Setter
 public class CreateQuestionRequest {
@@ -15,9 +21,15 @@ public class CreateQuestionRequest {
 
     private String content;
 
-    private String explaination;
+    private String explanation;
 
     private double difficultyB;
 
     private List<CreateOptionRequest> options;
+
+    /**
+     * Danh sách ID kỹ năng (skill) gắn với câu hỏi.
+     * Hỗ trợ Phase 2 (P1): API quản lý kỹ năng / IRT.
+     */
+    private List<QuestionSkillMappingRequest> skills;
 }

@@ -6,9 +6,22 @@ import lombok.*;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
+/**
+ * Entity cho bảng {@code questions}.
+ *
+ * <p><b>Fix bug:</b> Trước đây column được map là {@code explaination} (sai
+ * chính tả). Database thực tế chỉ có cột {@code explanation}. Khi JPA cố gắng
+ * truy vấn sẽ ném lỗi "column explaination does not exist" và API tạo/sửa
+ * câu hỏi hoặc tạo quiz trả về 500. Tên cột đã được chuẩn hoá về
+ * {@code explanation} và field Java cũng đổi sang {@code explanation} để
+ * code rõ ràng. Một file migration SQL
+ * ({@code V3__rename_questions_explaination.sql}) được cung cấp để
+ * rename cột trong database nếu schema cũ vẫn dùng {@code explaination}.</p>
+ */
 @Entity
 @Table(name = "questions")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -26,8 +39,8 @@ public class Question {
     @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "explaination", columnDefinition = "TEXT")
-    private String explaination;
+    @Column(name = "explanation", columnDefinition = "TEXT")
+    private String explanation;
 
     @Column(name = "difficulty_b")
     private double difficultyB;
@@ -42,7 +55,7 @@ public class Question {
             String subjectId,
             String chapterId,
             String content,
-            String explaination,
+            String explanation,
             double difficultyB) {
 
         return Question.builder()
@@ -50,7 +63,7 @@ public class Question {
                 .subjectId(subjectId)
                 .chapterId(chapterId)
                 .content(content)
-                .explaination(explaination)
+                .explanation(explanation)
                 .difficultyB(difficultyB)
                 .createdAt(ZonedDateTime.now())
                 .isActive(true)

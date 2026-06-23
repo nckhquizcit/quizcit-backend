@@ -137,9 +137,11 @@ public class AttemptServiceImplement
             SkillThetaData data = entry.getValue();
 
             double theta = aiService.estimateTheta(
-                    data.getResponses(),
-                    data.getDifficulties(),
-                    data.getWeights());
+                    new EstimateThetaRequest(
+                            data.getResponses(),
+                            data.getDifficulties(),
+                            data.getWeights()))
+                    .theta();
 
             skillThetaMap.put(
                     skillId,

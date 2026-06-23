@@ -16,6 +16,12 @@ public interface ContentService {
     void deleteSubject(String subjectId);
     List<TheoryResponse> getAllTheories(String chapterId);
     List<ChapterResponse> getAllChapters(String subjectId);
+
+    /**
+     * Phase 2 (P1): lấy danh sách đề thi thuộc về một môn học.
+     */
+    List<QuizSummaryResponse> getQuizzesBySubject(String subjectId);
+
     void updateSubject(String subjectId, UpdateSubjectRequest request);
     void updateChapter(String chapterId, UpdateChapterRequest request);
     void updateTheory(String theoryId, UpdateTheoryRequest request);

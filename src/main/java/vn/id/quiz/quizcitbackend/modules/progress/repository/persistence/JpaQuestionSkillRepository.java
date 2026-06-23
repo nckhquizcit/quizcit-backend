@@ -12,4 +12,6 @@ public interface JpaQuestionSkillRepository
     List<QuestionSkill> findByQuestionId(String questionId);
 
     List<QuestionSkill> findBySkillId(String skillId);
+
+    void deleteByQuestionId(String questionId);
 }

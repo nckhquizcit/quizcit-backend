@@ -3,6 +3,7 @@ package vn.id.quiz.quizcitbackend.modules.quiz.repository;
 import java.util.List;
 import java.util.Optional;
 
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
@@ -41,6 +42,12 @@ public interface QuizRepository {
     List<Quiz> findQuizzesByChapterId(
             String chapterId);
 
+    /**
+     * Phase 2 (P1): lấy tất cả quiz thuộc về một subject.
+     */
+    List<Quiz> findQuizzesBySubjectId(
+            String subjectId);
+
     void deleteQuizById(
             String quizId);
 
@@ -70,6 +77,9 @@ public interface QuizRepository {
     List<Option> findOptionsByQuestionId(
             String questionId);
 
+    void deleteOptionsByQuestionId(
+            String questionId);
+
     // =========================================================================
     // Attempt
     // =========================================================================
@@ -92,4 +102,21 @@ public interface QuizRepository {
 
     List<Response> findResponsesByAttemptId(
             String attemptId);
+
+    // =========================================================================
+    // Phase 2 (P0): API lấy câu hỏi trong 1 quiz kèm option
+    // =========================================================================
+
+    /**
+     * Trả về danh sách câu hỏi của một quiz theo thứ tự index trong quiz.
+     */
+    List<Question> findQuestionsByQuizId(String quizId);
+
+    // =========================================================================
+    // Phase 2 (P1): Skill mapping cho câu hỏi
+    // =========================================================================
+
+    QuestionSkill saveQuestionSkill(QuestionSkill questionSkill);
+
+    void deleteQuestionSkillsByQuestionId(String questionId);
 }

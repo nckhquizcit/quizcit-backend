@@ -6,11 +6,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.id.quiz.quizcitbackend.modules.auth.service.PasswordService;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangePasswordRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangeUserRoleRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserProfileRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserStatusRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UserResponse;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignment;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
 import vn.id.quiz.quizcitbackend.modules.user.repository.UserRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
@@ -78,6 +82,51 @@ public class UserServiceImpl implements UserUseCase {
             throw new AppException("Khong tim thay nguoi dung duoc yeu cau", HttpStatus.NOT_FOUND);
         }
         userRepository.deleteById(userId);
+    }
+
+    // =========================================================================
+    // Phase 2 (P1): Admin khoa / mo khoa tai khoan.
+    // =========================================================================
+    @Override
+    @Transactional
+    public UserResponse updateUserStatus(String userId, UpdateUserStatusRequest request) {
+        requireRequest(request);
+        UserStatus target = request.getStatus();
+        if (target == null) {
+            throw new AppException("Trang thai tai khoan khong hop le", HttpStatus.BAD_REQUEST);
+        }
+
+        User user = getRequiredUser(userId);
+        user.setStatus(target);
+        userRepository.save(user);
+
+        return mapper.toUserResponse(user, resolveUserRole(userId));
+    }
+
+    // =========================================================================
+    // Phase 2 (P1): Admin thay doi role cho user.
+    // =========================================================================
+    @Override
+    @Transactional
+    public UserResponse changeUserRole(String userId, ChangeUserRoleRequest request) {
+        requireRequest(request);
+        UserRole targetRole = request.getRole();
+        if (targetRole == null) {
+            throw new AppException("Vai tro nguoi dung khong hop le", HttpStatus.BAD_REQUEST);
+        }
+        getRequiredUser(userId); // dam bao user ton tai
+
+        Role role = userRepository.findRoleByName(targetRole)
+                .orElseThrow(() -> new AppException(
+                        "Vai tro khong ton tai trong he thong",
+                        HttpStatus.INTERNAL_SERVER_ERROR));
+
+        // Xoa cac lien ket cu va gan moi
+        userRepository.deleteRolesByUserId(userId);
+        UserRoleAssignment assignment = UserRoleAssignment.assign(userId, role.getRoleId());
+        userRepository.save(assignment);
+
+        return getUserById(userId);
     }
 
     // Dung chung cho cac nghiep vu can dam bao user ton tai truoc khi xu ly.

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +34,7 @@ public class QuestionController {
     }
 
     @PostMapping("/questions")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<QuestionResponse>> createQuestion(
             @Valid @RequestBody CreateQuestionRequest request) {
 
@@ -52,6 +54,7 @@ public class QuestionController {
     }
 
     @PutMapping("/questions/{questionId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> updateQuestion(
             @PathVariable String questionId,
             @Valid @RequestBody UpdateQuestionRequest request) {
@@ -65,6 +68,7 @@ public class QuestionController {
     }
 
     @DeleteMapping("/questions/{questionId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteQuestion(
             @PathVariable String questionId) {
 

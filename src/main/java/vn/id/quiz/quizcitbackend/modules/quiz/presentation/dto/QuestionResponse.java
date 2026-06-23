@@ -1,9 +1,25 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
 
+import java.util.List;
+
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
+/**
+ * Response trả về thông tin một câu hỏi.
+ *
+ * <p><b>Fix bug (Phase 1):</b> Đổi {@code explaination} -> {@code explanation}
+ * cho đúng schema database.</p>
+ *
+ * <p><b>Phase 2 (P0):</b> Bổ sung trường {@code options} để frontend có
+ * thể lấy danh sách lựa chọn kèm theo câu hỏi (dùng cho
+ * {@code GET /api/quizzes/{quizId}/questions} và {@code GET /api/questions/{id}}).
+ * Trường {@code correctOptionId} cho phép frontend xác định đáp án đúng
+ * mà không cần gọi thêm API.</p>
+ */
 @Getter
+@Setter
 @Builder
 public class QuestionResponse {
 
@@ -15,9 +31,20 @@ public class QuestionResponse {
 
     private String content;
 
-    private String explaination;
+    private String explanation;
 
     private double difficultyB;
 
     private boolean active;
+
+    /**
+     * Danh sách lựa chọn của câu hỏi. Có thể null khi câu hỏi chưa gán option.
+     */
+    private List<OptionResponse> options;
+
+    /**
+     * ID của lựa chọn đúng (chỉ trả về khi người gọi có quyền xem đáp án,
+     * ví dụ: khi xem chi tiết câu hỏi ngoài ngữ cảnh làm bài).
+     */
+    private String correctOptionId;
 }

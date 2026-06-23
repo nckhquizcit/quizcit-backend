@@ -3,8 +3,10 @@ package vn.id.quiz.quizcitbackend.modules.quiz.presentation.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.QuizService;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
@@ -12,6 +14,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class QuizController {
 
     private final QuizService quizService;
+    private final QuestionService questionService;
 
     @GetMapping("/chapters/{chapterId}/quizzes")
     public ResponseEntity<ApiResponse<List<QuizResponse>>> getQuizzesByChapter(
@@ -34,6 +38,7 @@ public class QuizController {
     }
 
     @PostMapping("/quizzes")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<QuizResponse>> createQuiz(
             @Valid @RequestBody CreateQuizRequest request) {
 
@@ -52,7 +57,20 @@ public class QuizController {
                         quizService.getQuizById(quizId)));
     }
 
+    /**
+     * Phase 2 (P0 - Blocker): API trả về câu hỏi + lựa chọn cho FE làm bài.
+     */
+    @GetMapping("/quizzes/{quizId}/questions")
+    public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestionsByQuiz(
+            @PathVariable String quizId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        questionService.getQuestionsByQuiz(quizId)));
+    }
+
     @PutMapping("/quizzes/{quizId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> updateQuiz(
             @PathVariable String quizId,
             @Valid @RequestBody UpdateQuizRequest request) {
@@ -66,6 +84,7 @@ public class QuizController {
     }
 
     @DeleteMapping("/quizzes/{quizId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteQuiz(
             @PathVariable String quizId) {
 

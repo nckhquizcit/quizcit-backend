@@ -25,5 +25,8 @@ public record ApiResponse<T>(
     public static <T> ApiResponse<T> error(int code, String message){
         return new ApiResponse<>(code, message, null);
     }
+    public static <T> ApiResponse<T> error(org.springframework.http.HttpStatus status, String message){
+        return new ApiResponse<>(status.value(), message, null);
+    }
 }
 
