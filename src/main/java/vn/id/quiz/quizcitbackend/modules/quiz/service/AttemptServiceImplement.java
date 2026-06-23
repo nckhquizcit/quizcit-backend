@@ -254,8 +254,7 @@ public class AttemptServiceImplement
                 .mapToDouble(Double::doubleValue)
                 .average()
                 .orElse(0.0);
-        double rawScore = (double) correctCount
-                / attempt.getTotalQuestion();
+        double rawScore = correctCount;
         attempt.complete(
                 rawScore,
                 overallTheta);
