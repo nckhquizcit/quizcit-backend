@@ -2,6 +2,7 @@ package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -42,20 +43,44 @@ public class QuizServiceImplement implements QuizService {
                         "Không tìm thấy chương học",
                         HttpStatus.NOT_FOUND));
 
-        List<Question> questions = quizRepository.findQuestionsByChapterId(
-                request.getChapterId());
+        List<Question> selected;
 
-        if (questions.isEmpty()) {
-            throw new AppException(
-                    "Không có câu hỏi",
-                    HttpStatus.BAD_REQUEST);
+        if (request.getQuestionIds() != null && !request.getQuestionIds().isEmpty()) {
+            selected = request.getQuestionIds().stream()
+                    .map(questionId -> quizRepository.findQuestionById(questionId)
+                            .orElseThrow(() -> new AppException(
+                                    "Không tìm thấy câu hỏi",
+                                    HttpStatus.NOT_FOUND)))
+                    .filter(question -> Objects.equals(question.getChapterId(), request.getChapterId()))
+                    .toList();
+
+            if (selected.size() != request.getQuestionIds().size()) {
+                throw new AppException(
+                        "Có câu hỏi không thuộc chương đã chọn",
+                        HttpStatus.BAD_REQUEST);
+            }
+        } else {
+            List<Question> questions = quizRepository.findQuestionsByChapterId(
+                    request.getChapterId());
+
+            if (questions.isEmpty()) {
+                throw new AppException(
+                        "Không có câu hỏi",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            Collections.shuffle(questions);
+
+            selected = questions.stream()
+                    .limit(request.getTotalQuestion())
+                    .toList();
         }
 
-        Collections.shuffle(questions);
-
-        List<Question> selected = questions.stream()
-                .limit(request.getTotalQuestion())
-                .toList();
+        if (selected.isEmpty()) {
+            throw new AppException(
+                    "Vui lòng chọn ít nhất một câu hỏi",
+                    HttpStatus.BAD_REQUEST);
+        }
 
         Quiz quiz = Quiz.create(
                 request.getSubjectId(),

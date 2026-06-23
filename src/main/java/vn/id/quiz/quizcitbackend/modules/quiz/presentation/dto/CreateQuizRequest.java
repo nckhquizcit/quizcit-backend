@@ -1,4 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.List;
+
 import lombok.Getter;
 import lombok.Setter;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
@@ -18,4 +21,6 @@ public class CreateQuizRequest {
     private int duration;
 
     private QuizType type;
+
+    private List<String> questionIds;
 }
