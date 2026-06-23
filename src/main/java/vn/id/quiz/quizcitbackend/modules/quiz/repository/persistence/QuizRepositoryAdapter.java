@@ -30,7 +30,7 @@ public class QuizRepositoryAdapter implements QuizRepository {
     // Question
     @Override
     public List<Question> findQuestionsByChapterId(String chapterId) {
-        return jpaQuestionRepository.findByChapterChapterId(chapterId);
+        return jpaQuestionRepository.findByChapterId(chapterId);
     }
 
     @Override
@@ -67,7 +67,7 @@ public class QuizRepositoryAdapter implements QuizRepository {
 
     @Override
     public List<QuizQuestion> findQuizQuestionsByQuizId(String quizId) {
-        return jpaQuizQuestionRepository.findByQuizQuizIdOrderByIndexOrder(quizId);
+        return jpaQuizQuestionRepository.findByQuizIdOrderByIndexOrder(quizId);
     }
 
     @Override
@@ -83,7 +83,7 @@ public class QuizRepositoryAdapter implements QuizRepository {
             String chapterId) {
 
         return jpaQuizRepository
-                .findByChapterChapterId(chapterId);
+                .findByChapterId(chapterId);
     }
 
     @Override
@@ -152,6 +152,6 @@ public class QuizRepositoryAdapter implements QuizRepository {
             String quizId) {
 
         jpaQuizQuestionRepository
-                .deleteByQuizQuizId(quizId);
+                .deleteByQuizId(quizId);
     }
 }

@@ -1,0 +1,2661 @@
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/QuizModule.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz;
+
+import lombok.Getter;
+import org.springframework.context.annotation.Configuration;
+import vn.id.quiz.quizcitbackend.core.module.AppModule;
+@Getter
+@Configuration
+public class QuizModule implements AppModule {
+    private final String name = "Quiz Module";
+
+    @Override
+    public void initialize() {
+
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/controller/AttemptController.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.StartQuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SubmitQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.service.AttemptService;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+@Validated
+public class AttemptController {
+
+    private final AttemptService attemptService;
+
+    @PostMapping("/quizzes/{quizId}/start")
+    public ResponseEntity<ApiResponse<StartQuizResponse>> startQuiz(
+            @PathVariable String quizId,
+            @RequestParam String userId) {
+
+        StartQuizResponse response = attemptService.startQuiz(userId, quizId);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response));
+    }
+
+    @PostMapping("/attempts/submit")
+    public ResponseEntity<ApiResponse<QuizResultResponse>> submitQuiz(
+            @Valid @RequestBody SubmitQuizRequest request) {
+
+        QuizResultResponse response = attemptService.submitQuiz(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response));
+    }
+
+    @GetMapping("/attempts/{attemptId}/result")
+    public ResponseEntity<ApiResponse<QuizResultResponse>> getResult(
+            @PathVariable String attemptId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        attemptService.getResult(attemptId)));
+    }
+
+    @GetMapping("/users/{userId}/attempts")
+    public ResponseEntity<ApiResponse<List<QuizResultResponse>>> getUserResults(
+            @PathVariable String userId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        attemptService.getUserResults(userId)));
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/controller/QuestionController.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+@Validated
+public class QuestionController {
+
+    private final QuestionService questionService;
+
+    @GetMapping("/chapters/{chapterId}/questions")
+    public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestionsByChapter(
+            @PathVariable String chapterId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        questionService.getQuestionsByChapter(chapterId)));
+    }
+
+    @PostMapping("/questions")
+    public ResponseEntity<ApiResponse<QuestionResponse>> createQuestion(
+            @Valid @RequestBody CreateQuestionRequest request) {
+
+        QuestionResponse response = questionService.createQuestion(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/questions/{questionId}")
+    public ResponseEntity<ApiResponse<QuestionResponse>> getQuestionById(
+            @PathVariable String questionId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        questionService.getQuestionById(questionId)));
+    }
+
+    @PutMapping("/questions/{questionId}")
+    public ResponseEntity<ApiResponse<Void>> updateQuestion(
+            @PathVariable String questionId,
+            @Valid @RequestBody UpdateQuestionRequest request) {
+
+        questionService.updateQuestion(questionId, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Cập nhật câu hỏi thành công",
+                        null));
+    }
+
+    @DeleteMapping("/questions/{questionId}")
+    public ResponseEntity<ApiResponse<Void>> deleteQuestion(
+            @PathVariable String questionId) {
+
+        questionService.deleteQuestion(questionId);
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success(
+                        "Xóa câu hỏi thành công",
+                        null));
+    }
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/controller/QuizController.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.service.QuizService;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+
+@RestController
+@RequestMapping("/api")
+@RequiredArgsConstructor
+@Validated
+public class QuizController {
+
+    private final QuizService quizService;
+
+    @GetMapping("/chapters/{chapterId}/quizzes")
+    public ResponseEntity<ApiResponse<List<QuizResponse>>> getQuizzesByChapter(
+            @PathVariable String chapterId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        quizService.getQuizzesByChapter(chapterId)));
+    }
+
+    @PostMapping("/quizzes")
+    public ResponseEntity<ApiResponse<QuizResponse>> createQuiz(
+            @Valid @RequestBody CreateQuizRequest request) {
+
+        QuizResponse response = quizService.createQuiz(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/quizzes/{quizId}")
+    public ResponseEntity<ApiResponse<QuizResponse>> getQuizById(
+            @PathVariable String quizId) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        quizService.getQuizById(quizId)));
+    }
+
+    @PutMapping("/quizzes/{quizId}")
+    public ResponseEntity<ApiResponse<Void>> updateQuiz(
+            @PathVariable String quizId,
+            @Valid @RequestBody UpdateQuizRequest request) {
+
+        quizService.updateQuiz(quizId, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Cập nhật đề thi thành công",
+                        null));
+    }
+
+    @DeleteMapping("/quizzes/{quizId}")
+    public ResponseEntity<ApiResponse<Void>> deleteQuiz(
+            @PathVariable String quizId) {
+
+        quizService.deleteQuiz(quizId);
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success(
+                        "Xóa đề thi thành công",
+                        null));
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/CreateQuizRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+import lombok.Getter;
+import lombok.Setter;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
+
+@Getter
+@Setter
+public class CreateQuizRequest {
+
+    private String subjectId;
+
+    private String chapterId;
+
+    private String name;
+
+    private int totalQuestion;
+
+    private int duration;
+
+    private QuizType type;
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/CreateOptionRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class CreateOptionRequest {
+
+    private String content;
+
+    private boolean corrected;
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/CreateQuestionRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.List;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class CreateQuestionRequest {
+
+    private String subjectId;
+
+    private String chapterId;
+
+    private String content;
+
+    private String explaination;
+
+    private double difficultyB;
+
+    private List<CreateOptionRequest> options;
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/QuestionResponse.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class QuestionResponse {
+
+    private String questionId;
+
+    private String subjectId;
+
+    private String chapterId;
+
+    private String content;
+
+    private String explaination;
+
+    private double difficultyB;
+
+    private boolean active;
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/QuizResponse.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
+
+@Getter
+@Builder
+public class QuizResponse {
+
+    private String quizId;
+
+    private String subjectId;
+
+    private String chapterId;
+
+    private String name;
+
+    private QuizType type;
+
+    private int totalQuestion;
+
+    private int duration;
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/QuizResultResponse.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.List;
+
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class QuizResultResponse {
+
+    private String attemptId;
+
+    private String quizId;
+
+    private double rawScore;
+
+    private int totalQuestion;
+
+    private double overallTheta;
+    
+    private List<SkillResultResponse> skillResults;
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/SkillResultResponse.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class SkillResultResponse {
+
+    private String skillId;
+
+    private double theta;
+
+    private double standardError;
+
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/SkillThetaData.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class SkillThetaData {
+
+    private List<Integer> responses = new ArrayList<>();
+
+    private List<Double> difficulties = new ArrayList<>();
+
+    private List<Double> weights = new ArrayList<>();
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/StartQuizResponse.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class StartQuizResponse {
+
+    private String attemptId;
+
+    private String quizId;
+
+    private int totalQuestion;
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/SubmitAnswerRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class SubmitAnswerRequest {
+
+    private String questionId;
+
+    private String optionId;
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/SubmitQuizRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import java.util.List;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class SubmitQuizRequest {
+
+    private String attemptId;
+
+    private List<SubmitAnswerRequest> answers;
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/UpdateQuestionRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class UpdateQuestionRequest {
+
+    private String content;
+
+    private String explaination;
+
+    private double difficultyB;
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/dto/UpdateQuizRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class UpdateQuizRequest {
+
+    private String name;
+
+    private Integer duration;
+
+    private String chapterId;
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/model/Option.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import java.util.UUID;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "options")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Option {
+    @Id
+    @Column(name = "option_id", length = 50)
+    private String optionId;
+
+    @Column(name = "question_id", nullable = false)
+    private String questionId;
+
+    @Column(name = "content", columnDefinition = "TEXT") // Thêm text để không bị tràng content của cột
+    private String content;
+
+    @Column(name = "is_corrected")
+    private boolean isCorrected;
+
+    public static Option create(
+            String questionId,
+            String content,
+            boolean isCorrected) {
+        return Option.builder()
+                .optionId(UUID.randomUUID().toString())
+                .questionId(questionId)
+                .content(content)
+                .isCorrected(isCorrected)
+                .build();
+    }
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/model/Question.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+
+import java.time.ZonedDateTime;
+import java.util.UUID;
+
+@Entity
+@Table(name = "questions")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Question {
+    @Id
+    @Column(name="question_id", length = 50)
+    private String questionId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id", nullable = false)
+    private Subject subject;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chapter_id", nullable = false)
+    private Chapter chapter;
+
+    @Column(name="content", columnDefinition = "TEXT") // Thêm text để không bị tràng content của cột
+    private String content;
+
+    @Column(name="explaination", columnDefinition = "TEXT") // Thêm text để không bị tràng content của cột
+    private String explaination; // Đổi thành explaination để tránh trùng keyword với db
+
+    @Column(name="difficulty_b")
+    private double difficultyB;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+    @Column(name = "is_active")
+    private boolean isActive;
+
+    public static Question create(Subject subject, Chapter chapter, String content, String explaination, double difficultyB){
+        return Question.builder()
+        .questionId(UUID.randomUUID().toString())
+        .subject(subject)
+        .chapter(chapter)
+        .content(content)
+        .explaination(explaination)
+        .difficultyB(difficultyB)
+        .createdAt(ZonedDateTime.now())
+        .isActive(true)
+        .build();
+    }
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/model/QuizQuestion.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "quiz_questions")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class QuizQuestion {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "quiz_id")
+    private Quiz quiz; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "question_id")
+    private Question question; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
+
+    @Column(name = "index_order")
+    private int indexOrder;
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/model/QuizType.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+public enum QuizType {
+    CHAPTER,
+    FINAL
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/model/Response.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "responses")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Response {
+
+    @Id
+    @Column(name = "response_id", length = 50)
+    private String responseId;
+
+    @Column(name = "attempt_id", nullable = false, length = 50)
+    private String attemptId;
+
+    @Column(name = "question_id", nullable = false, length = 50)
+    private String questionId;
+
+    @Column(name = "option_id", nullable = false, length = 50)
+    private String optionId;
+
+    @Column(name = "score")
+    private boolean score;
+
+    public static Response create(
+            String attemptId,
+            String questionId,
+            String optionId,
+            boolean score) {
+        return Response.builder()
+                .responseId(UUID.randomUUID().toString())
+                .attemptId(attemptId)
+                .questionId(questionId)
+                .optionId(optionId)
+                .score(score)
+                .build();
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/model/Attempt.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import java.time.ZonedDateTime;
+import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
+
+@Entity
+@Table(name = "attempts")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Attempt {
+
+    @Id
+    @Column(name = "attempt_id", length = 50)
+    private String attemptId;
+
+    @Column(name = "user_id", nullable = false, length = 50)
+    private String userId;
+
+    @Column(name = "quiz_id", nullable = false, length = 50)
+    private String quizId;
+
+    @Column(name = "raw_score")
+    private double rawScore;
+
+    @Column(name = "total_question")
+    private int totalQuestion;
+    @Column(name = "overall_theta")
+    private double overallTheta;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+    public static Attempt create(
+            String userId,
+            String quizId,
+            int totalQuestion) {
+
+        return Attempt.builder()
+                .attemptId(UUID.randomUUID().toString())
+                .userId(userId)
+                .quizId(quizId)
+                .totalQuestion(totalQuestion)
+                .createdAt(ZonedDateTime.now())
+                .build();
+    }
+
+    public void complete(
+            double rawScore,
+            double overallTheta) {
+
+        this.rawScore = rawScore;
+        this.overallTheta = overallTheta;
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/presentation/model/Quiz.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
+
+import java.util.UUID;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+
+@Entity
+@Table(name = "quizzes")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Quiz {
+
+    @Id
+    @Column(name = "quiz_id")
+    private String quizId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id")
+    private Subject subject; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chapter_id")
+    private Chapter chapter; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
+
+    private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    private QuizType type;
+
+    @Column(name = "total_question")
+    private int totalQuestion;
+
+    private int duration;
+
+    public static Quiz create(
+            Subject subject,
+            Chapter chapter,
+            String name,
+            int totalQuestion,
+            QuizType type,
+            int duration
+    ) {
+        return Quiz.builder()
+                .quizId(UUID.randomUUID().toString())
+                .subject(subject)
+                .chapter(chapter)
+                .name(name)
+                .totalQuestion(totalQuestion)
+                .type(type)
+                .duration(duration)
+                .build();
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/repository/persistence/JpaResponseRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
+
+import java.util.List;
+
+public interface JpaResponseRepository extends JpaRepository<Response, String> {
+
+    List<Response> findByAttemptId(String attemptId);
+
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/repository/persistence/JpaAttemptRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+
+public interface JpaAttemptRepository extends JpaRepository<Attempt, String> {
+    Optional<Attempt> findByAttemptId(
+            String attemptId);
+
+    List<Attempt> findByUserId(
+            String userId);
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/repository/persistence/JpaOptionRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface JpaOptionRepository extends JpaRepository<Option, String> {
+
+    List<Option> findByQuestionId(String questionId);
+
+    Optional<Option> findByOptionId(
+            String optionId);
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/repository/persistence/JpaQuestionRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
+
+import java.util.List;
+import java.util.Optional;
+
+//Mặc định các Repository extend Jpa là đã có sẵn CRUD và save, delete,findbyID và findAll
+public interface JpaQuestionRepository extends JpaRepository<Question, String> {
+    // JPA tự parse câu dưới thành dạng sql query
+    List<Question> findByChapterChapterId(String chapterId);
+
+    Optional<Question> findByQuestionId(
+            String questionId);
+
+    void deleteByQuestionId(
+            String questionId);
+};\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/repository/persistence/JpaQuizQuestionRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
+
+public interface JpaQuizQuestionRepository
+        extends JpaRepository<QuizQuestion, String> {
+            List<QuizQuestion> findByQuizQuizIdOrderByIndexOrder(String quizId);
+
+            void deleteByQuizQuizId(
+                    String quizId);
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/repository/persistence/JpaQuizRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+
+public interface JpaQuizRepository extends JpaRepository<Quiz, String>{
+    //Hàm truy vấn cơ bản
+    Optional<Quiz> findByQuizId(
+            String quizId);
+
+    List<Quiz> findByChapterChapterId(
+            String chapterId);
+
+    void deleteByQuizId(
+            String quizId);
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/repository/persistence/QuizRepositoryAdapter.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+//Adapter đóng vai trò là cầu nối, cho phép Repository cha gọi gián tiếp đến Repository con
+
+@Component
+@RequiredArgsConstructor
+public class QuizRepositoryAdapter implements QuizRepository {
+
+    private final JpaQuestionRepository jpaQuestionRepository;
+    private final JpaQuizRepository jpaQuizRepository;
+    private final JpaQuizQuestionRepository jpaQuizQuestionRepository;
+    private final JpaOptionRepository jpaOptionRepository;
+    private final JpaAttemptRepository jpaAttemptRepository;
+    private final JpaResponseRepository jpaResponseRepository;
+
+    // Question
+    @Override
+    public List<Question> findQuestionsByChapterId(String chapterId) {
+        return jpaQuestionRepository.findByChapterChapterId(chapterId);
+    }
+
+    @Override
+    public Question save(Question question) {
+        return jpaQuestionRepository.save(question);
+    }
+
+    @Override
+    public Optional<Question> findQuestionById(
+            String questionId) {
+
+        return jpaQuestionRepository
+                .findByQuestionId(questionId);
+    }
+
+    @Override
+    public void deleteQuestionById(
+            String questionId) {
+
+        jpaQuestionRepository
+                .deleteByQuestionId(questionId);
+    }
+
+    // Quiz
+    @Override
+    public Quiz save(Quiz quiz) {
+        return jpaQuizRepository.save(quiz);
+    }
+
+    @Override
+    public QuizQuestion save(QuizQuestion quizQuestion) {
+        return jpaQuizQuestionRepository.save(quizQuestion);
+    }
+
+    @Override
+    public List<QuizQuestion> findQuizQuestionsByQuizId(String quizId) {
+        return jpaQuizQuestionRepository.findByQuizQuizIdOrderByIndexOrder(quizId);
+    }
+
+    @Override
+    public Optional<Quiz> findQuizById(
+            String quizId) {
+
+        return jpaQuizRepository
+                .findByQuizId(quizId);
+    }
+
+    @Override
+    public List<Quiz> findQuizzesByChapterId(
+            String chapterId) {
+
+        return jpaQuizRepository
+                .findByChapterChapterId(chapterId);
+    }
+
+    @Override
+    public void deleteQuizById(
+            String quizId) {
+
+        jpaQuizRepository
+                .deleteByQuizId(quizId);
+    }
+
+    // Option
+    @Override
+    public Option save(Option option) {
+        return jpaOptionRepository.save(option);
+    }
+
+    @Override
+    public List<Option> findOptionsByQuestionId(String questionId) {
+        return jpaOptionRepository.findByQuestionId(questionId);
+    }
+
+    @Override
+    public Optional<Option> findOptionById(
+            String optionId) {
+
+        return jpaOptionRepository
+                .findByOptionId(optionId);
+    }
+
+    // Attempt
+    @Override
+    public Attempt save(Attempt attempt) {
+        return jpaAttemptRepository.save(attempt);
+    }
+
+    @Override
+    public Optional<Attempt> findAttemptById(
+            String attemptId) {
+
+        return jpaAttemptRepository
+                .findByAttemptId(attemptId);
+    }
+
+    @Override
+    public List<Attempt> findAttemptsByUserId(
+            String userId) {
+
+        return jpaAttemptRepository
+                .findByUserId(userId);
+    }
+
+    // Response
+    @Override
+    public Response save(Response response) {
+        return jpaResponseRepository.save(response);
+    }
+
+    @Override
+    public List<Response> findResponsesByAttemptId(String attemptId) {
+        return jpaResponseRepository.findByAttemptId(attemptId);
+    }
+
+    // QuizQuestion
+    @Override
+    public void deleteQuizQuestionsByQuizId(
+            String quizId) {
+
+        jpaQuizQuestionRepository
+                .deleteByQuizQuizId(quizId);
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/repository/QuizRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.repository;
+
+import java.util.List;
+import java.util.Optional;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
+
+public interface QuizRepository {
+
+    // =========================================================================
+    // Question
+    // =========================================================================
+
+    Question save(
+            Question question);
+
+    Optional<Question> findQuestionById(
+            String questionId);
+
+    List<Question> findQuestionsByChapterId(
+            String chapterId);
+
+    void deleteQuestionById(
+            String questionId);
+
+    // =========================================================================
+    // Quiz
+    // =========================================================================
+
+    Quiz save(
+            Quiz quiz);
+
+    Optional<Quiz> findQuizById(
+            String quizId);
+
+    List<Quiz> findQuizzesByChapterId(
+            String chapterId);
+
+    void deleteQuizById(
+            String quizId);
+
+    // =========================================================================
+    // Quiz Question
+    // =========================================================================
+
+    QuizQuestion save(
+            QuizQuestion quizQuestion);
+
+    List<QuizQuestion> findQuizQuestionsByQuizId(
+            String quizId);
+
+    void deleteQuizQuestionsByQuizId(
+            String quizId);
+
+    // =========================================================================
+    // Option
+    // =========================================================================
+
+    Option save(
+            Option option);
+
+    Optional<Option> findOptionById(
+            String optionId);
+
+    List<Option> findOptionsByQuestionId(
+            String questionId);
+
+    // =========================================================================
+    // Attempt
+    // =========================================================================
+
+    Attempt save(
+            Attempt attempt);
+
+    Optional<Attempt> findAttemptById(
+            String attemptId);
+
+    List<Attempt> findAttemptsByUserId(
+            String userId);
+
+    // =========================================================================
+    // Response
+    // =========================================================================
+
+    Response save(
+            Response response);
+
+    List<Response> findResponsesByAttemptId(
+            String attemptId);
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/service/AttemptMapper.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.service;
+
+import java.util.List;
+
+import org.mapstruct.Mapper;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.StartQuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+
+@Mapper(componentModel = "spring")
+public interface AttemptMapper {
+
+    StartQuizResponse toStartQuizResponse(
+            Attempt attempt);
+
+    QuizResultResponse toQuizResultResponse(
+            Attempt attempt);
+
+    List<QuizResultResponse> toQuizResultResponseList(
+            List<Attempt> attempts);
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/service/AttemptService.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.service;
+
+import java.util.List;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.StartQuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SubmitQuizRequest;
+
+public interface AttemptService {
+    //Tạo lần thử mới
+    StartQuizResponse startQuiz(
+        String userId,
+        String quizId);
+    //Nộp bài
+    QuizResultResponse submitQuiz(
+            SubmitQuizRequest request);
+    //Xem lại bài cũ
+    QuizResultResponse getResult(
+            String attemptId);
+    //Xem lịch sử làm bài
+    List<QuizResultResponse> getUserResults(
+            String userId);
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/service/QuestionMapper.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.service;
+
+import java.util.List;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
+
+@Mapper(componentModel = "spring")
+public interface QuestionMapper {
+
+    @Mapping(target = "subjectId", source = "subject.subjectId")
+    @Mapping(target = "chapterId", source = "chapter.chapterId")
+    QuestionResponse toResponse(Question question);
+
+    List<QuestionResponse> toResponseList(List<Question> questions);
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/service/QuestionService.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.service;
+
+import java.util.List;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuestionRequest;
+
+public interface QuestionService {
+    //Tạo câu hỏi
+    QuestionResponse createQuestion(
+            CreateQuestionRequest request);
+    //Cập nhật câu hỏi
+    void updateQuestion(
+            String questionId,
+            UpdateQuestionRequest request);
+    //Xóa câu hỏi
+    void deleteQuestion(
+            String questionId);
+    //Lấy câu hỏi = id
+    QuestionResponse getQuestionById(
+            String questionId);
+    //Lấy toàn bộ câu hỏi của chương
+    List<QuestionResponse> getQuestionsByChapter(
+            String chapterId);
+
+    //Khá chắc là sau này cần lấy toàn bộ câu hỏi thuộc kỹ năng
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/service/QuestionServiceImplement.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.service;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
+
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
+@Service
+@RequiredArgsConstructor
+public class QuestionServiceImplement implements QuestionService {
+
+    private final QuizRepository quizRepository;
+    private final ContentRepository contentRepository;
+    private final QuestionMapper mapper;
+
+    @Override
+    @Transactional
+    public QuestionResponse createQuestion(
+            CreateQuestionRequest request) {
+
+        Subject subject = contentRepository.findSubjectById(
+                request.getSubjectId())
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy môn học",
+                        HttpStatus.NOT_FOUND));
+
+        Chapter chapter = contentRepository.findChapterById(
+                request.getChapterId())
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy chương học",
+                        HttpStatus.NOT_FOUND));
+
+        Question question = Question.create(
+                subject,
+                chapter,
+                request.getContent(),
+                request.getExplaination(),
+                request.getDifficultyB());
+
+        quizRepository.save(question);
+
+        for (var opt : request.getOptions()) {
+
+            Option option = Option.create(
+                    question.getQuestionId(),
+                    opt.getContent(),
+                    opt.isCorrected());
+
+            quizRepository.save(option);
+        }
+
+        return mapper.toResponse(question);
+    }
+
+    @Override
+    @Transactional
+    public void updateQuestion(
+            String questionId,
+            UpdateQuestionRequest request) {
+
+        Question question = quizRepository.findQuestionById(
+                questionId)
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy câu hỏi",
+                        HttpStatus.NOT_FOUND));
+
+        question = Question.builder()
+                .questionId(question.getQuestionId())
+                .subject(question.getSubject())
+                .chapter(question.getChapter())
+                .content(request.getContent())
+                .explaination(request.getExplaination())
+                .difficultyB(request.getDifficultyB())
+                .createdAt(question.getCreatedAt())
+                .isActive(question.isActive())
+                .build();
+
+        quizRepository.save(question);
+    }
+
+    @Override
+    @Transactional
+    public void deleteQuestion(String questionId) {
+
+        quizRepository.deleteQuestionById(questionId);
+    }
+
+    @Override
+    public QuestionResponse getQuestionById(String questionId) {
+
+        return mapper.toResponse(
+                quizRepository.findQuestionById(questionId)
+                        .orElseThrow(() -> new AppException(
+                                "Không tìm thấy câu hỏi",
+                                HttpStatus.NOT_FOUND)));
+    }
+
+    @Override
+    public List<QuestionResponse> getQuestionsByChapter(
+            String chapterId) {
+
+        return mapper.toResponseList(
+                quizRepository.findQuestionsByChapterId(chapterId));
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/service/QuizMapper.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.service;
+
+import java.util.List;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+
+@Mapper(componentModel = "spring")
+public interface QuizMapper {
+
+    @Mapping(target = "subjectId", source = "subject.subjectId")
+    @Mapping(target = "chapterId", source = "chapter.chapterId")
+    QuizResponse toResponse(Quiz quiz);
+
+    List<QuizResponse> toResponseList(List<Quiz> quizzes);
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/service/QuizService.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.service;
+
+import java.util.List;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuizRequest;
+
+public interface QuizService {
+    //Tạo đề
+    QuizResponse createQuiz(
+            CreateQuizRequest request);
+    //Sửa đề
+    void updateQuiz(
+            String quizId,
+            UpdateQuizRequest request);
+    //Xóa đề
+    void deleteQuiz(
+            String quizId);
+    //Lấy đề
+    QuizResponse getQuizById(
+            String quizId);
+    //Lấy đề theo chương
+    List<QuizResponse> getQuizzesByChapter(
+            String chapterId);
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/service/QuizServiceImplement.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.service;
+
+import java.util.Collections;
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
+
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
+@Service
+@RequiredArgsConstructor
+public class QuizServiceImplement implements QuizService {
+
+    private final QuizRepository quizRepository;
+    private final ContentRepository contentRepository;
+    private final QuizMapper mapper;
+
+    @Override
+    @Transactional
+    public QuizResponse createQuiz(
+            CreateQuizRequest request) {
+
+        Subject subject = contentRepository.findSubjectById(
+                request.getSubjectId())
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy môn học",
+                        HttpStatus.NOT_FOUND));
+
+        Chapter chapter = contentRepository.findChapterById(
+                request.getChapterId())
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy chương học",
+                        HttpStatus.NOT_FOUND));
+
+        List<Question> questions = quizRepository.findQuestionsByChapterId(
+                chapter.getChapterId());
+
+        if (questions.isEmpty()) {
+            throw new AppException(
+                    "Không có câu hỏi",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        Collections.shuffle(questions);
+
+        List<Question> selected = questions.stream()
+                .limit(request.getTotalQuestion())
+                .toList();
+
+        Quiz quiz = Quiz.create(
+                subject,
+                chapter,
+                request.getName(),
+                selected.size(),
+                request.getType(),
+                request.getDuration());
+
+        quizRepository.save(quiz);
+
+        int order = 1;
+
+        for (Question q : selected) {
+
+            quizRepository.save(
+                    QuizQuestion.builder()
+                            .quiz(quiz)
+                            .question(q)
+                            .indexOrder(order++)
+                            .build());
+        }
+
+        return mapper.toResponse(quiz);
+    }
+
+    @Override
+    @Transactional
+    public void updateQuiz(
+            String quizId,
+            UpdateQuizRequest request) {
+
+        Quiz quiz = quizRepository.findQuizById(
+                quizId)
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy quiz",
+                        HttpStatus.NOT_FOUND));
+
+        Quiz updated = Quiz.builder()
+                .quizId(quiz.getQuizId())
+                .subject(quiz.getSubject())
+                .chapter(quiz.getChapter())
+                .name(request.getName())
+                .type(quiz.getType())
+                .totalQuestion(quiz.getTotalQuestion())
+                .duration(request.getDuration())
+                .build();
+
+        quizRepository.save(updated);
+    }
+
+    @Override
+    @Transactional
+    public void deleteQuiz(String quizId) {
+
+        quizRepository.deleteQuizById(quizId);
+        quizRepository.deleteQuizQuestionsByQuizId(quizId);
+    }
+
+    @Override
+    public QuizResponse getQuizById(String quizId) {
+
+        return mapper.toResponse(
+                quizRepository.findQuizById(quizId)
+                        .orElseThrow(() -> new AppException(
+                                "Không tìm thấy quiz",
+                                HttpStatus.NOT_FOUND)));
+    }
+
+    @Override
+    public List<QuizResponse> getQuizzesByChapter(
+            String chapterId) {
+
+        return mapper.toResponseList(
+                quizRepository.findQuizzesByChapterId(chapterId));
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/quiz/service/AttemptServiceImplement.java ===
+package vn.id.quiz.quizcitbackend.modules.quiz.service;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse;
+import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SkillResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SkillThetaData;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.StartQuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SubmitAnswerRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SubmitQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
+@Service
+@RequiredArgsConstructor
+public class AttemptServiceImplement
+        implements AttemptService {
+
+    private final QuizRepository quizRepository;
+    private final AttemptMapper mapper;
+    private final ProgressRepository progressRepository;
+
+    private final AIService aiService;
+
+    @Override
+    @Transactional
+    public StartQuizResponse startQuiz(
+            String userId,
+            String quizId) {
+
+        Quiz quiz = quizRepository.findQuizById(quizId)
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy đề thi",
+                        HttpStatus.NOT_FOUND));
+
+        List<QuizQuestion> questions = quizRepository.findQuizQuestionsByQuizId(
+                quizId);
+
+        if (questions.isEmpty()) {
+            throw new AppException(
+                    "Đề thi không có câu hỏi",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        Attempt attempt = Attempt.create(
+                userId,
+                quizId,
+                questions.size());
+
+        quizRepository.save(attempt);
+
+        return mapper.toStartQuizResponse(attempt);
+    }
+
+    @Override
+    @Transactional
+    public QuizResultResponse submitQuiz(
+            SubmitQuizRequest request) {
+        // Kiếm lần thử để tạo bài nộp
+        Attempt attempt = quizRepository
+                .findAttemptById(
+                        request.getAttemptId())
+                .orElseThrow(
+                        () -> new AppException(
+                                "Không tìm thấy attempt",
+                                HttpStatus.NOT_FOUND));
+        // Tạo danh sách các skill có trong bài
+        Map<String, SkillThetaData> skillMap = new HashMap<>();
+
+        // Duyệt đáp án
+        int correctCount = 0;
+
+        for (SubmitAnswerRequest answer : request.getAnswers()) {
+            Question question = quizRepository
+                    .findQuestionById(
+                            answer.getQuestionId())
+                    .orElseThrow();
+            Option option = quizRepository
+                    .findOptionById(
+                            answer.getOptionId())
+                    .orElseThrow();
+            boolean correct = option.isCorrected();
+            Response response = Response.create(
+                    attempt.getAttemptId(),
+                    question.getQuestionId(),
+                    option.getOptionId(),
+                    correct);
+            quizRepository.save(response);
+            if (correct) {
+                correctCount++;
+            }
+            List<QuestionSkill> mappings = progressRepository
+                    .findQuestionSkillsByQuestionId(
+                            question.getQuestionId());
+            for (QuestionSkill qs : mappings) {
+
+                SkillThetaData data = skillMap.computeIfAbsent(
+                        qs.getSkillId(),
+                        id -> new SkillThetaData());
+
+                data.getResponses()
+                        .add(correct ? 1 : 0);
+
+                data.getDifficulties()
+                        .add(question.getDifficultyB());
+
+                data.getWeights()
+                        .add(1.0);
+            }
+        }
+        Map<String, Double> skillThetaMap = new HashMap<>();
+
+        for (var entry : skillMap.entrySet()) {
+
+            String skillId = entry.getKey();
+
+            SkillThetaData data = entry.getValue();
+
+            double theta = aiService.estimateTheta(
+                    data.getResponses(),
+                    data.getDifficulties(),
+                    data.getWeights());
+
+            skillThetaMap.put(
+                    skillId,
+                    theta);
+
+            UserSkillAbility ability = progressRepository
+                    .findUserSkillAbility(
+                            attempt.getUserId(),
+                            skillId)
+                    .orElse(null);
+
+            double oldTheta = 0.0;
+
+            if (ability == null) {
+
+                ability = UserSkillAbility.create(
+                        attempt.getUserId(),
+                        skillId);
+
+            } else {
+
+                oldTheta = ability.getTheta();
+            }
+
+            ability.updateAbility(
+                    theta,
+                    0.0);
+
+            progressRepository.save(
+                    ability);
+
+            AbilityHistory history = AbilityHistory.create(
+                    attempt.getUserId(),
+                    skillId,
+                    theta,
+                    theta - oldTheta,
+                    0.0,
+                    attempt.getAttemptId());
+
+            progressRepository.save(
+                    history);
+        }
+        double overallTheta = skillThetaMap.values()
+                .stream()
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElse(0.0);
+        double rawScore = (double) correctCount
+                / attempt.getTotalQuestion();
+        attempt.complete(
+                rawScore,
+                overallTheta);
+
+        quizRepository.save(
+                attempt);
+        return mapper.toQuizResultResponse(
+                attempt);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuizResultResponse getResult(
+            String attemptId) {
+
+        Attempt attempt = quizRepository
+                .findAttemptById(attemptId)
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy kết quả bài thi",
+                        HttpStatus.NOT_FOUND));
+
+        List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByAttemptId(
+                attemptId);
+
+        List<SkillResultResponse> skillResults = histories.stream()
+                .map(history -> SkillResultResponse.builder()
+                        .skillId(history.getSkillId())
+                        .theta(history.getTheta())
+                        .standardError(
+                                history.getStandardError())
+                        .build())
+                .toList();
+
+        return QuizResultResponse.builder()
+                .attemptId(attempt.getAttemptId())
+                .quizId(attempt.getQuizId())
+                .rawScore(attempt.getRawScore())
+                .totalQuestion(attempt.getTotalQuestion())
+                .overallTheta(attempt.getOverallTheta())
+                .skillResults(skillResults)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<QuizResultResponse> getUserResults(
+            String userId) {
+
+        List<Attempt> attempts = quizRepository.findAttemptsByUserId(
+                userId);
+
+        return mapper.toQuizResultResponseList(
+                attempts);
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/ContentModule.java ===
+package vn.id.quiz.quizcitbackend.modules.content;
+
+import lombok.Getter;
+import org.springframework.context.annotation.Configuration;
+import vn.id.quiz.quizcitbackend.core.module.AppModule;
+@Getter
+@Configuration
+public class ContentModule implements AppModule {
+    private final String name = "Content Module";
+    @Override
+    public void initialize() {
+
+    }
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/controller/ContentController.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import vn.id.quiz.quizcitbackend.modules.content.service.ContentService;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
+import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api") // Đổi thành /api để quản lý chung các resource phẳng
+@RequiredArgsConstructor
+@Validated
+public class ContentController {
+    private final ContentService subjectUseCase;
+
+    // =========================================================================
+    // SUBJECT ENDPOINTS (/api/subjects)
+    // =========================================================================
+
+    @GetMapping("/subjects")
+    public ResponseEntity<ApiResponse<List<SubjectResponse>>> getAllSubject() {
+        List<SubjectResponse> responses = subjectUseCase.getAllSubject();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    @GetMapping("/subjects/{subjectId}")
+    public ResponseEntity<ApiResponse<SubjectResponse>> getSubjectById(@PathVariable String subjectId) {
+        SubjectResponse response = subjectUseCase.getSubjectById(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/subjects")
+    public ResponseEntity<ApiResponse<SubjectResponse>> createSubject(
+            @Valid @RequestBody CreateSubjectRequest request
+    ) {
+        SubjectResponse response = subjectUseCase.createSubject(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    @PutMapping("/subjects/{subjectId}")
+    public ResponseEntity<ApiResponse<Void>> updateSubject(
+            @PathVariable String subjectId,
+            @Valid @RequestBody UpdateSubjectRequest request
+    ) {
+        subjectUseCase.updateSubject(subjectId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật học phần thành công", null));
+    }
+
+    @DeleteMapping("/subjects/{subjectId}")
+    public ResponseEntity<ApiResponse<Void>> deleteSubject(@PathVariable String subjectId) {
+        subjectUseCase.deleteSubject(subjectId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success("Đã xóa thành công học phần", null));
+    }
+
+    // =========================================================================
+    // CHAPTER ENDPOINTS (/api/chapters)
+    // =========================================================================
+
+    // Nested Route: Lấy danh sách chương CỦA 1 môn học
+    @GetMapping("/subjects/{subjectId}/chapters")
+    public ResponseEntity<ApiResponse<List<ChapterResponse>>> getAllChapters(@PathVariable String subjectId) {
+        List<ChapterResponse> response = subjectUseCase.getAllChapters(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Nested Route: Thêm chương VÀO 1 môn học
+    @PostMapping("/subjects/{subjectId}/chapters")
+    public ResponseEntity<ApiResponse<ChapterResponse>> addChapter(
+            @PathVariable String subjectId,
+            @Valid @RequestBody CreateChapterRequest request
+    ) {
+        ChapterResponse response = subjectUseCase.addChapter(subjectId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    // Flat Route: Lấy chi tiết 1 chương bằng ID
+    @GetMapping("/chapters/{chapterId}")
+    public ResponseEntity<ApiResponse<ChapterResponse>> getChapterById(@PathVariable String chapterId) {
+        ChapterResponse response = subjectUseCase.getChapterById(chapterId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Flat Route: Cập nhật chương
+    @PutMapping("/chapters/{chapterId}")
+    public ResponseEntity<ApiResponse<Void>> updateChapter(
+            @PathVariable String chapterId,
+            @Valid @RequestBody UpdateChapterRequest request
+    ) {
+        subjectUseCase.updateChapter(chapterId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật chương thành công", null));
+    }
+
+    // Flat Route: Xóa chương
+    @DeleteMapping("/chapters/{chapterId}")
+    public ResponseEntity<ApiResponse<Void>> deleteChapter(@PathVariable String chapterId) {
+        subjectUseCase.deleteChapter(chapterId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success("Đã xóa chương thành công", null));
+    }
+
+    // =========================================================================
+    // THEORY ENDPOINTS (/api/theories)
+    // =========================================================================
+
+    // Nested Route: Lấy danh sách lý thuyết CỦA 1 chương
+    @GetMapping("/chapters/{chapterId}/theories")
+    public ResponseEntity<ApiResponse<List<TheoryResponse>>> getAllTheories(@PathVariable String chapterId) {
+        List<TheoryResponse> response = subjectUseCase.getAllTheories(chapterId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Nested Route: Thêm lý thuyết VÀO 1 chương
+    @PostMapping("/chapters/{chapterId}/theories")
+    public ResponseEntity<ApiResponse<TheoryResponse>> addTheory(
+            @PathVariable String chapterId,
+            @Valid @RequestBody CreateTheoryRequest request
+    ) {
+        TheoryResponse response = subjectUseCase.addTheory(chapterId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    // Flat Route: Lấy chi tiết lý thuyết
+    @GetMapping("/theories/{theoryId}")
+    public ResponseEntity<ApiResponse<TheoryResponse>> getTheoryById(@PathVariable String theoryId) {
+        TheoryResponse response = subjectUseCase.getTheoryById(theoryId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // Flat Route: Cập nhật lý thuyết
+    @PutMapping("/theories/{theoryId}")
+    public ResponseEntity<ApiResponse<Void>> updateTheory(
+            @PathVariable String theoryId,
+            @Valid @RequestBody UpdateTheoryRequest request
+    ) {
+        subjectUseCase.updateTheory(theoryId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật nội dung lý thuyết thành công", null));
+    }
+
+    // Flat Route: Xóa lý thuyết
+    @DeleteMapping("/theories/{theoryId}")
+    public ResponseEntity<ApiResponse<Void>> deleteTheory(@PathVariable String theoryId) {
+        subjectUseCase.deleteTheory(theoryId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(ApiResponse.success("Đã xóa nội dung lý thuyết thành công", null));
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/ChangeSubjectRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+public record ChangeSubjectRequest (
+
+        String sourceSubject,
+        String targetSubject
+){
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/ChapterResponse.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import java.time.ZonedDateTime;
+
+public record ChapterResponse(
+        String chapterId,
+        String subjectId,
+        String name,
+        ZonedDateTime createdAt
+) {
+    public ChapterResponse{
+        if(createdAt==null){
+            createdAt=ZonedDateTime.now();
+        }
+    }
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/CreateChapterRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record CreateChapterRequest (
+
+        @NotBlank(message="Tên chương không được để trống")
+        @Size(max=200, message="Tên chương không được vượt quá 200 ký tự")
+        String name
+){
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/CreateSubjectRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+
+public record CreateSubjectRequest(
+        @NotBlank(message = "Mã học phần không được để trống")
+        @Size(max = 20, message = "Mã học phần không được vượt quá 20 ký tự")
+        String courseCode,
+        @NotBlank(message="Tên học phần không được để trống")
+        @Size(max = 200, message = "Tên học phần không được vượt quá 200 ký tự")
+        String name,
+        String description
+) {
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/CreateTheoryRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record CreateTheoryRequest(
+        @NotBlank(message = "Nội dung lý thuyết không được để trống")
+        String content
+) {
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/SubjectResponse.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import java.time.ZonedDateTime;
+
+public record SubjectResponse(
+        String subjectId,
+        String courseCode,
+        String name,
+        String description,
+        ZonedDateTime createdAt
+) {
+    public SubjectResponse{
+        if(createdAt==null){
+            createdAt=ZonedDateTime.now();
+        }
+    }
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/TheoryResponse.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import java.time.ZonedDateTime;
+
+public record TheoryResponse (
+    String theoryId,
+    String chapterId,
+    String content,
+    ZonedDateTime createdAt
+){
+    public TheoryResponse{
+        if(createdAt==null){
+            createdAt=ZonedDateTime.now();
+        }
+    }
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/UpdateChapterRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record UpdateChapterRequest(
+        @NotBlank(message="Tên chương không được để trống")
+        @Size(max=200, message="Tên chương không được vượt quá 200 ký tự")
+        String name
+) {
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/UpdateSubjectRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record UpdateSubjectRequest (
+        @NotBlank(message = "Mã học phần không được để trống")
+        @Size(max = 20, message = "Mã học phần không được vượt quá 20 ký tự")
+        String courseCode,
+        @NotBlank(message="Tên học phần không được để trống")
+        @Size(max = 200, message = "Tên học phần không được vượt quá 200 ký tự")
+        String name,
+        String description
+) {
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/dto/UpdateTheoryRequest.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record UpdateTheoryRequest(
+        @NotBlank(message = "Nội dung lý thuyết không được để trống")
+        String content
+) {
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/model/Subject.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.model;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "subjects")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Subject {
+    @Id
+    @Column(name = "subject_id", length = 50) // cơ bản mặc định length của UUID là 36 nhưng để vầy đề phòng đổi bên cung cấp UUID
+    private String subjectId;
+
+    @Column(name = "course_code", unique = true, nullable = false, length = 20)
+    private String courseCode;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+    @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL, orphanRemoval = true) //map với field subject trong chapter
+
+    public static Subject create(String courseCode, String name, String description){
+        if(courseCode==null||courseCode.isBlank()){
+            throw new IllegalArgumentException("Mã học phần không được để trống");
+        }
+        if(name==null||name.isBlank()){
+            throw new IllegalArgumentException("Tên học phần không được để trống");
+        }
+        return Subject.builder()
+                .subjectId(UUID.randomUUID().toString()) // Chủ động sinh ID
+                .courseCode(courseCode)
+                .name(name)
+                .description(description)
+                .createdAt(ZonedDateTime.now())
+                .build();
+    }
+    public void updateSubject(String courseCode, String name, String description){
+        this.courseCode = courseCode;
+        this.name = name;
+        this.description = description;
+    }
+
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/model/Theory.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.ZonedDateTime;
+import java.util.UUID;
+
+@Entity
+@Table(name = "theories")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Theory {
+    @Id
+    @Column(name = "theory_id", length = 50)
+    private String theoryId;
+
+    @Column(name = "chapter_id", nullable = false)
+    private String chapterId;
+
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String content;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+    public static Theory create(String chapterId, String content) {
+        return Theory.builder()
+                .theoryId(UUID.randomUUID().toString())
+                .chapterId(chapterId)
+                .content(content)
+                .createdAt(ZonedDateTime.now())
+                .build();
+    }
+    public void updateTheory(String content){
+        this.content = content;
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/presentation/model/Chapter.java ===
+package vn.id.quiz.quizcitbackend.modules.content.presentation.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "chapters")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
+public class Chapter {
+    @Id
+    @Column(name = "chapter_id", length = 50)
+    private String chapterId;
+
+    @Column(name = "subject_id", nullable = false, length = 50)
+    private String subjectId;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(name = "created_at")
+    private ZonedDateTime createdAt;
+
+
+    public static Chapter create(String subjectId, String name){
+        return Chapter.builder()
+                .chapterId(UUID.randomUUID().toString())
+                .subjectId(subjectId)
+                .name(name)
+                .createdAt(ZonedDateTime.now())
+                .build();
+    }
+    public void updateChapter(String name){
+        this.name=name;
+    }
+}\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/repository/persistence/JpaChapterRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.content.repository.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+
+import java.util.List;
+
+public interface JpaChapterRepository extends JpaRepository<Chapter, String> {
+    List<Chapter> findBySubjectId(String subjectId);
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/repository/persistence/JpaTheoryRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.content.repository.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
+
+import java.util.List;
+
+public interface JpaTheoryRepository extends JpaRepository<Theory, String> {
+    List<Theory> findByChapterId(String chapterId);
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/repository/persistence/ContentRepositoryAdapter.java ===
+package vn.id.quiz.quizcitbackend.modules.content.repository.persistence;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
+import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+public class ContentRepositoryAdapter implements ContentRepository {
+    private final JpaSubjectRepository jpaSubjectRepository;
+    private final JpaChapterRepository jpaChapterRepository;
+    private final JpaTheoryRepository jpaTheoryRepository;
+
+
+    @Override
+    public List<Subject> findAllSubject(){return jpaSubjectRepository.findAll();}
+
+    @Override
+    public List<Chapter> findAllChapter(String subjectId) {
+        return jpaChapterRepository.findBySubjectId(subjectId);
+    }
+
+    @Override
+    public List<Theory> findAllTheory(String chapterId) {
+        return jpaTheoryRepository.findByChapterId(chapterId);
+    }
+
+    @Override
+    public Subject save(Subject subject) { return jpaSubjectRepository.save(subject); }
+
+    @Override
+    public Chapter save(Chapter chapter) {
+        return jpaChapterRepository.save(chapter);
+    }
+
+    @Override
+    public Theory save(Theory theory) {
+        return jpaTheoryRepository.save(theory);
+    }
+
+    @Override
+    public Optional<Subject> findSubjectById(String id) { return jpaSubjectRepository.findById(id); }
+
+
+    @Override
+    public boolean existsByCourseCode(String courseCode) {return jpaSubjectRepository.existsByCourseCode(courseCode);}
+
+    @Override
+    public boolean existsBySubjectId(String subjectId){return jpaSubjectRepository.existsById(subjectId);}
+
+    @Override
+    public boolean existsByChapterId(String chapterId) {
+        return jpaChapterRepository.existsById(chapterId);
+    }
+
+    @Override
+    public boolean existsByTheoryId(String theoryId) {
+        return jpaTheoryRepository.existsById(theoryId);
+    }
+
+    @Override
+    public void deleteSubjectById(String subjectId){
+        jpaSubjectRepository.deleteById(subjectId);}
+
+    @Override
+    public void deleteChapterById(String chapterId) {
+        jpaChapterRepository.deleteById(chapterId);
+    }
+
+    @Override
+    public void deleteTheoryById(String theoryId) {
+        jpaTheoryRepository.deleteById(theoryId);
+    }
+
+
+
+
+    @Override
+    public Optional<Theory> findTheoryById(String id) {
+        return jpaTheoryRepository.findById(id);
+    }
+
+    @Override
+    public Optional<Chapter> findChapterById(String id) {
+        return jpaChapterRepository.findById(id);
+    }
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/repository/persistence/JpaSubjectRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.content.repository.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
+
+import java.util.List;
+
+public interface JpaSubjectRepository extends JpaRepository<Subject, String> {
+    boolean existsByCourseCode(String courseCode);
+}
+
+
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/repository/ContentRepository.java ===
+package vn.id.quiz.quizcitbackend.modules.content.repository;
+
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
+
+import java.util.List;
+import java.util.Optional;
+
+
+public interface ContentRepository {
+    List<Subject> findAllSubject();
+    List<Chapter> findAllChapter(String subjectId);
+    List<Theory> findAllTheory(String chapterId);
+
+    Subject save(Subject subject);
+    Chapter save(Chapter chapter);
+    Theory save(Theory theory);
+
+    Optional<Subject> findSubjectById(String id);
+    Optional<Theory> findTheoryById(String id);
+    Optional<Chapter> findChapterById(String id);
+
+    boolean existsByCourseCode(String courseCode);
+    boolean existsBySubjectId(String subjectId);
+    boolean existsByChapterId(String chapterId);
+    boolean existsByTheoryId(String theoryId);
+
+
+    void deleteSubjectById(String subjectId);
+    void deleteChapterById(String chapterId);
+    void deleteTheoryById(String theoryId);
+
+
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/service/ContentService.java ===
+package vn.id.quiz.quizcitbackend.modules.content.service;
+
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
+
+import java.util.List;
+
+
+public interface ContentService {
+    List<SubjectResponse> getAllSubject();
+    SubjectResponse getSubjectById(String subjectId);
+    ChapterResponse getChapterById(String chapterId);
+    TheoryResponse getTheoryById(String theoryId);
+    SubjectResponse createSubject(CreateSubjectRequest request);
+    ChapterResponse addChapter(String subjectId, CreateChapterRequest request);
+    TheoryResponse addTheory(String chapterId, CreateTheoryRequest request);
+    void deleteSubject(String subjectId);
+    List<TheoryResponse> getAllTheories(String chapterId);
+    List<ChapterResponse> getAllChapters(String subjectId);
+    void updateSubject(String subjectId, UpdateSubjectRequest request);
+    void updateChapter(String chapterId, UpdateChapterRequest request);
+    void updateTheory(String theoryId, UpdateTheoryRequest request);
+    void deleteChapter(String chapterId);
+    void deleteTheory(String theoryId);
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/service/ContentServiceImplement.java ===
+package vn.id.quiz.quizcitbackend.modules.content.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
+import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class ContentServiceImplement implements ContentService {
+    private final ContentRepository contentRepository;
+    private final ContentMapper mapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SubjectResponse> getAllSubject(){
+        List<Subject> subjects = contentRepository.findAllSubject();
+        return mapper.toSubjectResponseList(subjects);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public SubjectResponse getSubjectById(String subjectId){
+
+        Subject subject = contentRepository.findSubjectById(subjectId)
+                .orElseThrow(()-> new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND));
+        return mapper.toSubjectResponse(subject);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public ChapterResponse getChapterById(String chapterId){
+        Chapter chapter = contentRepository.findChapterById(chapterId)
+                .orElseThrow(()-> new AppException("Không tìm thấy chương được yêu cầu", HttpStatus.NOT_FOUND));
+        return mapper.toChapterResponse(chapter);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public TheoryResponse getTheoryById(String theoryId){
+        Theory theory = contentRepository.findTheoryById(theoryId)
+                .orElseThrow(()-> new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu", HttpStatus.NOT_FOUND));
+        return mapper.toTheoryResponse(theory);
+    }
+
+    @Override
+    @Transactional
+    public SubjectResponse createSubject(CreateSubjectRequest request){
+
+        if(contentRepository.existsByCourseCode(request.courseCode())){
+            throw new AppException("Mã học phần đã tồn tại.", HttpStatus.CONFLICT);
+        }
+        Subject subject = Subject.create(request.courseCode(), request.name(), request.description());
+        return mapper.toSubjectResponse(contentRepository.save(subject));
+    }
+
+    @Override
+    @Transactional
+    public ChapterResponse addChapter(String subjectId, CreateChapterRequest request){
+        if(!contentRepository.existsBySubjectId(subjectId)){
+            throw new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND);
+        }
+        Chapter response = Chapter.create(subjectId, request.name());
+        contentRepository.save(response);
+        return mapper.toChapterResponse(response);
+    }
+    @Override
+    @Transactional
+    public TheoryResponse addTheory(String chapterId, CreateTheoryRequest request){
+        if(!contentRepository.existsByChapterId(chapterId)){
+            throw new AppException("Không tìm thấy chương được yêu cầu", HttpStatus.NOT_FOUND);
+        }
+
+        Theory response = Theory.create(chapterId, request.content());
+        contentRepository.save(response);
+        return mapper.toTheoryResponse(response);
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChapterResponse> getAllChapters(String subjectId){
+        if(!contentRepository.existsBySubjectId(subjectId)){
+            throw new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND);
+        }
+        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        return mapper.toChapterResponseList(chapters);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TheoryResponse> getAllTheories(String chapterId){
+        if(!contentRepository.existsByChapterId(chapterId)){
+            throw new AppException("Không tìm thấy chương được yêu cầu", HttpStatus.NOT_FOUND);
+        }
+        List<Theory> theories = contentRepository.findAllTheory(chapterId);
+        return mapper.toTheoryResponseList(theories);
+    }
+    @Transactional
+    @Override
+    public void updateSubject(String subjectId, UpdateSubjectRequest request){
+        Subject subject = contentRepository.findSubjectById(subjectId)
+                .orElseThrow(()-> new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND));
+        subject.updateSubject(request.courseCode(), request.name(), request.description());
+        contentRepository.save(subject);
+    }
+    @Transactional
+    @Override
+    public void updateChapter(String chapterId, UpdateChapterRequest request){
+        Chapter chapter = contentRepository.findChapterById(chapterId)
+                        .orElseThrow(()->new AppException("Không tìm thấy chương được yêu cầu", HttpStatus.NOT_FOUND));
+
+        chapter.updateChapter(request.name());
+        contentRepository.save(chapter);
+    }
+    @Transactional
+    @Override
+    public void updateTheory(String theoryId, UpdateTheoryRequest request){
+        Theory theory = contentRepository.findTheoryById(theoryId)
+                .orElseThrow(()-> new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu", HttpStatus.NOT_FOUND));
+        theory.updateTheory(request.content());
+        contentRepository.save(theory);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSubject(String subjectId){
+        contentRepository.deleteSubjectById(subjectId);
+    }
+    @Override
+    @Transactional
+    public void deleteChapter(String chapterId) {
+        contentRepository.deleteChapterById(chapterId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteTheory(String theoryId) {
+        contentRepository.deleteTheoryById(theoryId);
+    }
+}
+\n
+// === FILE: src/main/java/vn/id/quiz/quizcitbackend/modules/content/service/ContentMapper.java ===
+package vn.id.quiz.quizcitbackend.modules.content.service;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.ChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.SubjectResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.TheoryResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
+
+import java.util.List;
+
+@Mapper(componentModel = "spring")
+public interface ContentMapper {
+    // --- Subject Mapping ---
+    SubjectResponse toSubjectResponse(Subject entity);
+
+    List<SubjectResponse> toSubjectResponseList(List<Subject> entities);
+
+    // --- Chapter Mapping ---
+    ChapterResponse toChapterResponse(Chapter entity);
+
+    List<ChapterResponse> toChapterResponseList(List<Chapter> entities);
+
+    // --- Theory Mapping ---
+    TheoryResponse toTheoryResponse(Theory entity);
+    
+
+    List<TheoryResponse> toTheoryResponseList(List<Theory> entities);
+
+}
+\n

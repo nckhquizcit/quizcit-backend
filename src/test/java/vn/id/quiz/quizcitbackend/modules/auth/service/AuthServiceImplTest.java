@@ -30,8 +30,7 @@ class AuthServiceImplTest {
     @Mock
     private AuthRepository authRepository;
 
-    private final AuthMapper authMapper = new AuthMapper() {
-    };
+    private final AuthMapper authMapper = new AuthMapper();
     private final PasswordService passwordService = new PasswordService();
     private final TokenService tokenService = new TokenService("test-secret-that-is-long-enough-for-hmac", 3600);
 

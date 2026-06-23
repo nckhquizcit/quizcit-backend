@@ -12,7 +12,7 @@ public interface JpaQuizRepository extends JpaRepository<Quiz, String>{
     Optional<Quiz> findByQuizId(
             String quizId);
 
-    List<Quiz> findByChapterChapterId(
+    List<Quiz> findByChapterId(
             String chapterId);
 
     void deleteByQuizId(

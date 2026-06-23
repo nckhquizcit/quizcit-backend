@@ -7,8 +7,8 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 
 public interface JpaQuizQuestionRepository
         extends JpaRepository<QuizQuestion, String> {
-            List<QuizQuestion> findByQuizQuizIdOrderByIndexOrder(String quizId);
+            List<QuizQuestion> findByQuizIdOrderByIndexOrder(String quizId);
 
-            void deleteByQuizQuizId(
+            void deleteByQuizId(
                     String quizId);
 }

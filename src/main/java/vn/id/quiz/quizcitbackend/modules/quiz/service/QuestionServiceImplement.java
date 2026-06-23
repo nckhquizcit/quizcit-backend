@@ -8,8 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
-import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
-import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
@@ -32,21 +30,19 @@ public class QuestionServiceImplement implements QuestionService {
     public QuestionResponse createQuestion(
             CreateQuestionRequest request) {
 
-        Subject subject = contentRepository.findSubjectById(
-                request.getSubjectId())
+        contentRepository.findSubjectById(request.getSubjectId())
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy môn học",
                         HttpStatus.NOT_FOUND));
 
-        Chapter chapter = contentRepository.findChapterById(
-                request.getChapterId())
+        contentRepository.findChapterById(request.getChapterId())
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy chương học",
                         HttpStatus.NOT_FOUND));
 
         Question question = Question.create(
-                subject,
-                chapter,
+                request.getSubjectId(),
+                request.getChapterId(),
                 request.getContent(),
                 request.getExplaination(),
                 request.getDifficultyB());
@@ -80,8 +76,8 @@ public class QuestionServiceImplement implements QuestionService {
 
         question = Question.builder()
                 .questionId(question.getQuestionId())
-                .subject(question.getSubject())
-                .chapter(question.getChapter())
+                .subjectId(question.getSubjectId())
+                .chapterId(question.getChapterId())
                 .content(request.getContent())
                 .explaination(request.getExplaination())
                 .difficultyB(request.getDifficultyB())

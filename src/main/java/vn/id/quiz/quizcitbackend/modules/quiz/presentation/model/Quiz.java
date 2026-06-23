@@ -5,9 +5,6 @@ import java.util.UUID;
 import jakarta.persistence.*;
 import lombok.*;
 
-import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
-import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
-
 @Entity
 @Table(name = "quizzes")
 @Getter
@@ -17,17 +14,16 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 public class Quiz {
 
     @Id
-    @Column(name = "quiz_id")
+    @Column(name = "quiz_id", length = 50)
     private String quizId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "subject_id")
-    private Subject subject; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
+    @Column(name = "subject_id", nullable = false, length = 50)
+    private String subjectId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "chapter_id")
-    private Chapter chapter; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
+    @Column(name = "chapter_id", nullable = false, length = 50)
+    private String chapterId;
 
+    @Column(name = "name", nullable = false)
     private String name;
 
     @Enumerated(EnumType.STRING)
@@ -40,17 +36,17 @@ public class Quiz {
     private int duration;
 
     public static Quiz create(
-            Subject subject,
-            Chapter chapter,
+            String subjectId,
+            String chapterId,
             String name,
             int totalQuestion,
             QuizType type,
-            int duration
-    ) {
+            int duration) {
+
         return Quiz.builder()
                 .quizId(UUID.randomUUID().toString())
-                .subject(subject)
-                .chapter(chapter)
+                .subjectId(subjectId)
+                .chapterId(chapterId)
                 .name(name)
                 .totalQuestion(totalQuestion)
                 .type(type)

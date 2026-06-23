@@ -9,8 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
-import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
-import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResponse;
@@ -34,20 +32,18 @@ public class QuizServiceImplement implements QuizService {
     public QuizResponse createQuiz(
             CreateQuizRequest request) {
 
-        Subject subject = contentRepository.findSubjectById(
-                request.getSubjectId())
+        contentRepository.findSubjectById(request.getSubjectId())
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy môn học",
                         HttpStatus.NOT_FOUND));
 
-        Chapter chapter = contentRepository.findChapterById(
-                request.getChapterId())
+        contentRepository.findChapterById(request.getChapterId())
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy chương học",
                         HttpStatus.NOT_FOUND));
 
         List<Question> questions = quizRepository.findQuestionsByChapterId(
-                chapter.getChapterId());
+                request.getChapterId());
 
         if (questions.isEmpty()) {
             throw new AppException(
@@ -62,8 +58,8 @@ public class QuizServiceImplement implements QuizService {
                 .toList();
 
         Quiz quiz = Quiz.create(
-                subject,
-                chapter,
+                request.getSubjectId(),
+                request.getChapterId(),
                 request.getName(),
                 selected.size(),
                 request.getType(),
@@ -76,11 +72,10 @@ public class QuizServiceImplement implements QuizService {
         for (Question q : selected) {
 
             quizRepository.save(
-                    QuizQuestion.builder()
-                            .quiz(quiz)
-                            .question(q)
-                            .indexOrder(order++)
-                            .build());
+                    QuizQuestion.create(
+                            quiz.getQuizId(),
+                            q.getQuestionId(),
+                            order++));
         }
 
         return mapper.toResponse(quiz);
@@ -100,8 +95,8 @@ public class QuizServiceImplement implements QuizService {
 
         Quiz updated = Quiz.builder()
                 .quizId(quiz.getQuizId())
-                .subject(quiz.getSubject())
-                .chapter(quiz.getChapter())
+                .subjectId(quiz.getSubjectId())
+                .chapterId(quiz.getChapterId())
                 .name(request.getName())
                 .type(quiz.getType())
                 .totalQuestion(quiz.getTotalQuestion())

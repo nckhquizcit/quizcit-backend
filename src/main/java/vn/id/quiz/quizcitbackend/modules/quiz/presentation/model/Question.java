@@ -2,8 +2,6 @@ package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
-import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;
@@ -16,24 +14,22 @@ import java.util.UUID;
 @Builder
 public class Question {
     @Id
-    @Column(name="question_id", length = 50)
+    @Column(name = "question_id", length = 50)
     private String questionId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "subject_id", nullable = false)
-    private Subject subject;
+    @Column(name = "subject_id", nullable = false, length = 50)
+    private String subjectId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "chapter_id", nullable = false)
-    private Chapter chapter;
+    @Column(name = "chapter_id", nullable = false, length = 50)
+    private String chapterId;
 
-    @Column(name="content", columnDefinition = "TEXT") // Thêm text để không bị tràng content của cột
+    @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
-    @Column(name="explaination", columnDefinition = "TEXT") // Thêm text để không bị tràng content của cột
-    private String explaination; // Đổi thành explaination để tránh trùng keyword với db
+    @Column(name = "explaination", columnDefinition = "TEXT")
+    private String explaination;
 
-    @Column(name="difficulty_b")
+    @Column(name = "difficulty_b")
     private double difficultyB;
 
     @Column(name = "created_at")
@@ -42,16 +38,22 @@ public class Question {
     @Column(name = "is_active")
     private boolean isActive;
 
-    public static Question create(Subject subject, Chapter chapter, String content, String explaination, double difficultyB){
+    public static Question create(
+            String subjectId,
+            String chapterId,
+            String content,
+            String explaination,
+            double difficultyB) {
+
         return Question.builder()
-        .questionId(UUID.randomUUID().toString())
-        .subject(subject)
-        .chapter(chapter)
-        .content(content)
-        .explaination(explaination)
-        .difficultyB(difficultyB)
-        .createdAt(ZonedDateTime.now())
-        .isActive(true)
-        .build();
+                .questionId(UUID.randomUUID().toString())
+                .subjectId(subjectId)
+                .chapterId(chapterId)
+                .content(content)
+                .explaination(explaination)
+                .difficultyB(difficultyB)
+                .createdAt(ZonedDateTime.now())
+                .isActive(true)
+                .build();
     }
 }

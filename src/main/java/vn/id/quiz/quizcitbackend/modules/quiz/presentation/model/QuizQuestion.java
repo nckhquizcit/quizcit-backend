@@ -1,6 +1,5 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,16 +12,27 @@ import lombok.*;
 public class QuizQuestion {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", length = 50)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quiz_id")
-    private Quiz quiz; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
+    @Column(name = "quiz_id", nullable = false, length = 50)
+    private String quizId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "question_id")
-    private Question question; //Đổi lại rồi, dùng ID chứ không cần nhét nguyên cái enity vô nữa
+    @Column(name = "question_id", nullable = false, length = 50)
+    private String questionId;
 
     @Column(name = "index_order")
     private int indexOrder;
+
+    public static QuizQuestion create(
+            String quizId,
+            String questionId,
+            int indexOrder) {
+
+        return QuizQuestion.builder()
+                .quizId(quizId)
+                .questionId(questionId)
+                .indexOrder(indexOrder)
+                .build();
+    }
 }

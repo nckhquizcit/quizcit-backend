@@ -1,13 +1,13 @@
 package vn.id.quiz.quizcitbackend.modules.auth.service;
 
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthResponse;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
 
-@Mapper(componentModel = "spring")
-public interface AuthMapper {
-    default AuthResponse toAuthResponse(User user, UserRole role, TokenDetails tokenDetails) {
+@Component
+public class AuthMapper {
+    public AuthResponse toAuthResponse(User user, UserRole role, TokenDetails tokenDetails) {
         if (user == null) {
             return null;
         }
