@@ -1,5 +1,6 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -7,6 +8,7 @@ import lombok.Setter;
 @Setter
 public class SubmitAnswerRequest {
 
+    @NotBlank(message = "questionId không được để trống")
     private String questionId;
 
     private String optionId;

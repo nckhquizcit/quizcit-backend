@@ -1,8 +1,12 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -10,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
-import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse;
 import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
@@ -76,7 +79,6 @@ public class AttemptServiceImplement
     @Transactional
     public QuizResultResponse submitQuiz(
             SubmitQuizRequest request) {
-        // Kiếm lần thử để tạo bài nộp
         Attempt attempt = quizRepository
                 .findAttemptById(
                         request.getAttemptId())
@@ -84,34 +86,92 @@ public class AttemptServiceImplement
                         () -> new AppException(
                                 "Không tìm thấy attempt",
                                 HttpStatus.NOT_FOUND));
-        // Tạo danh sách các skill có trong bài
-        Map<String, SkillThetaData> skillMap = new HashMap<>();
 
-        // Duyệt đáp án
-        int correctCount = 0;
+        if (request.getQuizId() != null && !request.getQuizId().isBlank()
+                && !attempt.getQuizId().equals(request.getQuizId())) {
+            throw new AppException(
+                    "Attempt không thuộc đề thi đang nộp",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        if (!quizRepository.findResponsesByAttemptId(attempt.getAttemptId()).isEmpty()) {
+            return getResult(attempt.getAttemptId());
+        }
+
+        List<QuizQuestion> quizQuestions = quizRepository.findQuizQuestionsByQuizId(
+                attempt.getQuizId());
+
+        Set<String> quizQuestionIds = quizQuestions.stream()
+                .map(QuizQuestion::getQuestionId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (quizQuestionIds.isEmpty()) {
+            throw new AppException(
+                    "Đề thi không có câu hỏi",
+                    HttpStatus.BAD_REQUEST);
+        }
+
+        Map<String, String> submittedAnswers = new HashMap<>();
 
         for (SubmitAnswerRequest answer : request.getAnswers()) {
+            if (!quizQuestionIds.contains(answer.getQuestionId())) {
+                throw new AppException(
+                        "Câu trả lời không thuộc đề thi đang nộp",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            submittedAnswers.putIfAbsent(
+                    answer.getQuestionId(),
+                    answer.getOptionId());
+        }
+
+        Map<String, SkillThetaData> skillMap = new HashMap<>();
+        int correctCount = 0;
+
+        for (String questionId : quizQuestionIds) {
             Question question = quizRepository
                     .findQuestionById(
-                            answer.getQuestionId())
-                    .orElseThrow();
-            Option option = quizRepository
-                    .findOptionById(
-                            answer.getOptionId())
-                    .orElseThrow();
-            boolean correct = option.isCorrected();
+                            questionId)
+                    .orElseThrow(() -> new AppException(
+                            "Không tìm thấy câu hỏi trong đề thi",
+                            HttpStatus.NOT_FOUND));
+
+            String optionId = submittedAnswers.get(questionId);
+            Option option = null;
+            boolean correct = false;
+
+            if (optionId != null && !optionId.isBlank()) {
+                option = quizRepository
+                        .findOptionById(
+                                optionId)
+                        .orElseThrow(() -> new AppException(
+                                "Không tìm thấy đáp án đã chọn",
+                                HttpStatus.NOT_FOUND));
+
+                if (!questionId.equals(option.getQuestionId())) {
+                    throw new AppException(
+                            "Đáp án đã chọn không thuộc câu hỏi trong đề thi",
+                            HttpStatus.BAD_REQUEST);
+                }
+
+                correct = option.isCorrected();
+            }
+
             Response response = Response.create(
                     attempt.getAttemptId(),
                     question.getQuestionId(),
-                    option.getOptionId(),
+                    option == null ? null : option.getOptionId(),
                     correct);
             quizRepository.save(response);
+
             if (correct) {
                 correctCount++;
             }
+
             List<QuestionSkill> mappings = progressRepository
                     .findQuestionSkillsByQuestionId(
                             question.getQuestionId());
+
             for (QuestionSkill qs : mappings) {
 
                 SkillThetaData data = skillMap.computeIfAbsent(
@@ -125,8 +185,9 @@ public class AttemptServiceImplement
                         .add(question.getDifficultyB());
 
                 data.getWeights()
-                        .add(1.0);
+                        .add(qs.getWeight());
             }
+
         }
         Map<String, Double> skillThetaMap = new HashMap<>();
 
@@ -166,6 +227,8 @@ public class AttemptServiceImplement
                 oldTheta = ability.getTheta();
             }
 
+            // TODO: standardError tạm để 0.0; sau này lấy từ EstimateThetaResponse.standardError
+            // khi AI Service trả về sai số chuẩn của ước lượng theta.
             ability.updateAbility(
                     theta,
                     0.0);
@@ -178,8 +241,10 @@ public class AttemptServiceImplement
                     skillId,
                     theta,
                     theta - oldTheta,
+                    // TODO: standardError tạm để 0.0; thay bằng giá trị thật từ AI khi có.
                     0.0,
                     attempt.getAttemptId());
+
 
             progressRepository.save(
                     history);
@@ -197,8 +262,7 @@ public class AttemptServiceImplement
 
         quizRepository.save(
                 attempt);
-        return mapper.toQuizResultResponse(
-                attempt);
+        return getResult(attempt.getAttemptId());
     }
 
     @Override

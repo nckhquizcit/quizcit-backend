@@ -27,7 +27,9 @@ import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse;
 @RequiredArgsConstructor
 public class AIClient {
 
-    private static final String ESTIMATE_PATH = "/api/v1/ai/estimate-theta";
+    // Khớp với endpoint thực tế của AI Service (AI/main.py -> @app.post("/estimate")).
+    private static final String ESTIMATE_PATH = "/estimate";
+
 
     private final RestClient aiRestClient;
 

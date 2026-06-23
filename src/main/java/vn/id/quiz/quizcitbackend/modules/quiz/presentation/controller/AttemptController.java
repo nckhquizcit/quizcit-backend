@@ -44,6 +44,21 @@ public class AttemptController {
                 ApiResponse.success(response));
     }
 
+    @PostMapping("/quizzes/{quizId}/attempts/{attemptId}/submit")
+    public ResponseEntity<ApiResponse<QuizResultResponse>> submitQuizForAttempt(
+            @PathVariable String quizId,
+            @PathVariable String attemptId,
+            @Valid @RequestBody SubmitQuizRequest request) {
+
+        request.setQuizId(quizId);
+        request.setAttemptId(attemptId);
+
+        QuizResultResponse response = attemptService.submitQuiz(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response));
+    }
+
     @GetMapping("/attempts/{attemptId}/result")
     public ResponseEntity<ApiResponse<QuizResultResponse>> getResult(
             @PathVariable String attemptId) {

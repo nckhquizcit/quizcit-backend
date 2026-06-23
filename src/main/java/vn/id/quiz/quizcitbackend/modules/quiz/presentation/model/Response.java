@@ -31,7 +31,7 @@ public class Response {
     @Column(name = "question_id", nullable = false, length = 50)
     private String questionId;
 
-    @Column(name = "option_id", nullable = false, length = 50)
+    @Column(name = "option_id", length = 50)
     private String optionId;
 
     @Column(name = "score")

@@ -12,11 +12,16 @@ import lombok.RequiredArgsConstructor;
 
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
+
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateOptionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.OptionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionSkillMappingRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionSkillResponse;
+
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
@@ -30,6 +35,8 @@ public class QuestionServiceImplement implements QuestionService {
     private final QuizRepository quizRepository;
     private final ContentRepository contentRepository;
     private final QuestionMapper mapper;
+    private final SkillRepository skillRepository;
+
 
     @Override
     @Transactional
@@ -178,12 +185,17 @@ public class QuestionServiceImplement implements QuestionService {
                             .toList();
                     QuestionResponse r = mapper.toResponse(q);
                     r.setOptions(optionResponses);
+                    // Task 1: map skill (kèm tên) để FE hiển thị popup skill.
+                    r.setSkills(toSkillResponses(
+                            quizRepository.findQuestionSkillsByQuestionId(
+                                    q.getQuestionId())));
                     return r;
                 })
                 .toList();
     }
 
     private List<OptionResponse> createOptionsForQuestion(
+
             String questionId,
             List<CreateOptionRequest> optionRequests) {
 
@@ -213,21 +225,28 @@ public class QuestionServiceImplement implements QuestionService {
         return correct.map(OptionResponse::getOptionId).orElse(null);
     }
 
-    private List<QuestionSkillMappingRequest> toSkillResponses(List<QuestionSkill> questionSkills) {
+    private List<QuestionSkillResponse> toSkillResponses(List<QuestionSkill> questionSkills) {
         if (questionSkills == null) {
             return Collections.emptyList();
         }
 
         return questionSkills.stream()
                 .map(questionSkill -> {
-                    QuestionSkillMappingRequest response = new QuestionSkillMappingRequest();
-                    response.setSkillId(questionSkill.getSkillId());
-                    response.setWeight(questionSkill.getWeight());
-                    response.setPrimary(questionSkill.isPrimary());
-                    return response;
+                    // Task 1: enrich tên skill từ SkillRepository (nếu còn tồn tại).
+                    String skillName = skillRepository
+                            .findById(questionSkill.getSkillId())
+                            .map(Skill::getName)
+                            .orElse(null);
+                    return QuestionSkillResponse.builder()
+                            .skillId(questionSkill.getSkillId())
+                            .name(skillName)
+                            .weight(questionSkill.getWeight())
+                            .primary(questionSkill.isPrimary())
+                            .build();
                 })
                 .toList();
     }
+
 
     private void validatePrimarySkill(List<QuestionSkillMappingRequest> skills) {
         if (skills == null || skills.isEmpty()) {

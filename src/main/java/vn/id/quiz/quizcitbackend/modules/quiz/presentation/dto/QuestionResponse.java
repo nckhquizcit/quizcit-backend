@@ -46,5 +46,10 @@ public class QuestionResponse {
      */
     private String correctOptionId;
 
-    private List<QuestionSkillMappingRequest> skills;
+    /**
+     * Danh sách skill gắn với câu hỏi (đã enrich tên skill) để frontend hiển
+     * thị popup skill. Xem {@link QuestionSkillResponse}.
+     */
+    private List<QuestionSkillResponse> skills;
 }
+

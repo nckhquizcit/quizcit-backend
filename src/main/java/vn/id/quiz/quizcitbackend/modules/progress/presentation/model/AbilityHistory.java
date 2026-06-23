@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "ability_history")
@@ -19,8 +20,8 @@ import java.time.LocalDateTime;
 public class AbilityHistory {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @Column(name = "history_id", length = 50)
+    private String historyId;
 
     @Column(name = "user_id", nullable = false, length = 50)
     private String userId;
@@ -51,6 +52,7 @@ public class AbilityHistory {
             Double standardError,
             String attemptId) {
         return AbilityHistory.builder()
+                .historyId(UUID.randomUUID().toString())
                 .userId(userId)
                 .skillId(skillId)
                 .theta(theta)
