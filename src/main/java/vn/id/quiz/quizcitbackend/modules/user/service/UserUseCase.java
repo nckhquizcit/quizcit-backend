@@ -13,7 +13,7 @@ public interface UserUseCase {
 
     UserResponse getUserById(String userId);
 
-    void updateUserProfile(String userId, UpdateUserProfileRequest request);
+    UserResponse updateUserProfile(String userId, UpdateUserProfileRequest request);
 
     void changePassword(String userId, ChangePasswordRequest request);
 

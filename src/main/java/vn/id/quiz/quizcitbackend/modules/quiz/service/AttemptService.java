@@ -17,6 +17,9 @@ public interface AttemptService {
     //Xem lại bài cũ
     QuizResultResponse getResult(
             String attemptId);
+    //Lấy user sở hữu attempt để kiểm tra ownership ở controller
+    String getAttemptOwnerId(
+            String attemptId);
     //Xem lịch sử làm bài
     List<QuizResultResponse> getUserResults(
             String userId);

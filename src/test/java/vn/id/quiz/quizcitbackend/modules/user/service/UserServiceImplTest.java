@@ -45,6 +45,39 @@ class UserServiceImplTest {
     }
 
     @Test
+    void updateUserProfileShouldChangeEmailWhenProvided() {
+        User user = User.create("student01", "hashed-password", "student01@example.com", "Student One");
+        userRepository.user = user;
+
+        var response = service.updateUserProfile(
+                user.getUserId(),
+                new UpdateUserProfileRequest("Student Updated", "student.updated@example.com")
+        );
+
+        assertThat(user.getDisplayName()).isEqualTo("Student Updated");
+        assertThat(user.getEmail()).isEqualTo("student.updated@example.com");
+        assertThat(response.email()).isEqualTo("student.updated@example.com");
+        assertThat(userRepository.savedUser).isSameAs(user);
+    }
+
+    @Test
+    void updateUserProfileShouldRejectDuplicateEmailBeforeSaving() {
+        User user = User.create("student01", "hashed-password", "student01@example.com", "Student One");
+        userRepository.user = user;
+        userRepository.emailExistsForOtherUser = true;
+
+        assertThatThrownBy(() -> service.updateUserProfile(
+                user.getUserId(),
+                new UpdateUserProfileRequest("Student Updated", "used@example.com")
+        ))
+                .isInstanceOf(AppException.class)
+                .extracting("status")
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+
+        assertThat(userRepository.savedUser).isNull();
+    }
+
+    @Test
     void updateUserProfileShouldRejectBlankDisplayNameBeforeSaving() {
         assertThatThrownBy(() -> service.updateUserProfile("user-id", new UpdateUserProfileRequest(" ")))
                 .isInstanceOf(AppException.class)
@@ -102,6 +135,7 @@ class UserServiceImplTest {
         private User user;
         private User savedUser;
         private boolean existsById;
+        private boolean emailExistsForOtherUser;
         private String deletedUserId;
 
         @Override
@@ -162,7 +196,7 @@ class UserServiceImplTest {
 
         @Override
         public boolean existsByEmailAndUserIdNot(String email, String userId) {
-            return false;
+            return emailExistsForOtherUser;
         }
 
         @Override

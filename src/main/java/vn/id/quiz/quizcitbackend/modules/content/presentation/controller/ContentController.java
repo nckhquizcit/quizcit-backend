@@ -2,6 +2,7 @@ package vn.id.quiz.quizcitbackend.modules.content.presentation.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -37,6 +38,7 @@ public class ContentController {
     }
 
     @PostMapping("/subjects")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<SubjectResponse>> createSubject(
             @Valid @RequestBody CreateSubjectRequest request
     ) {
@@ -45,6 +47,7 @@ public class ContentController {
     }
 
     @PutMapping("/subjects/{subjectId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> updateSubject(
             @PathVariable String subjectId,
             @Valid @RequestBody UpdateSubjectRequest request
@@ -54,6 +57,7 @@ public class ContentController {
     }
 
     @DeleteMapping("/subjects/{subjectId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteSubject(@PathVariable String subjectId) {
         subjectUseCase.deleteSubject(subjectId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
@@ -73,6 +77,7 @@ public class ContentController {
 
     // Nested Route: Thêm chương VÀO 1 môn học
     @PostMapping("/subjects/{subjectId}/chapters")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<ChapterResponse>> addChapter(
             @PathVariable String subjectId,
             @Valid @RequestBody CreateChapterRequest request
@@ -90,6 +95,7 @@ public class ContentController {
 
     // Flat Route: Cập nhật chương
     @PutMapping("/chapters/{chapterId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> updateChapter(
             @PathVariable String chapterId,
             @Valid @RequestBody UpdateChapterRequest request
@@ -100,6 +106,7 @@ public class ContentController {
 
     // Flat Route: Xóa chương
     @DeleteMapping("/chapters/{chapterId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteChapter(@PathVariable String chapterId) {
         subjectUseCase.deleteChapter(chapterId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
@@ -119,6 +126,7 @@ public class ContentController {
 
     // Nested Route: Thêm lý thuyết VÀO 1 chương
     @PostMapping("/chapters/{chapterId}/theories")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<TheoryResponse>> addTheory(
             @PathVariable String chapterId,
             @Valid @RequestBody CreateTheoryRequest request
@@ -136,6 +144,7 @@ public class ContentController {
 
     // Flat Route: Cập nhật lý thuyết
     @PutMapping("/theories/{theoryId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> updateTheory(
             @PathVariable String theoryId,
             @Valid @RequestBody UpdateTheoryRequest request
@@ -146,6 +155,7 @@ public class ContentController {
 
     // Flat Route: Xóa lý thuyết
     @DeleteMapping("/theories/{theoryId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteTheory(@PathVariable String theoryId) {
         subjectUseCase.deleteTheory(theoryId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)

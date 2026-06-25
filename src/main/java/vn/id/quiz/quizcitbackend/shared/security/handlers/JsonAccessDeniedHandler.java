@@ -38,7 +38,7 @@ public class JsonAccessDeniedHandler implements AccessDeniedHandler {
 
         ApiResponse<Object> body = ApiResponse.error(
                 HttpStatus.FORBIDDEN,
-                "Ban khong co quyen truy cap tai nguyen nay");
+                "Bạn không có quyền thực hiện thao tác này.");
 
         objectMapper.writeValue(response.getWriter(), body);
     }

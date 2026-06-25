@@ -299,6 +299,20 @@ public class AttemptServiceImplement
 
     @Override
     @Transactional(readOnly = true)
+    public String getAttemptOwnerId(
+            String attemptId) {
+
+        Attempt attempt = quizRepository
+                .findAttemptById(attemptId)
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy kết quả bài thi",
+                        HttpStatus.NOT_FOUND));
+
+        return attempt.getUserId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<QuizResultResponse> getUserResults(
             String userId) {
 

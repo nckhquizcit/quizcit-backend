@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +22,7 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserProfile
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserStatusRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UserResponse;
 import vn.id.quiz.quizcitbackend.modules.user.service.UserUseCase;
+import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 import java.util.List;
@@ -31,6 +33,38 @@ import java.util.List;
 @Validated
 public class UserController {
     private final UserUseCase userUseCase;
+
+    // Lay ho so cua user dang dang nhap.
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        UserResponse response = userUseCase.getUserById(principal.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // USER tu cap nhat displayName/email cua chinh minh.
+    @PutMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<UserResponse>> updateCurrentUserProfile(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Valid @RequestBody UpdateUserProfileRequest request
+    ) {
+        UserResponse response = userUseCase.updateUserProfile(principal.getUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat ho so thanh cong", response));
+    }
+
+    // USER tu doi mat khau cua chinh minh.
+    @PatchMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> changeCurrentUserPassword(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        userUseCase.changePassword(principal.getUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat mat khau thanh cong", null));
+    }
 
     // =========================================================================
     // USER ENDPOINTS (/api/users)
@@ -55,12 +89,12 @@ public class UserController {
     // Cap nhat ten hien thi (admin duoc phep sua bat ky user nao).
     @PutMapping("/{userId}")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
-    public ResponseEntity<ApiResponse<Void>> updateUserProfile(
+    public ResponseEntity<ApiResponse<UserResponse>> updateUserProfile(
             @PathVariable String userId,
             @Valid @RequestBody UpdateUserProfileRequest request
     ) {
-        userUseCase.updateUserProfile(userId, request);
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat nguoi dung thanh cong", null));
+        UserResponse response = userUseCase.updateUserProfile(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat nguoi dung thanh cong", response));
     }
 
     // Doi mat khau (admin doi ho user tu doi).

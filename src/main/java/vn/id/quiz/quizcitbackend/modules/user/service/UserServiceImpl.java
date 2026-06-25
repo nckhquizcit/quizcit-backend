@@ -20,6 +20,7 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,8 @@ public class UserServiceImpl implements UserUseCase {
     private static final int PASSWORD_MIN_LENGTH = 6;
     private static final int PASSWORD_MAX_LENGTH = 255;
     private static final int DISPLAY_NAME_MAX_LENGTH = 100;
+    private static final int EMAIL_MAX_LENGTH = 100;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final UserRepository userRepository;
     private final UserMapper mapper;
@@ -53,13 +56,18 @@ public class UserServiceImpl implements UserUseCase {
     // Chi cap nhat ten hien thi theo tai lieu kien truc.
     @Override
     @Transactional
-    public void updateUserProfile(String userId, UpdateUserProfileRequest request) {
+    public UserResponse updateUserProfile(String userId, UpdateUserProfileRequest request) {
         request = requireRequest(request);
         String displayName = validateDisplayName(request.displayName());
+        String email = validateEmail(request.email(), userId);
 
         User user = getRequiredUser(userId);
         user.setDisplayName(displayName);
+        if (email != null) {
+            user.setEmail(email);
+        }
         userRepository.save(user);
+        return mapper.toUserResponse(user, resolveUserRole(userId));
     }
 
     // Doi mat khau va luu dang hash, cung co che voi module auth.
@@ -154,6 +162,24 @@ public class UserServiceImpl implements UserUseCase {
         String normalized = requireNotBlank(displayName, "Ten hien thi khong duoc de trong").trim();
         if (normalized.length() > DISPLAY_NAME_MAX_LENGTH) {
             throw new AppException("Ten hien thi khong duoc vuot qua 100 ky tu", HttpStatus.BAD_REQUEST);
+        }
+        return normalized;
+    }
+
+    private String validateEmail(String email, String userId) {
+        if (email == null) {
+            return null;
+        }
+
+        String normalized = requireNotBlank(email, "Email khong duoc de trong").trim();
+        if (normalized.length() > EMAIL_MAX_LENGTH) {
+            throw new AppException("Email khong duoc vuot qua 100 ky tu", HttpStatus.BAD_REQUEST);
+        }
+        if (!EMAIL_PATTERN.matcher(normalized).matches()) {
+            throw new AppException("Email khong hop le", HttpStatus.BAD_REQUEST);
+        }
+        if (userRepository.existsByEmailAndUserIdNot(normalized, userId)) {
+            throw new AppException("Email da duoc su dung", HttpStatus.BAD_REQUEST);
         }
         return normalized;
     }
