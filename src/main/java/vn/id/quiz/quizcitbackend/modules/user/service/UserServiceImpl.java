@@ -85,7 +85,8 @@ public class UserServiceImpl implements UserUseCase {
     // Xoa user sau khi kiem tra ton tai; adapter se xoa user_roles lien quan truoc.
     @Override
     @Transactional
-    public void deleteUser(String userId) {
+    public void deleteUser(String actorUserId, String userId) {
+        rejectSelfLockout(actorUserId, userId);
         if (!userRepository.existsById(userId)) {
             throw new AppException("Khong tim thay nguoi dung duoc yeu cau", HttpStatus.NOT_FOUND);
         }
@@ -97,7 +98,8 @@ public class UserServiceImpl implements UserUseCase {
     // =========================================================================
     @Override
     @Transactional
-    public UserResponse updateUserStatus(String userId, UpdateUserStatusRequest request) {
+    public UserResponse updateUserStatus(String actorUserId, String userId, UpdateUserStatusRequest request) {
+        rejectSelfLockout(actorUserId, userId);
         requireRequest(request);
         UserStatus target = request.getStatus();
         if (target == null) {
@@ -116,7 +118,8 @@ public class UserServiceImpl implements UserUseCase {
     // =========================================================================
     @Override
     @Transactional
-    public UserResponse changeUserRole(String userId, ChangeUserRoleRequest request) {
+    public UserResponse changeUserRole(String actorUserId, String userId, ChangeUserRoleRequest request) {
+        rejectSelfLockout(actorUserId, userId);
         requireRequest(request);
         UserRole targetRole = request.getRole();
         if (targetRole == null) {
@@ -135,6 +138,14 @@ public class UserServiceImpl implements UserUseCase {
         userRepository.save(assignment);
 
         return getUserById(userId);
+    }
+
+    private void rejectSelfLockout(String actorUserId, String targetUserId) {
+        if (actorUserId != null && actorUserId.equals(targetUserId)) {
+            throw new AppException(
+                    "Ban khong the khoa, xoa hoac thay doi vai tro tai khoan dang dang nhap",
+                    HttpStatus.BAD_REQUEST);
+        }
     }
 
     // Dung chung cho cac nghiep vu can dam bao user ton tai truoc khi xu ly.

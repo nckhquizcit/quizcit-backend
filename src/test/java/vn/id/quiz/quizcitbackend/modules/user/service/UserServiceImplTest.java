@@ -5,11 +5,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import vn.id.quiz.quizcitbackend.modules.auth.service.PasswordService;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangePasswordRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangeUserRoleRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserProfileRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserStatusRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignment;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
 import vn.id.quiz.quizcitbackend.modules.user.repository.UserRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
@@ -114,7 +117,7 @@ class UserServiceImplTest {
     void deleteUserShouldDeleteExistingUser() {
         userRepository.existsById = true;
 
-        service.deleteUser("user-id");
+        service.deleteUser("admin-id", "user-id");
 
         assertThat(userRepository.deletedUserId).isEqualTo("user-id");
     }
@@ -123,12 +126,48 @@ class UserServiceImplTest {
     void deleteUserShouldRejectMissingUser() {
         userRepository.existsById = false;
 
-        assertThatThrownBy(() -> service.deleteUser("missing-user"))
+        assertThatThrownBy(() -> service.deleteUser("admin-id", "missing-user"))
                 .isInstanceOf(AppException.class)
                 .extracting("status")
                 .isEqualTo(HttpStatus.NOT_FOUND.value());
 
         assertThat(userRepository.deletedUserId).isNull();
+    }
+
+    @Test
+    void deleteUserShouldRejectSelfDelete() {
+        assertThatThrownBy(() -> service.deleteUser("admin-id", "admin-id"))
+                .isInstanceOf(AppException.class)
+                .extracting("status")
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+
+        assertThat(userRepository.deletedUserId).isNull();
+    }
+
+    @Test
+    void updateUserStatusShouldRejectSelfStatusChange() {
+        UpdateUserStatusRequest request = UpdateUserStatusRequest.builder()
+                .status(UserStatus.BANNED)
+                .build();
+
+        assertThatThrownBy(() -> service.updateUserStatus("admin-id", "admin-id", request))
+                .isInstanceOf(AppException.class)
+                .extracting("status")
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
+
+        assertThat(userRepository.savedUser).isNull();
+    }
+
+    @Test
+    void changeUserRoleShouldRejectSelfRoleChange() {
+        ChangeUserRoleRequest request = ChangeUserRoleRequest.builder()
+                .role(UserRole.USER)
+                .build();
+
+        assertThatThrownBy(() -> service.changeUserRole("admin-id", "admin-id", request))
+                .isInstanceOf(AppException.class)
+                .extracting("status")
+                .isEqualTo(HttpStatus.BAD_REQUEST.value());
     }
 
     private static class FakeUserRepository implements UserRepository {

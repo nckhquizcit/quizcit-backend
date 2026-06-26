@@ -1,5 +1,6 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import lombok.Builder;
@@ -12,6 +13,12 @@ public class QuizResultResponse {
     private String attemptId;
 
     private String quizId;
+
+    private String quizName;
+
+    private String subjectName;
+
+    private ZonedDateTime submittedAt;
 
     private double rawScore;
 

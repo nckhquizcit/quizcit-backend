@@ -19,6 +19,10 @@ import lombok.Setter;
 @Setter
 public class UpdateQuestionRequest {
 
+    private String subjectId;
+
+    private String chapterId;
+
     private String content;
 
     private String explanation;

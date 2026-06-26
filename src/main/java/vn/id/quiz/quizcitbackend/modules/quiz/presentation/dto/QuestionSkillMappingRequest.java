@@ -14,7 +14,7 @@ public class QuestionSkillMappingRequest {
 
     private String skillId;
 
-    private double weight;
+    private Double weight;
 
     private boolean primary;
 }

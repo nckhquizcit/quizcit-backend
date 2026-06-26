@@ -9,8 +9,10 @@ public class SkillResultResponse {
 
     private String skillId;
 
+    private String skillName;
+
     private double theta;
 
-    private double standardError;
+    private Double standardError;
 
 }

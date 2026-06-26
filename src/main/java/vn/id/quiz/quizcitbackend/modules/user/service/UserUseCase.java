@@ -17,11 +17,11 @@ public interface UserUseCase {
 
     void changePassword(String userId, ChangePasswordRequest request);
 
-    void deleteUser(String userId);
+    void deleteUser(String actorUserId, String userId);
 
     // ===== Phase 2 (P1): Admin endpoints =====
 
-    UserResponse updateUserStatus(String userId, UpdateUserStatusRequest request);
+    UserResponse updateUserStatus(String actorUserId, String userId, UpdateUserStatusRequest request);
 
-    UserResponse changeUserRole(String userId, ChangeUserRoleRequest request);
+    UserResponse changeUserRole(String actorUserId, String userId, ChangeUserRoleRequest request);
 }

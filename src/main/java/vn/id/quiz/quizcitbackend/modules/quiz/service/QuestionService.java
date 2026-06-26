@@ -19,7 +19,8 @@ public interface QuestionService {
             String questionId);
     //Lấy câu hỏi = id
     QuestionResponse getQuestionById(
-            String questionId);
+            String questionId,
+            boolean includeCorrectAnswer);
     //Lấy toàn bộ câu hỏi của chương
     List<QuestionResponse> getQuestionsByChapter(
             String chapterId);

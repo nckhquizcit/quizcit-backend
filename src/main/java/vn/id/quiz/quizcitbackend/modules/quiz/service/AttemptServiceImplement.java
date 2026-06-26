@@ -15,10 +15,14 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SkillResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SkillThetaData;
@@ -42,6 +46,8 @@ public class AttemptServiceImplement
     private final QuizRepository quizRepository;
     private final AttemptMapper mapper;
     private final ProgressRepository progressRepository;
+    private final ContentRepository contentRepository;
+    private final SkillRepository skillRepository;
 
     private final AIService aiService;
 
@@ -275,26 +281,7 @@ public class AttemptServiceImplement
                         "Không tìm thấy kết quả bài thi",
                         HttpStatus.NOT_FOUND));
 
-        List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByAttemptId(
-                attemptId);
-
-        List<SkillResultResponse> skillResults = histories.stream()
-                .map(history -> SkillResultResponse.builder()
-                        .skillId(history.getSkillId())
-                        .theta(history.getTheta())
-                        .standardError(
-                                history.getStandardError())
-                        .build())
-                .toList();
-
-        return QuizResultResponse.builder()
-                .attemptId(attempt.getAttemptId())
-                .quizId(attempt.getQuizId())
-                .rawScore(attempt.getRawScore())
-                .totalQuestion(attempt.getTotalQuestion())
-                .overallTheta(attempt.getOverallTheta())
-                .skillResults(skillResults)
-                .build();
+        return buildQuizResultResponse(attempt);
     }
 
     @Override
@@ -319,7 +306,76 @@ public class AttemptServiceImplement
         List<Attempt> attempts = quizRepository.findAttemptsByUserId(
                 userId);
 
-        return mapper.toQuizResultResponseList(
-                attempts);
+        return attempts.stream()
+                .map(this::buildQuizResultResponse)
+                .toList();
+    }
+
+    private QuizResultResponse buildQuizResultResponse(
+            Attempt attempt) {
+
+        Quiz quiz = quizRepository.findQuizById(attempt.getQuizId())
+                .orElse(null);
+
+        String quizName = quiz == null ? null : quiz.getName();
+        String subjectName = resolveSubjectName(quiz);
+
+        List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByAttemptId(
+                attempt.getAttemptId());
+        Map<String, String> skillNameCache = new HashMap<>();
+
+        List<SkillResultResponse> skillResults = histories.stream()
+                .map(history -> SkillResultResponse.builder()
+                        .skillId(history.getSkillId())
+                        .skillName(resolveSkillName(
+                                history.getSkillId(),
+                                skillNameCache))
+                        .theta(history.getTheta())
+                        .standardError(history.getStandardError())
+                        .build())
+                .toList();
+
+        return QuizResultResponse.builder()
+                .attemptId(attempt.getAttemptId())
+                .quizId(attempt.getQuizId())
+                .quizName(quizName)
+                .subjectName(subjectName)
+                .submittedAt(attempt.getCreatedAt())
+                .rawScore(attempt.getRawScore())
+                .totalQuestion(attempt.getTotalQuestion())
+                .overallTheta(attempt.getOverallTheta())
+                .skillResults(skillResults)
+                .build();
+    }
+
+    private String resolveSubjectName(
+            Quiz quiz) {
+
+        if (quiz == null || quiz.getSubjectId() == null || quiz.getSubjectId().isBlank()) {
+            return null;
+        }
+
+        return contentRepository.findSubjectById(quiz.getSubjectId())
+                .map(Subject::getName)
+                .orElse(null);
+    }
+
+    private String resolveSkillName(
+            String skillId,
+            Map<String, String> skillNameCache) {
+
+        if (skillId == null || skillId.isBlank()) {
+            return null;
+        }
+
+        if (skillNameCache.containsKey(skillId)) {
+            return skillNameCache.get(skillId);
+        }
+
+        String skillName = skillRepository.findById(skillId)
+                .map(Skill::getName)
+                .orElse(null);
+        skillNameCache.put(skillId, skillName);
+        return skillName;
     }
 }

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,6 +13,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionReq
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
+import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 import java.util.List;
@@ -46,11 +48,14 @@ public class QuestionController {
 
     @GetMapping("/questions/{questionId}")
     public ResponseEntity<ApiResponse<QuestionResponse>> getQuestionById(
-            @PathVariable String questionId) {
+            @PathVariable String questionId,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
 
         return ResponseEntity.ok(
                 ApiResponse.success(
-                        questionService.getQuestionById(questionId)));
+                        questionService.getQuestionById(
+                                questionId,
+                                principal != null && principal.isAdministrator())));
     }
 
     @PutMapping("/questions/{questionId}")

@@ -111,8 +111,10 @@ public class UserController {
     // Xoa nguoi dung (admin only).
     @DeleteMapping("/{userId}")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable String userId) {
-        userUseCase.deleteUser(userId);
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
+            @PathVariable String userId) {
+        userUseCase.deleteUser(principal.getUserId(), userId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Da xoa nguoi dung thanh cong", null));
     }
@@ -123,10 +125,11 @@ public class UserController {
     @PatchMapping("/{userId}/status")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<UserResponse>> updateUserStatus(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
             @PathVariable String userId,
             @Valid @RequestBody UpdateUserStatusRequest request
     ) {
-        UserResponse response = userUseCase.updateUserStatus(userId, request);
+        UserResponse response = userUseCase.updateUserStatus(principal.getUserId(), userId, request);
         return ResponseEntity.ok(ApiResponse.success(
                 "Cap nhat trang thai nguoi dung thanh cong", response));
     }
@@ -137,10 +140,11 @@ public class UserController {
     @PatchMapping("/{userId}/role")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<UserResponse>> changeUserRole(
+            @AuthenticationPrincipal CustomUserPrincipal principal,
             @PathVariable String userId,
             @Valid @RequestBody ChangeUserRoleRequest request
     ) {
-        UserResponse response = userUseCase.changeUserRole(userId, request);
+        UserResponse response = userUseCase.changeUserRole(principal.getUserId(), userId, request);
         return ResponseEntity.ok(ApiResponse.success(
                 "Cap nhat vai tro nguoi dung thanh cong", response));
     }
