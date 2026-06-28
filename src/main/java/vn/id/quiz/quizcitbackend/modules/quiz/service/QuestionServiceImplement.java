@@ -18,14 +18,14 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSki
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateOptionRequest;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionRequest;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.OptionResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionSkillMappingRequest;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionSkillResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.CreateOptionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.CreateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.OptionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionSkillMappingRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionSkillResponse;
 
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.UpdateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;

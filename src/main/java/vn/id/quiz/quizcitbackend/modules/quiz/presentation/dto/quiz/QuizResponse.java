@@ -1,14 +1,14 @@
-package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz;
 
-import java.util.List;
-
+import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 
 @Getter
-@Setter
-public class CreateQuizRequest {
+@Builder
+public class QuizResponse {
+
+    private String quizId;
 
     private String subjectId;
 
@@ -16,11 +16,9 @@ public class CreateQuizRequest {
 
     private String name;
 
+    private QuizType type;
+
     private int totalQuestion;
 
     private int duration;
-
-    private QuizType type;
-
-    private List<String> questionIds;
 }

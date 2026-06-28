@@ -1,14 +1,15 @@
-package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject;
 
 import java.time.ZonedDateTime;
 
-public record ChapterResponse(
-        String chapterId,
+public record SubjectResponse(
         String subjectId,
+        String courseCode,
         String name,
+        String description,
         ZonedDateTime createdAt
 ) {
-    public ChapterResponse{
+    public SubjectResponse{
         if(createdAt==null){
             createdAt=ZonedDateTime.now();
         }

@@ -11,9 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuizRequest;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.CreateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.UpdateQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;

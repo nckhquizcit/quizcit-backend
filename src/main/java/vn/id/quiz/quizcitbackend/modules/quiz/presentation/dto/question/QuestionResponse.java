@@ -1,10 +1,11 @@
-package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question;
 
 import java.util.List;
 
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.OptionResponse;
 
 /**
  * Response trả về thông tin một câu hỏi.

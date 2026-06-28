@@ -1,9 +1,10 @@
-package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question;
 
 import java.util.List;
 
 import lombok.Getter;
 import lombok.Setter;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.CreateOptionRequest;
 
 /**
  * Request body cho {@code POST /api/questions}.

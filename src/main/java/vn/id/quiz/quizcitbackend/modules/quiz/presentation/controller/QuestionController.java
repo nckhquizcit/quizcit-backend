@@ -9,9 +9,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionRequest;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.CreateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.UpdateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
