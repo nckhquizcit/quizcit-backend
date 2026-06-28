@@ -1,6 +1,5 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -19,12 +18,12 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHist
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResultResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SkillResultResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SkillThetaData;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.StartQuizResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SubmitAnswerRequest;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.SubmitQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.skill.SkillResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.skill.SkillThetaData;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.StartQuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitAnswerRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
@@ -79,7 +78,7 @@ public class AttemptServiceImplement
     @Transactional
     public QuizResultResponse submitQuiz(
             SubmitQuizRequest request) {
-        Attempt attempt = quizRepository
+        Attempt attempt = quizRepository //tìm attempt
                 .findAttemptById(
                         request.getAttemptId())
                 .orElseThrow(
@@ -92,18 +91,20 @@ public class AttemptServiceImplement
             throw new AppException(
                     "Attempt không thuộc đề thi đang nộp",
                     HttpStatus.BAD_REQUEST);
-        }
+        }// kiêm tra xem attempt và đề thi có
 
         if (!quizRepository.findResponsesByAttemptId(attempt.getAttemptId()).isEmpty()) {
             return getResult(attempt.getAttemptId());
         }
 
         List<QuizQuestion> quizQuestions = quizRepository.findQuizQuestionsByQuizId(
-                attempt.getQuizId());
+                attempt.getQuizId()); //lấy danh sách câu hỏi
 
         Set<String> quizQuestionIds = quizQuestions.stream()
                 .map(QuizQuestion::getQuestionId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+        // biến mấy cái question id thành set
+
 
         if (quizQuestionIds.isEmpty()) {
             throw new AppException(

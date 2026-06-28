@@ -4,8 +4,8 @@ import java.util.List;
 
 import org.mapstruct.Mapper;
 
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResultResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.StartQuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.StartQuizResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
 
 @Mapper(componentModel = "spring")

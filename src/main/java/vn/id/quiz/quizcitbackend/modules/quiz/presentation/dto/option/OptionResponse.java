@@ -1,4 +1,4 @@
-package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option;
 
 import lombok.Builder;
 import lombok.Getter;

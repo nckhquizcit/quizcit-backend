@@ -1,9 +1,10 @@
-package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz;
 
 import java.util.List;
 
 import lombok.Builder;
 import lombok.Getter;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.skill.SkillResultResponse;
 
 @Getter
 @Builder

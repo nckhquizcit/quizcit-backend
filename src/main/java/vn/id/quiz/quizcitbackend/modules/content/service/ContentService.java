@@ -1,6 +1,15 @@
 package vn.id.quiz.quizcitbackend.modules.content.service;
 
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.CreateChapterRequest;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.CreateSubjectRequest;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.UpdateSubjectRequest;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.CreateTheoryRequest;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.UpdateTheoryRequest;
 
 import java.util.List;
 

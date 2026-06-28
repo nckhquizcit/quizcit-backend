@@ -4,8 +4,8 @@ import java.util.List;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.OptionResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.OptionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 

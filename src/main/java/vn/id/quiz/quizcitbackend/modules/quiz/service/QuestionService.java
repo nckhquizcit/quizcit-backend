@@ -2,9 +2,9 @@ package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
 import java.util.List;
 
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuestionRequest;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.CreateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.UpdateQuestionRequest;
 
 public interface QuestionService {
     //Tạo câu hỏi

@@ -1,4 +1,4 @@
-package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto;
+package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.skill;
 
 import java.util.ArrayList;
 import java.util.List;

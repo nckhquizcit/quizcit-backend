@@ -2,10 +2,10 @@ package vn.id.quiz.quizcitbackend.modules.quiz.presentation.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.CreateQuizRequest;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuestionResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.QuizResponse;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.UpdateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.CreateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.UpdateQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.QuizService;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;

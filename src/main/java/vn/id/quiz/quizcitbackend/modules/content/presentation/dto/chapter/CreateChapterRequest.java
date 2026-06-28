@@ -1,4 +1,4 @@
-package vn.id.quiz.quizcitbackend.modules.content.presentation.dto;
+package vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
