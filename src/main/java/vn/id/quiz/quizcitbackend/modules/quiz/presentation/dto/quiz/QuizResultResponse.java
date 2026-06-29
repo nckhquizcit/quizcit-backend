@@ -28,4 +28,6 @@ public class QuizResultResponse {
     private double overallTheta;
     
     private List<SkillResultResponse> skillResults;
+
+    private List<QuestionResultResponse> questionResults;
 }

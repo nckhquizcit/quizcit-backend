@@ -13,6 +13,4 @@ public class SkillResultResponse {
 
     private double theta;
 
-    private Double standardError;
-
 }
