@@ -22,6 +22,13 @@ public class AIService {
     private final AIClient aiClient;
 
     public EstimateThetaResponse estimateTheta(EstimateThetaRequest request) {
-        return aiClient.estimateTheta(request);
+        
+        EstimateThetaResponse response = aiClient.estimateTheta(request);
+
+        // Tính scaled từ raw rồi set vào response trước khi trả về
+        double thetaScaled = ThetaUtils.toScaled(response.getTheta());
+        response.setThetaScaled(thetaScaled);
+
+        return response;
     }
 }

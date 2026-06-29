@@ -8,6 +8,7 @@ package vn.id.quiz.quizcitbackend.modules.ai.dto;
  */
 public record EstimateThetaResponse(
         double theta,
+        private double thetaScaled,  // computed ở BE, trả FE
         Double standardError
 ) {
 }
