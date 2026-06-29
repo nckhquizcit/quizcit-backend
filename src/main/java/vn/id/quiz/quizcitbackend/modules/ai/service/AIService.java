@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.ai.client.AIClient;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse;
+import vn.id.quiz.quizcitbackend.modules.ai.utils.ThetaUtils;
 
 /**
  * Service ước lượng năng lực (theta) cho người dùng dựa trên các phản hồi
@@ -22,13 +23,12 @@ public class AIService {
     private final AIClient aiClient;
 
     public EstimateThetaResponse estimateTheta(EstimateThetaRequest request) {
-        
         EstimateThetaResponse response = aiClient.estimateTheta(request);
+        if (response == null) {
+            return null;
+        }
 
-        // Tính scaled từ raw rồi set vào response trước khi trả về
-        double thetaScaled = ThetaUtils.toScaled(response.getTheta());
-        response.setThetaScaled(thetaScaled);
-
-        return response;
+        double thetaScaled = ThetaUtils.toScaled(response.theta());
+        return new EstimateThetaResponse(response.theta(), thetaScaled, response.standardError());
     }
 }

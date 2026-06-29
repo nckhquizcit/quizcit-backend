@@ -1,4 +1,4 @@
-package vn.id.quiz.quizcitbackend.shared.utils;
+package vn.id.quiz.quizcitbackend.modules.ai.utils;
 
 public final class ThetaUtils {
 
@@ -31,9 +31,3 @@ public final class ThetaUtils {
     }
 }
 
-//Ví dụ cách xài
-// EstimateThetaResponse response = aiService.estimateTheta(request);
-
-// double thetaRaw = response.getTheta(); // lưu vào DB
-// double thetaScaled = ThetaUtils.toScaled(thetaRaw);
-// trả FE
