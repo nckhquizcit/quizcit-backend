@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthResponse;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.LoginRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RegisterRequest;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RegisterResponse;
 import vn.id.quiz.quizcitbackend.modules.auth.repository.AuthRepository;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
@@ -30,12 +31,34 @@ class AuthServiceImplTest {
     @Mock
     private AuthRepository authRepository;
 
+    // Java 25 + ByteBuddy chua mock duoc concrete class, nen dung stub ghi lai loi goi.
+    private final RecordingEmailService emailService = new RecordingEmailService();
     private final AuthMapper authMapper = new AuthMapper();
     private final PasswordService passwordService = new PasswordService();
-    private final TokenService tokenService = new TokenService("test-secret-that-is-long-enough-for-hmac", 3600);
+    private final TokenService tokenService = new TokenService(
+            "test-secret-that-is-long-enough-for-hmac", 3600,
+            "test-otp-secret-that-is-long-enough", 300);
+    private final OtpService otpService = new OtpService();
+
+    private static final class RecordingEmailService extends EmailService {
+        private String lastEmail;
+        private String lastCode;
+        private int callCount;
+
+        private RecordingEmailService() {
+            super(null, "test@quizcit.vn");
+        }
+
+        @Override
+        public void sendOtp(String toEmail, String code) {
+            this.lastEmail = toEmail;
+            this.lastCode = code;
+            this.callCount++;
+        }
+    }
 
     @Test
-    void registerShouldHashPasswordAssignDefaultRoleAndReturnToken() {
+    void registerShouldHashPasswordAssignDefaultRoleAndSendOtp() {
         Role defaultRole = Role.create(UserRole.USER);
         RegisterRequest request = new RegisterRequest(
                 "student01",
@@ -50,28 +73,31 @@ class AuthServiceImplTest {
         when(authRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(authRepository.save(any(UserRoleAssignment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        AuthResponse response = service().register(request);
+        RegisterResponse response = service().register(request);
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(authRepository).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getPassword()).startsWith("pbkdf2$");
         assertThat(passwordService.matches("secret123", userCaptor.getValue().getPassword())).isTrue();
+        assertThat(userCaptor.getValue().getStatus()).isEqualTo(UserStatus.UNVERIFIED);
 
         ArgumentCaptor<UserRoleAssignment> assignmentCaptor = ArgumentCaptor.forClass(UserRoleAssignment.class);
         verify(authRepository).save(assignmentCaptor.capture());
         assertThat(assignmentCaptor.getValue().getRoleId()).isEqualTo(defaultRole.getRoleId());
 
-        assertThat(response.accessToken()).isNotBlank();
-        assertThat(response.accessToken().split("\\.")).hasSize(3);
-        assertThat(response.tokenType()).isEqualTo("Bearer");
-        assertThat(response.expiresAt()).isNotNull();
-        assertThat(response.role()).isEqualTo(UserRole.USER);
+        assertThat(response.email()).isEqualTo("student01@example.com");
+        assertThat(response.verificationToken()).isNotBlank();
+        assertThat(response.verificationToken().split("\\.")).hasSize(3);
+        assertThat(emailService.callCount).isEqualTo(1);
+        assertThat(emailService.lastEmail).isEqualTo("student01@example.com");
+        assertThat(emailService.lastCode).hasSize(6);
     }
 
     @Test
     void loginShouldReturnTokenForValidCredentials() {
         Role role = Role.create(UserRole.USER);
         User user = User.create("student01", passwordService.hash("secret123"), "student01@example.com", "Student One");
+        user.setStatus(UserStatus.VERIFIED);
 
         when(authRepository.findUserByUsername("student01")).thenReturn(Optional.of(user));
         when(authRepository.findRoleByUserId(user.getUserId())).thenReturn(Optional.of(role));
@@ -88,6 +114,7 @@ class AuthServiceImplTest {
     @Test
     void loginShouldRejectWrongPassword() {
         User user = User.create("student01", passwordService.hash("secret123"), "student01@example.com", "Student One");
+        user.setStatus(UserStatus.VERIFIED);
         when(authRepository.findUserByUsername("student01")).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> service().login(new LoginRequest("student01", "wrong-password")))
@@ -108,7 +135,18 @@ class AuthServiceImplTest {
                 .isEqualTo(HttpStatus.FORBIDDEN.value());
     }
 
+    @Test
+    void loginShouldRejectUnverifiedUser() {
+        User user = User.create("student01", passwordService.hash("secret123"), "student01@example.com", "Student One");
+        when(authRepository.findUserByUsername("student01")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service().login(new LoginRequest("student01", "secret123")))
+                .isInstanceOf(AppException.class)
+                .extracting("status")
+                .isEqualTo(HttpStatus.FORBIDDEN.value());
+    }
+
     private AuthServiceImpl service() {
-        return new AuthServiceImpl(authRepository, authMapper, passwordService, tokenService);
+        return new AuthServiceImpl(authRepository, authMapper, passwordService, tokenService, otpService, emailService);
     }
 }
