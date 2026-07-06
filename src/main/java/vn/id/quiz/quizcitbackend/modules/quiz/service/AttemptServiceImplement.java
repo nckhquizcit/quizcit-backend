@@ -135,52 +135,67 @@ public class AttemptServiceImplement
                     answer.getOptionId());
         }
 
+        // Batch load: câu hỏi, option, skill mapping cho toàn bộ đề thi
+        // (thay cho các truy vấn lặp trong vòng for → tránh N+1).
+        Map<String, Question> questionById = quizRepository
+                .findQuestionsByIds(quizQuestionIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        Question::getQuestionId,
+                        q -> q,
+                        (first, ignored) -> first));
+
+        Map<String, List<Option>> optionsByQuestionId = quizRepository
+                .findOptionsByQuestionIds(quizQuestionIds)
+                .stream()
+                .collect(Collectors.groupingBy(Option::getQuestionId));
+
+        Map<String, List<QuestionSkill>> skillsByQuestionId = progressRepository
+                .findQuestionSkillsByQuestionIds(quizQuestionIds)
+                .stream()
+                .collect(Collectors.groupingBy(QuestionSkill::getQuestionId));
+
         Map<String, SkillThetaData> skillMap = new HashMap<>();
         int correctCount = 0;
+        List<Response> responsesToSave = new ArrayList<>();
 
         for (String questionId : quizQuestionIds) {
-            Question question = quizRepository
-                    .findQuestionById(
-                            questionId)
-                    .orElseThrow(() -> new AppException(
-                            "Không tìm thấy câu hỏi trong đề thi",
-                            HttpStatus.NOT_FOUND));
+            Question question = questionById.get(questionId);
+            if (question == null) {
+                throw new AppException(
+                        "Không tìm thấy câu hỏi trong đề thi",
+                        HttpStatus.NOT_FOUND);
+            }
 
             String optionId = submittedAnswers.get(questionId);
             Option option = null;
             boolean correct = false;
 
             if (optionId != null && !optionId.isBlank()) {
-                option = quizRepository
-                        .findOptionById(
-                                optionId)
+                option = optionsByQuestionId
+                        .getOrDefault(questionId, List.of())
+                        .stream()
+                        .filter(o -> o.getOptionId().equals(optionId))
+                        .findFirst()
                         .orElseThrow(() -> new AppException(
-                                "Không tìm thấy đáp án đã chọn",
-                                HttpStatus.NOT_FOUND));
-
-                if (!questionId.equals(option.getQuestionId())) {
-                    throw new AppException(
-                            "Đáp án đã chọn không thuộc câu hỏi trong đề thi",
-                            HttpStatus.BAD_REQUEST);
-                }
+                                "Đáp án đã chọn không thuộc câu hỏi trong đề thi",
+                                HttpStatus.BAD_REQUEST));
 
                 correct = option.isCorrected();
             }
 
-            Response response = Response.create(
+            responsesToSave.add(Response.create(
                     attempt.getAttemptId(),
                     question.getQuestionId(),
                     option == null ? null : option.getOptionId(),
-                    correct);
-            quizRepository.save(response);
+                    correct));
 
             if (correct) {
                 correctCount++;
             }
 
-            List<QuestionSkill> mappings = progressRepository
-                    .findQuestionSkillsByQuestionId(
-                            question.getQuestionId());
+            List<QuestionSkill> mappings = skillsByQuestionId
+                    .getOrDefault(questionId, List.of());
 
             for (QuestionSkill qs : mappings) {
 
@@ -199,6 +214,10 @@ public class AttemptServiceImplement
             }
 
         }
+
+        // Lưu tất cả response trong 1 batch insert.
+        quizRepository.saveResponses(responsesToSave);
+
         Map<String, Double> skillThetaMap = new HashMap<>();
 
         for (var entry : skillMap.entrySet()) {
@@ -358,21 +377,40 @@ public class AttemptServiceImplement
                         (first, ignored) -> first));
         List<QuizQuestion> quizQuestions = quizRepository.findQuizQuestionsByQuizId(
                 attempt.getQuizId());
+
+        // Batch load câu hỏi + option để tránh N+1 trong vòng lặp.
+        List<String> orderedQuestionIds = quizQuestions.stream()
+                .map(QuizQuestion::getQuestionId)
+                .toList();
+
+        Map<String, Question> questionById = quizRepository
+                .findQuestionsByIds(orderedQuestionIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        Question::getQuestionId,
+                        q -> q,
+                        (first, ignored) -> first));
+
+        Map<String, List<Option>> optionsByQuestionId = quizRepository
+                .findOptionsByQuestionIds(orderedQuestionIds)
+                .stream()
+                .collect(Collectors.groupingBy(Option::getQuestionId));
+
         List<QuestionResultResponse> questionResults = new ArrayList<>();
 
         for (int index = 0; index < quizQuestions.size(); index++) {
             QuizQuestion quizQuestion = quizQuestions.get(index);
             String questionId = quizQuestion.getQuestionId();
-            Question question = quizRepository.findQuestionById(questionId)
-                    .orElse(null);
+            Question question = questionById.get(questionId);
 
             if (question == null) {
                 continue;
             }
 
-            List<Option> options = quizRepository.findOptionsByQuestionId(
-                    questionId);
+            List<Option> options = optionsByQuestionId
+                    .getOrDefault(questionId, List.of());
             String correctOptionId = options.stream()
+
                     .filter(Option::isCorrected)
                     .map(Option::getOptionId)
                     .findFirst()

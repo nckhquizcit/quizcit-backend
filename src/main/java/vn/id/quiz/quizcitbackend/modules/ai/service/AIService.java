@@ -25,10 +25,15 @@ import vn.id.quiz.quizcitbackend.modules.ai.utils.ThetaUtils;
 public class AIService {
 
     private static final double DEFAULT_THETA = 0.0;
-    private static final double PRIOR_VARIANCE = 9.0;
-    private static final int MAX_ITERATIONS = 30;
-    private static final double CONVERGENCE_THRESHOLD = 1.0e-6;
+    // sigma = 1 -> PRIOR_VARIANCE = sigma^2 = 1.0.
+    // Phải khớp với AI Service (quizcit-ai/main.py -> rasch_theta, sigma = 1)
+    // để fallback nội bộ cho ra theta tương đương khi AI Service offline/chậm.
+    private static final double PRIOR_VARIANCE = 1.0;
+    private static final int MAX_ITERATIONS = 20;
+    private static final double CONVERGENCE_THRESHOLD = 1.0e-4;
     private static final double MIN_HESSIAN_ABS = 1.0e-9;
+    private static final double THETA_MIN = -4.0;
+    private static final double THETA_MAX = 4.0;
 
     private final AIClient aiClient;
 

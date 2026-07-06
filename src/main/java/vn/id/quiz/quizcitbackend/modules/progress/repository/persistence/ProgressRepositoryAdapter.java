@@ -48,6 +48,16 @@ public class ProgressRepositoryAdapter
     }
 
     @Override
+    public List<QuestionSkill> findQuestionSkillsByQuestionIds(
+            java.util.Collection<String> questionIds) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            return List.of();
+        }
+        return questionSkillRepository.findByQuestionIdIn(questionIds);
+    }
+
+
+    @Override
     public List<QuestionSkill> findQuestionSkillsBySkillId(
             String skillId) {
         return questionSkillRepository.findBySkillId(skillId);

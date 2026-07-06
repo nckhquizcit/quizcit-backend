@@ -49,6 +49,16 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public List<Question> findQuestionsByIds(
+            java.util.Collection<String> questionIds) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            return List.of();
+        }
+        return jpaQuestionRepository.findByQuestionIdIn(questionIds);
+    }
+
+
+    @Override
     public void deleteQuestionById(
             String questionId) {
 
@@ -119,6 +129,16 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public List<Option> findOptionsByQuestionIds(
+            java.util.Collection<String> questionIds) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            return List.of();
+        }
+        return jpaOptionRepository.findByQuestionIdIn(questionIds);
+    }
+
+
+    @Override
     public void deleteOptionsByQuestionId(String questionId) {
         jpaOptionRepository.deleteByQuestionId(questionId);
     }
@@ -158,6 +178,16 @@ public class QuizRepositoryAdapter implements QuizRepository {
     public Response save(Response response) {
         return jpaResponseRepository.save(response);
     }
+
+    @Override
+    public List<Response> saveResponses(
+            java.util.Collection<Response> responses) {
+        if (responses == null || responses.isEmpty()) {
+            return List.of();
+        }
+        return jpaResponseRepository.saveAll(responses);
+    }
+
 
     @Override
     public List<Response> findResponsesByAttemptId(String attemptId) {

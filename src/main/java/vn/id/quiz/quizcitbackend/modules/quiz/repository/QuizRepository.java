@@ -1,7 +1,9 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+
 
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
@@ -25,6 +27,11 @@ public interface QuizRepository {
 
     List<Question> findQuestionsByChapterId(
             String chapterId);
+
+    // Batch: lấy nhiều câu hỏi theo danh sách id (tránh N+1).
+    List<Question> findQuestionsByIds(
+            Collection<String> questionIds);
+
 
     void deleteQuestionById(
             String questionId);
@@ -80,6 +87,11 @@ public interface QuizRepository {
     List<Option> findOptionsByQuestionId(
             String questionId);
 
+    // Batch: lấy option của nhiều câu hỏi (tránh N+1).
+    List<Option> findOptionsByQuestionIds(
+            Collection<String> questionIds);
+
+
     void deleteOptionsByQuestionId(
             String questionId);
 
@@ -103,8 +115,13 @@ public interface QuizRepository {
     Response save(
             Response response);
 
+    // Batch: lưu nhiều response trong 1 lần (tránh N insert riêng lẻ).
+    List<Response> saveResponses(
+            Collection<Response> responses);
+
     List<Response> findResponsesByAttemptId(
             String attemptId);
+
 
     void deleteResponsesByQuestionId(
             String questionId);

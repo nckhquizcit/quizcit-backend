@@ -3,6 +3,7 @@ package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
 import org.springframework.data.jpa.repository.JpaRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,10 @@ public interface JpaQuestionRepository extends JpaRepository<Question, String> {
 
     Optional<Question> findByQuestionId(
             String questionId);
+
+    // Batch: lấy nhiều câu hỏi trong 1 truy vấn (tránh N+1).
+    List<Question> findByQuestionIdIn(Collection<String> questionIds);
+
 
     void deleteByQuestionId(
             String questionId);

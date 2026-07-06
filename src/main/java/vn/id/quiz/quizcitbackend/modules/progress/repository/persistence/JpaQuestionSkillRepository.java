@@ -1,5 +1,6 @@
 package vn.id.quiz.quizcitbackend.modules.progress.repository.persistence;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,10 @@ public interface JpaQuestionSkillRepository
         extends JpaRepository<QuestionSkill, QuestionSkillId> {
 
     List<QuestionSkill> findByQuestionId(String questionId);
+
+    // Batch: lấy skill mapping của nhiều câu hỏi trong 1 truy vấn (tránh N+1).
+    List<QuestionSkill> findByQuestionIdIn(Collection<String> questionIds);
+
 
     List<QuestionSkill> findBySkillId(String skillId);
 
