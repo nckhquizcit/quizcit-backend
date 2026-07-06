@@ -4,8 +4,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import lombok.RequiredArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaBatchRequest;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaBatchResponse;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse;
+
 
 /**
  * Client gọi sang AI Service (IRT estimation).
@@ -29,6 +32,9 @@ public class AIClient {
 
     // Khớp với endpoint thực tế của AI Service (AI/main.py -> @app.post("/estimate")).
     private static final String ESTIMATE_PATH = "/estimate";
+    // Endpoint batch: ước lượng theta cho nhiều skill trong 1 request
+    // (AI/main.py -> @app.post("/estimate-batch")).
+    private static final String ESTIMATE_BATCH_PATH = "/estimate-batch";
 
 
     private final RestClient aiRestClient;
@@ -40,4 +46,13 @@ public class AIClient {
                 .retrieve()
                 .body(EstimateThetaResponse.class);
     }
+
+    public EstimateThetaBatchResponse estimateThetaBatch(EstimateThetaBatchRequest request) {
+        return aiRestClient.post()
+                .uri(ESTIMATE_BATCH_PATH)
+                .body(request)
+                .retrieve()
+                .body(EstimateThetaBatchResponse.class);
+    }
 }
+

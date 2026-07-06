@@ -2,7 +2,9 @@ package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -218,22 +220,33 @@ public class AttemptServiceImplement
         // Lưu tất cả response trong 1 batch insert.
         quizRepository.saveResponses(responsesToSave);
 
+        // Ước lượng theta cho TẤT CẢ skill trong 1 lần gọi AI (batch) thay vì
+        // gọi lặp từng skill → loại bỏ N lần round-trip HTTP (rất nặng khi
+        // AI Service cold start). Fallback nội bộ được áp dụng tự động cho
+        // các skill mà AI Service không trả về.
+        Map<String, EstimateThetaRequest> thetaRequests = new LinkedHashMap<>();
+        for (var entry : skillMap.entrySet()) {
+            SkillThetaData data = entry.getValue();
+            thetaRequests.put(
+                    entry.getKey(),
+                    new EstimateThetaRequest(
+                            data.getResponses(),
+                            data.getDifficulties(),
+                            data.getWeights()));
+        }
+
+        Map<String, Double> estimatedThetaBySkill = aiService.estimateThetaBatch(thetaRequests);
+
         Map<String, Double> skillThetaMap = new HashMap<>();
 
         for (var entry : skillMap.entrySet()) {
 
             String skillId = entry.getKey();
 
-            SkillThetaData data = entry.getValue();
-
-            double estimatedTheta = aiService.estimateTheta(
-                    new EstimateThetaRequest(
-                            data.getResponses(),
-                            data.getDifficulties(),
-                            data.getWeights()))
-                    .theta();
+            double estimatedTheta = estimatedThetaBySkill.getOrDefault(skillId, 0.0);
 
             UserSkillAbility ability = progressRepository
+
                     .findUserSkillAbility(
                             attempt.getUserId(),
                             skillId)

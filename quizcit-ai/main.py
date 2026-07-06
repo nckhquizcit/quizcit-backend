@@ -104,3 +104,31 @@ def rasch_theta(responses, difficulties, weights, max_iter=20,
 @app.post("/estimate")
 def estimate_theta(data: AttemptData):
     return rasch_theta(data.responses, data.difficulties, data.weights)
+
+
+# ---- Batch estimate: ước lượng theta cho NHIỀU skill trong 1 request ----
+# Backend gọi endpoint này khi nộp bài để tránh N lần round-trip HTTP
+# (mỗi skill 1 request) — vốn rất nặng khi service cold start trên Render.
+class BatchItem(BaseModel):
+    key: str            # skillId để backend map kết quả trả về
+    responses: list
+    difficulties: list
+    weights: list
+
+
+class BatchData(BaseModel):
+    items: list[BatchItem]
+
+
+@app.post("/estimate-batch")
+def estimate_theta_batch(data: BatchData):
+    results = []
+    for item in data.items:
+        estimated = rasch_theta(item.responses, item.difficulties, item.weights)
+        results.append({
+            "key":          item.key,
+            "theta":        estimated["theta"],
+            "theta_scaled": estimated["theta_scaled"],
+        })
+    return {"results": results}
+
