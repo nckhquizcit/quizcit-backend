@@ -13,8 +13,11 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import vn.id.quiz.quizcitbackend.modules.ai.client.AIClient;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaBatchRequest;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaBatchResponse;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse;
+
 import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
@@ -49,7 +52,19 @@ class AttemptServiceImplementTest {
 
                 return new EstimateThetaResponse(2.5, 3.25);
             }
+
+            @Override
+            public EstimateThetaBatchResponse estimateThetaBatch(
+                    EstimateThetaBatchRequest request) {
+
+                List<EstimateThetaBatchResponse.Item> items = request.items().stream()
+                        .map(item -> new EstimateThetaBatchResponse.Item(item.key(), 2.5, 3.25))
+
+                        .toList();
+                return new EstimateThetaBatchResponse(items);
+            }
         });
+
         AttemptServiceImplement service = new AttemptServiceImplement(
                 quizRepository,
                 contentRepository,
@@ -90,16 +105,19 @@ class AttemptServiceImplementTest {
                         .questionId("question-1")
                         .indexOrder(1)
                         .build()));
-        when(quizRepository.findQuestionById("question-1"))
-                .thenReturn(Optional.of(question));
-        when(quizRepository.findOptionById("option-1"))
-                .thenReturn(Optional.of(option));
-        when(progressRepository.findQuestionSkillsByQuestionId("question-1"))
+        when(quizRepository.findQuestionsByIds(any()))
+                .thenReturn(List.of(question));
+        when(quizRepository.findOptionsByQuestionIds(any()))
+                .thenReturn(List.of(option));
+        when(quizRepository.saveResponses(any()))
+                .thenAnswer(invocation -> new ArrayList<>(invocation.getArgument(0)));
+        when(progressRepository.findQuestionSkillsByQuestionIds(any()))
                 .thenReturn(List.of(QuestionSkill.create(
                         "question-1",
                         "skill-1",
                         1.0,
                         true)));
+
         when(progressRepository.findUserSkillAbility("user-1", "skill-1"))
                 .thenReturn(Optional.of(ability));
         when(progressRepository.save(any(AbilityHistory.class)))
@@ -223,14 +241,11 @@ class AttemptServiceImplementTest {
                                 .questionId("question-2")
                                 .indexOrder(2)
                                 .build()));
-        when(quizRepository.findQuestionById("question-1"))
-                .thenReturn(Optional.of(questionOne));
-        when(quizRepository.findQuestionById("question-2"))
-                .thenReturn(Optional.of(questionTwo));
-        when(quizRepository.findOptionsByQuestionId("question-1"))
-                .thenReturn(List.of(optionTwo, optionOne));
-        when(quizRepository.findOptionsByQuestionId("question-2"))
-                .thenReturn(List.of(optionThree, optionFour));
+        when(quizRepository.findQuestionsByIds(any()))
+                .thenReturn(List.of(questionOne, questionTwo));
+        when(quizRepository.findOptionsByQuestionIds(any()))
+                .thenReturn(List.of(optionTwo, optionOne, optionThree, optionFour));
+
         when(quizRepository.findResponsesByAttemptId("attempt-1"))
                 .thenReturn(List.of(
                         Response.create("attempt-1", "question-1", "option-1", true),

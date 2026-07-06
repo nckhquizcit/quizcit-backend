@@ -187,6 +187,11 @@ class QuestionServiceImplementTest {
         }
 
         @Override
+        public List<Question> findQuestionsByIds(java.util.Collection<String> questionIds) {
+            return List.of();
+        }
+
+        @Override
         public void deleteQuestionById(String questionId) {
         }
 
@@ -248,6 +253,11 @@ class QuestionServiceImplementTest {
         }
 
         @Override
+        public List<Option> findOptionsByQuestionIds(java.util.Collection<String> questionIds) {
+            return List.of();
+        }
+
+        @Override
         public void deleteOptionsByQuestionId(String questionId) {
         }
 
@@ -269,6 +279,11 @@ class QuestionServiceImplementTest {
         @Override
         public Response save(Response response) {
             return response;
+        }
+
+        @Override
+        public List<Response> saveResponses(java.util.Collection<Response> responses) {
+            return new ArrayList<>(responses);
         }
 
         @Override
