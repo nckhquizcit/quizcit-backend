@@ -8,7 +8,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TokenServiceTest {
 
-    private final TokenService tokenService = new TokenService("test-secret-that-is-long-enough-for-hmac", 3600);
+    private final TokenService tokenService = new TokenService(
+            "test-secret-that-is-long-enough-for-hmac", 3600,
+            "test-otp-secret-that-is-long-enough", 300);
 
     @Test
     void generateShouldReturnSignedBearerToken() {

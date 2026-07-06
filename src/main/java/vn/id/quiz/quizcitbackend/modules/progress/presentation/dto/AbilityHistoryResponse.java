@@ -8,7 +8,6 @@ public record AbilityHistoryResponse(
         String skillId,
         double theta,
         double delta,
-        Double standardError,
         String sourceAttemptId,
         LocalDateTime createdAt) {
 }

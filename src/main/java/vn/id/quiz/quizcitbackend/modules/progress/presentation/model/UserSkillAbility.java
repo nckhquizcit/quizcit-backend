@@ -37,9 +37,6 @@ public class UserSkillAbility {
 
     private Double theta;
 
-    @Column(name = "standard_error")
-    private Double standardError;
-
     @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
 
@@ -51,16 +48,13 @@ public class UserSkillAbility {
                 .userId(userId)
                 .skillId(skillId)
                 .theta(0.0)
-                .standardError(1.0)
                 .updatedAt(ZonedDateTime.now())
                 .build();
     }
 
     public void updateAbility(
-            double theta,
-            double standardError) {
+            double theta) {
         this.theta = theta;
-        this.standardError = standardError;
         this.updatedAt = ZonedDateTime.now();
     }
 }

@@ -5,8 +5,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthResponse;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.ForgotPasswordRequest;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.ForgotPasswordResponse;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.LoginRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RegisterRequest;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RegisterResponse;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.ResendRequest;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.ResetPasswordRequest;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyRequest;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyResetOtpRequest;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyResetOtpResponse;
 import vn.id.quiz.quizcitbackend.modules.auth.repository.AuthRepository;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
@@ -15,7 +23,6 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignm
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
-import java.time.ZonedDateTime;
 import java.util.Optional;
 
 @Service
@@ -25,10 +32,12 @@ public class AuthServiceImpl implements AuthUseCase {
     private final AuthMapper authMapper;
     private final PasswordService passwordService;
     private final TokenService tokenService;
+    private final OtpService otpService;
+    private final EmailService emailService;
 
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public RegisterResponse register(RegisterRequest request) {
         if (authRepository.existsByUsername(request.username())) {
             throw new AppException("Ten dang nhap da ton tai", HttpStatus.CONFLICT);
         }
@@ -43,8 +52,114 @@ public class AuthServiceImpl implements AuthUseCase {
         Role defaultRole = getOrCreateRole(UserRole.USER);
         authRepository.save(UserRoleAssignment.assign(savedUser.getUserId(), defaultRole.getRoleId()));
 
-        TokenDetails tokenDetails = tokenService.generate(savedUser, defaultRole.getName());
-        return authMapper.toAuthResponse(savedUser, defaultRole.getName(), tokenDetails);
+        return sendVerificationOtp(savedUser.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse verify(VerifyRequest request) {
+        VerificationClaims claims = tokenService.parseVerificationToken(request.verificationToken());
+
+        if (!passwordService.matches(request.otp(), claims.otpHash())) {
+            throw new AppException("Ma xac thuc khong dung", HttpStatus.UNAUTHORIZED);
+        }
+
+        User user = authRepository.findUserByEmail(claims.email())
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
+
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
+        }
+
+        // Idempotent: bam verify lan 2 (da VERIFIED) van cap token, khong bao loi.
+        if (user.getStatus() != UserStatus.VERIFIED) {
+            user.setStatus(UserStatus.VERIFIED);
+            authRepository.save(user);
+        }
+
+        UserRole role = resolveUserRole(user.getUserId());
+        TokenDetails tokenDetails = tokenService.generate(user, role);
+        return authMapper.toAuthResponse(user, role, tokenDetails);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RegisterResponse resend(ResendRequest request) {
+        User user = authRepository.findUserByEmail(request.email().trim())
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
+
+        if (user.getStatus() == UserStatus.VERIFIED) {
+            throw new AppException("Tai khoan da duoc xac thuc", HttpStatus.CONFLICT);
+        }
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
+        }
+
+        return sendVerificationOtp(user.getEmail());
+    }
+
+    private RegisterResponse sendVerificationOtp(String email) {
+        String code = otpService.generateCode();
+        String otpHash = passwordService.hash(code);
+        String verificationToken = tokenService.generateVerificationToken(email, otpHash);
+        emailService.sendOtp(email, code);
+        return new RegisterResponse(email, verificationToken);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
+        User user = authRepository.findUserByEmail(request.email().trim())
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
+
+        String code = otpService.generateCode();
+        String otpHash = passwordService.hash(code);
+        String resetToken = tokenService.generatePasswordResetToken(user.getEmail(), otpHash);
+        emailService.sendPasswordResetOtp(user.getEmail(), code);
+        return new ForgotPasswordResponse(user.getEmail(), resetToken);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VerifyResetOtpResponse verifyResetOtp(VerifyResetOtpRequest request) {
+        VerificationClaims claims = tokenService.parsePasswordResetToken(request.resetToken());
+
+        if (!passwordService.matches(request.otp(), claims.otpHash())) {
+            throw new AppException("Ma xac thuc khong dung", HttpStatus.UNAUTHORIZED);
+        }
+
+        User user = authRepository.findUserByEmail(claims.email())
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
+
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
+        }
+
+        String confirmedToken = tokenService.generatePasswordResetConfirmedToken(user.getEmail());
+        return new VerifyResetOtpResponse(user.getEmail(), confirmedToken);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse resetPassword(ResetPasswordRequest request) {
+        VerificationClaims claims = tokenService.parsePasswordResetConfirmedToken(request.confirmedToken());
+
+        User user = authRepository.findUserByEmail(claims.email())
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
+
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
+        }
+
+        user.setPassword(passwordService.hash(request.newPassword()));
+        if (user.getStatus() != UserStatus.VERIFIED) {
+            user.setStatus(UserStatus.VERIFIED);
+        }
+        authRepository.save(user);
+
+        UserRole role = resolveUserRole(user.getUserId());
+        TokenDetails tokenDetails = tokenService.generate(user, role);
+        return authMapper.toAuthResponse(user, role, tokenDetails);
     }
 
     @Override
@@ -73,6 +188,9 @@ public class AuthServiceImpl implements AuthUseCase {
     }
 
     private void ensureUserCanAuthenticate(User user) {
+        if (user.getStatus() == UserStatus.UNVERIFIED) {
+            throw new AppException("Tai khoan chua xac thuc email", HttpStatus.FORBIDDEN);
+        }
         if (user.getStatus() == UserStatus.BANNED) {
             throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
         }

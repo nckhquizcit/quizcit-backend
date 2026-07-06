@@ -1,6 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -12,12 +13,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.OptionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuestionResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.skill.SkillResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.skill.SkillThetaData;
@@ -38,7 +43,11 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 public class AttemptServiceImplement
         implements AttemptService {
 
+    private static final double EXISTING_THETA_WEIGHT = 0.7;
+    private static final double NEW_THETA_WEIGHT = 0.3;
+
     private final QuizRepository quizRepository;
+    private final ContentRepository contentRepository;
     private final AttemptMapper mapper;
     private final ProgressRepository progressRepository;
 
@@ -198,16 +207,12 @@ public class AttemptServiceImplement
 
             SkillThetaData data = entry.getValue();
 
-            double theta = aiService.estimateTheta(
+            double estimatedTheta = aiService.estimateTheta(
                     new EstimateThetaRequest(
                             data.getResponses(),
                             data.getDifficulties(),
                             data.getWeights()))
                     .theta();
-
-            skillThetaMap.put(
-                    skillId,
-                    theta);
 
             UserSkillAbility ability = progressRepository
                     .findUserSkillAbility(
@@ -225,14 +230,19 @@ public class AttemptServiceImplement
 
             } else {
 
-                oldTheta = ability.getTheta();
+                oldTheta = ability.getTheta() == null ? 0.0 : ability.getTheta();
             }
 
-            // TODO: standardError tạm để 0.0; sau này lấy từ EstimateThetaResponse.standardError
-            // khi AI Service trả về sai số chuẩn của ước lượng theta.
+            double blendedTheta = blendTheta(
+                    oldTheta,
+                    estimatedTheta);
+
+            skillThetaMap.put(
+                    skillId,
+                    blendedTheta);
+
             ability.updateAbility(
-                    theta,
-                    0.0);
+                    blendedTheta);
 
             progressRepository.save(
                     ability);
@@ -240,10 +250,8 @@ public class AttemptServiceImplement
             AbilityHistory history = AbilityHistory.create(
                     attempt.getUserId(),
                     skillId,
-                    theta,
-                    theta - oldTheta,
-                    // TODO: standardError tạm để 0.0; thay bằng giá trị thật từ AI khi có.
-                    0.0,
+                    blendedTheta,
+                    blendedTheta - oldTheta,
                     attempt.getAttemptId());
 
 
@@ -283,19 +291,39 @@ public class AttemptServiceImplement
                 .map(history -> SkillResultResponse.builder()
                         .skillId(history.getSkillId())
                         .theta(history.getTheta())
-                        .standardError(
-                                history.getStandardError())
                         .build())
                 .toList();
+        Quiz quiz = quizRepository.findQuizById(attempt.getQuizId())
+                .orElse(null);
+        Subject subject = quiz == null
+                ? null
+                : contentRepository.findSubjectById(quiz.getSubjectId())
+                        .orElse(null);
 
         return QuizResultResponse.builder()
                 .attemptId(attempt.getAttemptId())
                 .quizId(attempt.getQuizId())
+                .quizName(quiz == null ? null : quiz.getName())
+                .subjectName(subject == null ? null : subject.getName())
+                .submittedAt(attempt.getCreatedAt())
                 .rawScore(attempt.getRawScore())
                 .totalQuestion(attempt.getTotalQuestion())
                 .overallTheta(attempt.getOverallTheta())
                 .skillResults(skillResults)
+                .questionResults(buildQuestionResults(attempt))
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getAttemptOwnerId(
+            String attemptId) {
+
+        return quizRepository.findAttemptById(attemptId)
+                .map(Attempt::getUserId)
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy attempt",
+                        HttpStatus.NOT_FOUND));
     }
 
     @Override
@@ -308,5 +336,67 @@ public class AttemptServiceImplement
 
         return mapper.toQuizResultResponseList(
                 attempts);
+    }
+
+    private double blendTheta(
+            double oldTheta,
+            double newTheta) {
+
+        return oldTheta * EXISTING_THETA_WEIGHT
+                + newTheta * NEW_THETA_WEIGHT;
+    }
+
+    private List<QuestionResultResponse> buildQuestionResults(
+            Attempt attempt) {
+
+        List<Response> responses = quizRepository.findResponsesByAttemptId(
+                attempt.getAttemptId());
+        Map<String, Response> responseByQuestionId = responses.stream()
+                .collect(Collectors.toMap(
+                        Response::getQuestionId,
+                        response -> response,
+                        (first, ignored) -> first));
+        List<QuizQuestion> quizQuestions = quizRepository.findQuizQuestionsByQuizId(
+                attempt.getQuizId());
+        List<QuestionResultResponse> questionResults = new ArrayList<>();
+
+        for (int index = 0; index < quizQuestions.size(); index++) {
+            QuizQuestion quizQuestion = quizQuestions.get(index);
+            String questionId = quizQuestion.getQuestionId();
+            Question question = quizRepository.findQuestionById(questionId)
+                    .orElse(null);
+
+            if (question == null) {
+                continue;
+            }
+
+            List<Option> options = quizRepository.findOptionsByQuestionId(
+                    questionId);
+            String correctOptionId = options.stream()
+                    .filter(Option::isCorrected)
+                    .map(Option::getOptionId)
+                    .findFirst()
+                    .orElse(null);
+            Response response = responseByQuestionId.get(questionId);
+
+            questionResults.add(QuestionResultResponse.builder()
+                    .questionId(question.getQuestionId())
+                    .questionNumber(index + 1)
+                    .content(question.getContent())
+                    .explanation(question.getExplanation())
+                    .selectedOptionId(response == null ? null : response.getOptionId())
+                    .correctOptionId(correctOptionId)
+                    .correct(response != null && response.isScore())
+                    .options(options.stream()
+                            .map(option -> OptionResponse.builder()
+                                    .optionId(option.getOptionId())
+                                    .content(option.getContent())
+                                    .corrected(option.isCorrected())
+                                    .build())
+                            .toList())
+                    .build());
+        }
+
+        return questionResults;
     }
 }
