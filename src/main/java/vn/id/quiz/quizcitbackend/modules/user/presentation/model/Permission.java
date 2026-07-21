@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.http.HttpStatus;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 import java.util.UUID;
 
@@ -30,7 +31,7 @@ public class Permission {
 
     public static Permission create(String name) {
         if (name == null || name.isBlank()) {
-            throw new AppException("Quyền không hợp lệ", HttpStatus.BAD_REQUEST);
+            throw new AppException(ErrorMessages.INVALID_PERMISSION, HttpStatus.BAD_REQUEST);
         }
 
         return Permission.builder()

@@ -5,9 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record ResendRequest(
-        @NotBlank(message = "Email khong duoc de trong")
-        @Email(message = "Email khong hop le")
-        @Size(max = 100, message = "Email khong duoc vuot qua 100 ky tu")
+        @NotBlank(message = "Email không được để trống")
+        @Email(message = "Email không hợp lệ")
+        @Size(max = 100, message = "Email không được vượt quá 100 ký tự")
         String email
 ) {
 }

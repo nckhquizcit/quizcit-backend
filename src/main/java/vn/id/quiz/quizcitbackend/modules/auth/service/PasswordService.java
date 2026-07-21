@@ -72,7 +72,7 @@ public class PasswordService {
             SecretKeyFactory factory = SecretKeyFactory.getInstance(HASH_ALGORITHM);
             return factory.generateSecret(spec).getEncoded();
         } catch (Exception ex) {
-            throw new IllegalStateException("Khong the ma hoa mat khau", ex);
+            throw new IllegalStateException("Không thể mã hóa mật khẩu", ex);
         }
     }
 
@@ -82,7 +82,7 @@ public class PasswordService {
 
     private void validateRawPassword(String rawPassword) {
         if (rawPassword == null || rawPassword.isBlank()) {
-            throw new IllegalArgumentException("Mat khau khong duoc de trong");
+            throw new IllegalArgumentException("Mật khẩu không được để trống");
         }
     }
 }

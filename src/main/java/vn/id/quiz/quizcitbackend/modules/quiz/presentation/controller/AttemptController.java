@@ -7,7 +7,9 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.StartQuizRes
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.AttemptService;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
+import vn.id.quiz.quizcitbackend.shared.security.PrincipalAccess;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 import java.util.List;
@@ -25,7 +27,6 @@ import org.springframework.web.bind.annotation.*;
 public class AttemptController {
 
     private final AttemptService attemptService;
-    private static final String ACCESS_DENIED_MESSAGE = "Bạn không có quyền thực hiện thao tác này.";
 
     @PostMapping("/quizzes/{quizId}/start")
     public ResponseEntity<ApiResponse<StartQuizResponse>> startQuiz(
@@ -33,7 +34,7 @@ public class AttemptController {
             @RequestParam(required = false) String userId,
             @AuthenticationPrincipal CustomUserPrincipal principal) {
 
-        StartQuizResponse response = attemptService.startQuiz(resolveUserId(principal, userId), quizId);
+        StartQuizResponse response = attemptService.startQuiz(PrincipalAccess.resolveUserId(principal, userId), quizId);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
@@ -86,31 +87,14 @@ public class AttemptController {
 
         return ResponseEntity.ok(
                 ApiResponse.success(
-                        attemptService.getUserResults(resolveUserId(principal, userId))));
-    }
-
-    private String resolveUserId(
-            CustomUserPrincipal principal,
-            String requestedUserId) {
-
-        requirePrincipal(principal);
-
-        if (principal.isAdministrator()) {
-            return isBlank(requestedUserId) ? principal.getUserId() : requestedUserId;
-        }
-
-        if (!isBlank(requestedUserId) && !principal.getUserId().equals(requestedUserId)) {
-            throwForbidden();
-        }
-
-        return principal.getUserId();
+                        attemptService.getUserResults(PrincipalAccess.resolveUserId(principal, userId))));
     }
 
     private void assertCanAccessAttempt(
             CustomUserPrincipal principal,
             String attemptId) {
 
-        requirePrincipal(principal);
+        PrincipalAccess.requirePrincipal(principal);
 
         if (principal.isAdministrator()) {
             return;
@@ -118,27 +102,7 @@ public class AttemptController {
 
         String ownerUserId = attemptService.getAttemptOwnerId(attemptId);
         if (!principal.getUserId().equals(ownerUserId)) {
-            throwForbidden();
+            throw new AppException(ErrorMessages.ACCESS_DENIED, HttpStatus.FORBIDDEN);
         }
-    }
-
-    private void requirePrincipal(
-            CustomUserPrincipal principal) {
-
-        if (principal == null || isBlank(principal.getUserId())) {
-            throw new AppException(
-                    "Bạn cần đăng nhập để thực hiện thao tác này.",
-                    HttpStatus.UNAUTHORIZED);
-        }
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
-
-    private void throwForbidden() {
-        throw new AppException(
-                ACCESS_DENIED_MESSAGE,
-                HttpStatus.FORBIDDEN);
     }
 }

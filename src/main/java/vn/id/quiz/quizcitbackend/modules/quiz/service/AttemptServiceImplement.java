@@ -39,6 +39,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 @Service
 @RequiredArgsConstructor
@@ -63,7 +64,7 @@ public class AttemptServiceImplement
 
         Quiz quiz = quizRepository.findQuizById(quizId)
                 .orElseThrow(() -> new AppException(
-                        "Không tìm thấy đề thi",
+                        ErrorMessages.QUIZ_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
 
         List<QuizQuestion> questions = quizRepository.findQuizQuestionsByQuizId(
@@ -94,7 +95,7 @@ public class AttemptServiceImplement
                         request.getAttemptId())
                 .orElseThrow(
                         () -> new AppException(
-                                "Không tìm thấy attempt",
+                                ErrorMessages.ATTEMPT_NOT_FOUND,
                                 HttpStatus.NOT_FOUND));
 
         if (request.getQuizId() != null && !request.getQuizId().isBlank()
@@ -354,7 +355,7 @@ public class AttemptServiceImplement
         return quizRepository.findAttemptById(attemptId)
                 .map(Attempt::getUserId)
                 .orElseThrow(() -> new AppException(
-                        "Không tìm thấy attempt",
+                        ErrorMessages.ATTEMPT_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
     }
 

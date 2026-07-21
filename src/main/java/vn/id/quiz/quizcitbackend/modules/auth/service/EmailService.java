@@ -36,16 +36,16 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
         message.setTo(toEmail);
-        message.setSubject("Ma xac thuc tai khoan Quizcit");
+        message.setSubject("Mã xác thực tài khoản Quizcit");
         message.setText(
-                "Ma xac thuc cua ban la: " + code + "\n\n"
-                        + "Ma co hieu luc trong 5 phut. Vui long khong chia se ma nay voi bat ky ai.\n\n"
-                        + "Neu ban khong yeu cau dang ky, hay bo qua email nay."
+                "Mã xác thực của bạn là: " + code + "\n\n"
+                        + "Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.\n\n"
+                        + "Nếu bạn không yêu cầu đăng ký, hãy bỏ qua email này."
         );
         try {
             mailSender.send(message);
         } catch (MailException ex) {
-            throw new AppException("Khong the gui email xac thuc", HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new AppException("Không thể gửi email xác thực", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -58,16 +58,16 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
         message.setTo(toEmail);
-        message.setSubject("Ma dat lai mat khau Quizcit");
+        message.setSubject("Mã đặt lại mật khẩu Quizcit");
         message.setText(
-                "Ma dat lai mat khau cua ban la: " + code + "\n\n"
-                        + "Ma co hieu luc trong 5 phut. Vui long khong chia se ma nay voi bat ky ai.\n\n"
-                        + "Neu ban khong yeu cau dat lai mat khau, hay bo qua email nay."
+                "Mã đặt lại mật khẩu của bạn là: " + code + "\n\n"
+                        + "Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.\n\n"
+                        + "Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này."
         );
         try {
             mailSender.send(message);
         } catch (MailException ex) {
-            throw new AppException("Khong the gui email dat lai mat khau", HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new AppException("Không thể gửi email đặt lại mật khẩu", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

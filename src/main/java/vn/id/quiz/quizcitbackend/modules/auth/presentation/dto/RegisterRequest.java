@@ -5,20 +5,20 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
-        @NotBlank(message = "Ten dang nhap khong duoc de trong")
-        @Size(max = 50, message = "Ten dang nhap khong duoc vuot qua 50 ky tu")
+        @NotBlank(message = "Tên đăng nhập không được để trống")
+        @Size(max = 50, message = "Tên đăng nhập không được vượt quá 50 ký tự")
         String username,
 
-        @NotBlank(message = "Mat khau khong duoc de trong")
-        @Size(min = 6, max = 255, message = "Mat khau phai tu 6 den 255 ky tu")
+        @NotBlank(message = "Mật khẩu không được để trống")
+        @Size(min = 6, max = 255, message = "Mật khẩu phải từ 6 đến 255 ký tự")
         String password,
 
-        @NotBlank(message = "Email khong duoc de trong")
-        @Email(message = "Email khong hop le")
-        @Size(max = 100, message = "Email khong duoc vuot qua 100 ky tu")
+        @NotBlank(message = "Email không được để trống")
+        @Email(message = "Email không hợp lệ")
+        @Size(max = 100, message = "Email không được vượt quá 100 ký tự")
         String email,
 
-        @Size(max = 100, message = "Ten hien thi khong duoc vuot qua 100 ky tu")
+        @Size(max = 100, message = "Tên hiển thị không được vượt quá 100 ký tự")
         String displayName
 ) {
 }

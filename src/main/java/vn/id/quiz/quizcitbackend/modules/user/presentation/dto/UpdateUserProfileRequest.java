@@ -5,12 +5,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record UpdateUserProfileRequest(
-        @NotBlank(message = "Ten hien thi khong duoc de trong")
-        @Size(max = 100, message = "Ten hien thi khong duoc vuot qua 100 ky tu")
+        @NotBlank(message = "Tên hiển thị không được để trống")
+        @Size(max = 100, message = "Tên hiển thị không được vượt quá 100 ký tự")
         String displayName,
 
-        @Email(message = "Email khong hop le")
-        @Size(max = 100, message = "Email khong duoc vuot qua 100 ky tu")
+        @Email(message = "Email không hợp lệ")
+        @Size(max = 100, message = "Email không được vượt quá 100 ký tự")
         String email
 ) {
     public UpdateUserProfileRequest(String displayName) {

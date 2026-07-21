@@ -21,6 +21,7 @@ import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 import java.util.List;
 
@@ -38,7 +39,7 @@ public class ContentServiceImplement implements ContentService {
     @Transactional(readOnly = true)
     public List<QuizSummaryResponse> getQuizzesBySubject(String subjectId) {
         if (!contentRepository.existsBySubjectId(subjectId)) {
-            throw new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND);
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
         List<Quiz> quizzes = quizRepository.findQuizzesBySubjectId(subjectId);
         return quizzes.stream()
@@ -57,14 +58,14 @@ public class ContentServiceImplement implements ContentService {
     public SubjectResponse getSubjectById(String subjectId){
 
         Subject subject = contentRepository.findSubjectById(subjectId)
-                .orElseThrow(()-> new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND));
+                .orElseThrow(()-> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
         return mapper.toSubjectResponse(subject);
     }
     @Override
     @Transactional(readOnly = true)
     public ChapterResponse getChapterById(String chapterId){
         Chapter chapter = contentRepository.findChapterById(chapterId)
-                .orElseThrow(()-> new AppException("Không tìm thấy chương được yêu cầu", HttpStatus.NOT_FOUND));
+                .orElseThrow(()-> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
         return mapper.toChapterResponse(chapter);
     }
     @Override
@@ -90,7 +91,7 @@ public class ContentServiceImplement implements ContentService {
     @Transactional
     public ChapterResponse addChapter(String subjectId, CreateChapterRequest request){
         if(!contentRepository.existsBySubjectId(subjectId)){
-            throw new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND);
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
         Chapter response = Chapter.create(subjectId, request.name());
         contentRepository.save(response);
@@ -100,7 +101,7 @@ public class ContentServiceImplement implements ContentService {
     @Transactional
     public TheoryResponse addTheory(String chapterId, CreateTheoryRequest request){
         if(!contentRepository.existsByChapterId(chapterId)){
-            throw new AppException("Không tìm thấy chương được yêu cầu", HttpStatus.NOT_FOUND);
+            throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
 
         Theory response = Theory.create(chapterId, request.content());
@@ -113,7 +114,7 @@ public class ContentServiceImplement implements ContentService {
     @Transactional(readOnly = true)
     public List<ChapterResponse> getAllChapters(String subjectId){
         if(!contentRepository.existsBySubjectId(subjectId)){
-            throw new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND);
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
         List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
         return mapper.toChapterResponseList(chapters);
@@ -123,7 +124,7 @@ public class ContentServiceImplement implements ContentService {
     @Transactional(readOnly = true)
     public List<TheoryResponse> getAllTheories(String chapterId){
         if(!contentRepository.existsByChapterId(chapterId)){
-            throw new AppException("Không tìm thấy chương được yêu cầu", HttpStatus.NOT_FOUND);
+            throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
         List<Theory> theories = contentRepository.findAllTheory(chapterId);
         return mapper.toTheoryResponseList(theories);
@@ -132,7 +133,7 @@ public class ContentServiceImplement implements ContentService {
     @Override
     public void updateSubject(String subjectId, UpdateSubjectRequest request){
         Subject subject = contentRepository.findSubjectById(subjectId)
-                .orElseThrow(()-> new AppException("Không tìm thấy học phần được yêu cầu", HttpStatus.NOT_FOUND));
+                .orElseThrow(()-> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
         subject.updateSubject(request.courseCode(), request.name(), request.description());
         contentRepository.save(subject);
     }
@@ -140,7 +141,7 @@ public class ContentServiceImplement implements ContentService {
     @Override
     public void updateChapter(String chapterId, UpdateChapterRequest request){
         Chapter chapter = contentRepository.findChapterById(chapterId)
-                        .orElseThrow(()->new AppException("Không tìm thấy chương được yêu cầu", HttpStatus.NOT_FOUND));
+                        .orElseThrow(()->new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
 
         chapter.updateChapter(request.name());
         contentRepository.save(chapter);

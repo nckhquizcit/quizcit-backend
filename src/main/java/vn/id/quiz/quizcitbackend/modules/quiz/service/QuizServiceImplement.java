@@ -19,6 +19,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 @Service
 @RequiredArgsConstructor
@@ -35,12 +36,12 @@ public class QuizServiceImplement implements QuizService {
 
         contentRepository.findSubjectById(request.getSubjectId())
                 .orElseThrow(() -> new AppException(
-                        "Không tìm thấy môn học",
+                        ErrorMessages.SUBJECT_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
 
         contentRepository.findChapterById(request.getChapterId())
                 .orElseThrow(() -> new AppException(
-                        "Không tìm thấy chương học",
+                        ErrorMessages.CHAPTER_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
 
         List<Question> selected;
@@ -49,7 +50,7 @@ public class QuizServiceImplement implements QuizService {
             selected = request.getQuestionIds().stream()
                     .map(questionId -> quizRepository.findQuestionById(questionId)
                             .orElseThrow(() -> new AppException(
-                                    "Không tìm thấy câu hỏi",
+                                    ErrorMessages.QUESTION_NOT_FOUND,
                                     HttpStatus.NOT_FOUND)))
                     .filter(question -> Objects.equals(question.getChapterId(), request.getChapterId()))
                     .toList();
@@ -115,7 +116,7 @@ public class QuizServiceImplement implements QuizService {
         Quiz quiz = quizRepository.findQuizById(
                 quizId)
                 .orElseThrow(() -> new AppException(
-                        "Không tìm thấy quiz",
+                        ErrorMessages.QUIZ_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
 
         Quiz updated = Quiz.builder()
@@ -145,7 +146,7 @@ public class QuizServiceImplement implements QuizService {
         return mapper.toResponse(
                 quizRepository.findQuizById(quizId)
                         .orElseThrow(() -> new AppException(
-                                "Không tìm thấy quiz",
+                                ErrorMessages.QUIZ_NOT_FOUND,
                                 HttpStatus.NOT_FOUND)));
     }
 

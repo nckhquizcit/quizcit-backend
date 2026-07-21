@@ -24,7 +24,7 @@ public record TokenPayload(
     public static TokenPayload from(String token) {
         String[] parts = token.split("\\.");
         if (parts.length != 3) {
-            throw new IllegalArgumentException("Token khong hop le");
+            throw new IllegalArgumentException("Token không hợp lệ");
         }
         String decoded;
         try {
@@ -32,7 +32,7 @@ public record TokenPayload(
                     Base64.getUrlDecoder().decode(parts[1]),
                     StandardCharsets.UTF_8);
         } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Payload token khong hop le", ex);
+            throw new IllegalArgumentException("Payload token không hợp lệ", ex);
         }
 
         String userId = null;

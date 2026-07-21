@@ -4,11 +4,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record VerifyResetOtpRequest(
-        @NotBlank(message = "Token dat lai mat khau khong duoc de trong")
+        @NotBlank(message = "Token đặt lại mật khẩu không được để trống")
         String resetToken,
 
-        @NotBlank(message = "Ma xac thuc khong duoc de trong")
-        @Size(min = 6, max = 6, message = "Ma xac thuc phai gom 6 chu so")
+        @NotBlank(message = "Mã xác thực không được để trống")
+        @Size(min = 6, max = 6, message = "Mã xác thực phải gồm 6 chữ số")
         String otp
 ) {
 }

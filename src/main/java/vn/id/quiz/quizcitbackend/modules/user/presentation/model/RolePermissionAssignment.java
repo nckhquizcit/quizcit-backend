@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.http.HttpStatus;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 @Entity
 @Table(name = "role_permissions")
@@ -31,10 +32,10 @@ public class RolePermissionAssignment {
 
     public static RolePermissionAssignment assign(String roleId, String permissionId) {
         if (roleId == null || roleId.isBlank()) {
-            throw new AppException("Vai trò người dùng không hợp lệ", HttpStatus.BAD_REQUEST);
+            throw new AppException(ErrorMessages.INVALID_ROLE, HttpStatus.BAD_REQUEST);
         }
         if (permissionId == null || permissionId.isBlank()) {
-            throw new AppException("Quyền không hợp lệ", HttpStatus.BAD_REQUEST);
+            throw new AppException(ErrorMessages.INVALID_PERMISSION, HttpStatus.BAD_REQUEST);
         }
 
         return RolePermissionAssignment.builder()

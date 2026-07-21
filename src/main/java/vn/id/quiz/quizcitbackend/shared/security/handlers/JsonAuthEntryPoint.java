@@ -40,7 +40,7 @@ public class JsonAuthEntryPoint implements AuthenticationEntryPoint {
 
         ApiResponse<Object> body = ApiResponse.error(
                 HttpStatus.UNAUTHORIZED,
-                "Yeu cau dang nhap de truy cap tai nguyen nay");
+                "Yêu cầu đăng nhập để truy cập tài nguyên này");
 
         objectMapper.writeValue(response.getWriter(), body);
     }

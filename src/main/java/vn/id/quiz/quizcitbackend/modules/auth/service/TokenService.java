@@ -44,10 +44,10 @@ public class TokenService {
             @Value("${quizcit.auth.otp.expiration-seconds:300}") long otpExpirationSeconds
     ) {
         if (secret == null || secret.isBlank()) {
-            throw new IllegalStateException("quizcit.auth.token.secret chua duoc cau hinh");
+            throw new IllegalStateException("quizcit.auth.token.secret chưa được cấu hình");
         }
         if (verificationSecret == null || verificationSecret.isBlank()) {
-            throw new IllegalStateException("quizcit.auth.otp.token-secret chua duoc cau hinh");
+            throw new IllegalStateException("quizcit.auth.otp.token-secret chưa được cấu hình");
         }
         this.secret = secret.getBytes(StandardCharsets.UTF_8);
         this.verificationSecret = verificationSecret.getBytes(StandardCharsets.UTF_8);
@@ -143,7 +143,7 @@ public class TokenService {
 
     private VerificationClaims parseOtpToken(String token, String expectedPurpose, boolean requireOtpHash) {
         AppException invalid = new AppException(
-                "Ma xac thuc da het han hoac khong hop le", HttpStatus.BAD_REQUEST);
+                "Mã xác thực đã hết hạn hoặc không hợp lệ", HttpStatus.BAD_REQUEST);
 
         if (token == null || token.isBlank()) {
             throw invalid;
@@ -224,7 +224,7 @@ public class TokenService {
             mac.init(new SecretKeySpec(key, HMAC_ALGORITHM));
             return mac.doFinal(content.getBytes(StandardCharsets.UTF_8));
         } catch (Exception ex) {
-            throw new IllegalStateException("Khong the ky token", ex);
+            throw new IllegalStateException("Không thể ký token", ex);
         }
     }
 

@@ -58,8 +58,8 @@ public class UserAchievement {
             String description,
             String conditionType,
             Integer conditionValue) {
-        validateId(userId, "Nguoi dung khong hop le");
-        validateId(achieveId, "Thanh tuu khong hop le");
+        validateId(userId, "Người dùng không hợp lệ");
+        validateId(achieveId, "Thành tựu không hợp lệ");
 
         return UserAchievement.builder()
                 .userId(userId)

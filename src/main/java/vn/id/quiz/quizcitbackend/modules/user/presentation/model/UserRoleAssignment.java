@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.http.HttpStatus;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 @Entity
 @Table(name = "user_roles")
@@ -36,7 +37,7 @@ public class UserRoleAssignment {
             throw new AppException("Người dùng không hợp lệ", HttpStatus.BAD_REQUEST);
         }
         if (roleId == null || roleId.isBlank()) {
-            throw new AppException("Vai trò người dùng không hợp lệ", HttpStatus.BAD_REQUEST);
+            throw new AppException(ErrorMessages.INVALID_ROLE, HttpStatus.BAD_REQUEST);
         }
 
         return UserRoleAssignment.builder()

@@ -30,6 +30,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 @Service
 @RequiredArgsConstructor
@@ -91,7 +92,7 @@ public class QuestionServiceImplement implements QuestionService {
         Question question = quizRepository.findQuestionById(
                 questionId)
                 .orElseThrow(() -> new AppException(
-                        "Không tìm thấy câu hỏi",
+                        ErrorMessages.QUESTION_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
 
         String nextSubjectId = hasText(request.getSubjectId())
@@ -147,7 +148,7 @@ public class QuestionServiceImplement implements QuestionService {
             boolean includeCorrectAnswer) {
         Question question = quizRepository.findQuestionById(questionId)
                 .orElseThrow(() -> new AppException(
-                        "Không tìm thấy câu hỏi",
+                        ErrorMessages.QUESTION_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
         List<Option> options = quizRepository.findOptionsByQuestionId(questionId);
         List<OptionResponse> optionResponses = mapper.toOptionResponseList(options);
@@ -274,12 +275,12 @@ public class QuestionServiceImplement implements QuestionService {
 
         contentRepository.findSubjectById(subjectId)
                 .orElseThrow(() -> new AppException(
-                        "Không tìm thấy môn học",
+                        ErrorMessages.SUBJECT_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
 
         Chapter chapter = contentRepository.findChapterById(chapterId)
                 .orElseThrow(() -> new AppException(
-                        "Không tìm thấy chương học",
+                        ErrorMessages.CHAPTER_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
 
         if (!subjectId.equals(chapter.getSubjectId())) {
