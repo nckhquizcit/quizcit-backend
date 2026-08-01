@@ -6,6 +6,7 @@ public record TheoryResponse (
     String theoryId,
     String chapterId,
     String content,
+    String contentFormat,
     ZonedDateTime createdAt
 ){
     public TheoryResponse{

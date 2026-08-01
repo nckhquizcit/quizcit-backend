@@ -22,7 +22,6 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignment;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
-import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 import java.util.Optional;
 
@@ -40,10 +39,10 @@ public class AuthServiceImpl implements AuthUseCase {
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
         if (authRepository.existsByUsername(request.username())) {
-            throw new AppException("Tên đăng nhập đã tồn tại", HttpStatus.CONFLICT);
+            throw new AppException("Ten dang nhap da ton tai", HttpStatus.CONFLICT);
         }
         if (authRepository.existsByEmail(request.email())) {
-            throw new AppException("Email đã tồn tại", HttpStatus.CONFLICT);
+            throw new AppException("Email da ton tai", HttpStatus.CONFLICT);
         }
 
         String hashedPassword = passwordService.hash(request.password());
@@ -62,14 +61,14 @@ public class AuthServiceImpl implements AuthUseCase {
         VerificationClaims claims = tokenService.parseVerificationToken(request.verificationToken());
 
         if (!passwordService.matches(request.otp(), claims.otpHash())) {
-            throw new AppException("Mã xác thực không đúng", HttpStatus.UNAUTHORIZED);
+            throw new AppException("Ma xac thuc khong dung", HttpStatus.UNAUTHORIZED);
         }
 
         User user = authRepository.findUserByEmail(claims.email())
-                .orElseThrow(() -> new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
 
         if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tài khoản đã bị khóa", HttpStatus.FORBIDDEN);
+            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
         }
 
         // Idempotent: bam verify lan 2 (da VERIFIED) van cap token, khong bao loi.
@@ -87,13 +86,13 @@ public class AuthServiceImpl implements AuthUseCase {
     @Transactional(readOnly = true)
     public RegisterResponse resend(ResendRequest request) {
         User user = authRepository.findUserByEmail(request.email().trim())
-                .orElseThrow(() -> new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
 
         if (user.getStatus() == UserStatus.VERIFIED) {
-            throw new AppException("Tài khoản đã được xác thực", HttpStatus.CONFLICT);
+            throw new AppException("Tai khoan da duoc xac thuc", HttpStatus.CONFLICT);
         }
         if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tài khoản đã bị khóa", HttpStatus.FORBIDDEN);
+            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
         }
 
         return sendVerificationOtp(user.getEmail());
@@ -111,7 +110,7 @@ public class AuthServiceImpl implements AuthUseCase {
     @Transactional(readOnly = true)
     public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
         User user = authRepository.findUserByEmail(request.email().trim())
-                .orElseThrow(() -> new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
 
         String code = otpService.generateCode();
         String otpHash = passwordService.hash(code);
@@ -126,14 +125,14 @@ public class AuthServiceImpl implements AuthUseCase {
         VerificationClaims claims = tokenService.parsePasswordResetToken(request.resetToken());
 
         if (!passwordService.matches(request.otp(), claims.otpHash())) {
-            throw new AppException("Mã xác thực không đúng", HttpStatus.UNAUTHORIZED);
+            throw new AppException("Ma xac thuc khong dung", HttpStatus.UNAUTHORIZED);
         }
 
         User user = authRepository.findUserByEmail(claims.email())
-                .orElseThrow(() -> new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
 
         if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tài khoản đã bị khóa", HttpStatus.FORBIDDEN);
+            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
         }
 
         String confirmedToken = tokenService.generatePasswordResetConfirmedToken(user.getEmail());
@@ -146,10 +145,10 @@ public class AuthServiceImpl implements AuthUseCase {
         VerificationClaims claims = tokenService.parsePasswordResetConfirmedToken(request.confirmedToken());
 
         User user = authRepository.findUserByEmail(claims.email())
-                .orElseThrow(() -> new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
 
         if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tài khoản đã bị khóa", HttpStatus.FORBIDDEN);
+            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
         }
 
         user.setPassword(passwordService.hash(request.newPassword()));
@@ -190,10 +189,10 @@ public class AuthServiceImpl implements AuthUseCase {
 
     private void ensureUserCanAuthenticate(User user) {
         if (user.getStatus() == UserStatus.UNVERIFIED) {
-            throw new AppException("Tài khoản chưa xác thực email", HttpStatus.FORBIDDEN);
+            throw new AppException("Tai khoan chua xac thuc email", HttpStatus.FORBIDDEN);
         }
         if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tài khoản đã bị khóa", HttpStatus.FORBIDDEN);
+            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
         }
     }
 
@@ -222,6 +221,6 @@ public class AuthServiceImpl implements AuthUseCase {
     }
 
     private AppException invalidCredentials() {
-        return new AppException("Thông tin đăng nhập không chính xác", HttpStatus.UNAUTHORIZED);
+        return new AppException("Thong tin dang nhap khong chinh xac", HttpStatus.UNAUTHORIZED);
     }
 }

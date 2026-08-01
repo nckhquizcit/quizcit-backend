@@ -17,7 +17,6 @@ import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaBatchRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaBatchResponse;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse;
-
 import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
@@ -56,15 +55,12 @@ class AttemptServiceImplementTest {
             @Override
             public EstimateThetaBatchResponse estimateThetaBatch(
                     EstimateThetaBatchRequest request) {
-
                 List<EstimateThetaBatchResponse.Item> items = request.items().stream()
                         .map(item -> new EstimateThetaBatchResponse.Item(item.key(), 2.5, 3.25))
-
                         .toList();
                 return new EstimateThetaBatchResponse(items);
             }
         });
-
         AttemptServiceImplement service = new AttemptServiceImplement(
                 quizRepository,
                 contentRepository,
@@ -117,7 +113,6 @@ class AttemptServiceImplementTest {
                         "skill-1",
                         1.0,
                         true)));
-
         when(progressRepository.findUserSkillAbility("user-1", "skill-1"))
                 .thenReturn(Optional.of(ability));
         when(progressRepository.save(any(AbilityHistory.class)))
@@ -245,7 +240,6 @@ class AttemptServiceImplementTest {
                 .thenReturn(List.of(questionOne, questionTwo));
         when(quizRepository.findOptionsByQuestionIds(any()))
                 .thenReturn(List.of(optionTwo, optionOne, optionThree, optionFour));
-
         when(quizRepository.findResponsesByAttemptId("attempt-1"))
                 .thenReturn(List.of(
                         Response.create("attempt-1", "question-1", "option-1", true),

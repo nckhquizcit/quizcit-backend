@@ -52,7 +52,7 @@ public class UserController {
             @Valid @RequestBody UpdateUserProfileRequest request
     ) {
         UserResponse response = userUseCase.updateUserProfile(principal.getUserId(), request);
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật hồ sơ thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat ho so thanh cong", response));
     }
 
     // USER tu doi mat khau cua chinh minh.
@@ -63,7 +63,7 @@ public class UserController {
             @Valid @RequestBody ChangePasswordRequest request
     ) {
         userUseCase.changePassword(principal.getUserId(), request);
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật mật khẩu thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat mat khau thanh cong", null));
     }
 
     // =========================================================================
@@ -94,7 +94,7 @@ public class UserController {
             @Valid @RequestBody UpdateUserProfileRequest request
     ) {
         UserResponse response = userUseCase.updateUserProfile(userId, request);
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật người dùng thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat nguoi dung thanh cong", response));
     }
 
     // Doi mat khau (admin doi ho user tu doi).
@@ -105,7 +105,7 @@ public class UserController {
             @Valid @RequestBody ChangePasswordRequest request
     ) {
         userUseCase.changePassword(userId, request);
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật mật khẩu người dùng thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat mat khau nguoi dung thanh cong", null));
     }
 
     // Xoa nguoi dung (admin only).
@@ -116,7 +116,7 @@ public class UserController {
             @PathVariable String userId) {
         userUseCase.deleteUser(principal.getUserId(), userId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                .body(ApiResponse.success("Đã xóa người dùng thành công", null));
+                .body(ApiResponse.success("Da xoa nguoi dung thanh cong", null));
     }
 
     // =========================================================================
@@ -131,7 +131,7 @@ public class UserController {
     ) {
         UserResponse response = userUseCase.updateUserStatus(principal.getUserId(), userId, request);
         return ResponseEntity.ok(ApiResponse.success(
-                "Cập nhật trạng thái người dùng thành công", response));
+                "Cap nhat trang thai nguoi dung thanh cong", response));
     }
 
     // =========================================================================
@@ -146,6 +146,6 @@ public class UserController {
     ) {
         UserResponse response = userUseCase.changeUserRole(principal.getUserId(), userId, request);
         return ResponseEntity.ok(ApiResponse.success(
-                "Cập nhật vai trò người dùng thành công", response));
+                "Cap nhat vai tro nguoi dung thanh cong", response));
     }
 }

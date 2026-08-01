@@ -38,7 +38,6 @@ public class AIConfig {
     @Bean
     public RestClient aiRestClient(
             @Value("${quizcit.ai.base-url:http://localhost:8000}") String baseUrl,
-
             @Value("${quizcit.ai.connect-timeout-ms:2000}") long connectTimeoutMs,
             @Value("${quizcit.ai.read-timeout-ms:3000}") long readTimeoutMs) {
 

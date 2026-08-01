@@ -17,7 +17,6 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignm
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
 import vn.id.quiz.quizcitbackend.modules.user.repository.UserRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
-import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -89,7 +88,7 @@ public class UserServiceImpl implements UserUseCase {
     public void deleteUser(String actorUserId, String userId) {
         rejectSelfLockout(actorUserId, userId);
         if (!userRepository.existsById(userId)) {
-            throw new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+            throw new AppException("Khong tim thay nguoi dung duoc yeu cau", HttpStatus.NOT_FOUND);
         }
         userRepository.deleteById(userId);
     }
@@ -104,7 +103,7 @@ public class UserServiceImpl implements UserUseCase {
         requireRequest(request);
         UserStatus target = request.getStatus();
         if (target == null) {
-            throw new AppException("Trạng thái tài khoản không hợp lệ", HttpStatus.BAD_REQUEST);
+            throw new AppException("Trang thai tai khoan khong hop le", HttpStatus.BAD_REQUEST);
         }
 
         User user = getRequiredUser(userId);
@@ -124,13 +123,13 @@ public class UserServiceImpl implements UserUseCase {
         requireRequest(request);
         UserRole targetRole = request.getRole();
         if (targetRole == null) {
-            throw new AppException(ErrorMessages.INVALID_ROLE, HttpStatus.BAD_REQUEST);
+            throw new AppException("Vai tro nguoi dung khong hop le", HttpStatus.BAD_REQUEST);
         }
         getRequiredUser(userId); // dam bao user ton tai
 
         Role role = userRepository.findRoleByName(targetRole)
                 .orElseThrow(() -> new AppException(
-                        "Vai trò không tồn tại trong hệ thống",
+                        "Vai tro khong ton tai trong he thong",
                         HttpStatus.INTERNAL_SERVER_ERROR));
 
         // Xoa cac lien ket cu va gan moi
@@ -144,7 +143,7 @@ public class UserServiceImpl implements UserUseCase {
     private void rejectSelfLockout(String actorUserId, String targetUserId) {
         if (actorUserId != null && actorUserId.equals(targetUserId)) {
             throw new AppException(
-                    "Bạn không thể khóa, xóa hoặc thay đổi vai trò tài khoản đang đăng nhập",
+                    "Ban khong the khoa, xoa hoac thay doi vai tro tai khoan dang dang nhap",
                     HttpStatus.BAD_REQUEST);
         }
     }
@@ -152,28 +151,28 @@ public class UserServiceImpl implements UserUseCase {
     // Dung chung cho cac nghiep vu can dam bao user ton tai truoc khi xu ly.
     private User getRequiredUser(String userId) {
         return userRepository.findUserById(userId)
-                .orElseThrow(() -> new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException("Khong tim thay nguoi dung duoc yeu cau", HttpStatus.NOT_FOUND));
     }
 
     private <T> T requireRequest(T request) {
         if (request == null) {
-            throw new AppException("Yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST);
+            throw new AppException("Yeu cau khong hop le", HttpStatus.BAD_REQUEST);
         }
         return request;
     }
 
     private String validatePassword(String password) {
-        String value = requireNotBlank(password, "Mật khẩu không được để trống");
+        String value = requireNotBlank(password, "Mat khau khong duoc de trong");
         if (value.length() < PASSWORD_MIN_LENGTH || value.length() > PASSWORD_MAX_LENGTH) {
-            throw new AppException("Mật khẩu phải từ 6 đến 255 ký tự", HttpStatus.BAD_REQUEST);
+            throw new AppException("Mat khau phai tu 6 den 255 ky tu", HttpStatus.BAD_REQUEST);
         }
         return value;
     }
 
     private String validateDisplayName(String displayName) {
-        String normalized = requireNotBlank(displayName, "Tên hiển thị không được để trống").trim();
+        String normalized = requireNotBlank(displayName, "Ten hien thi khong duoc de trong").trim();
         if (normalized.length() > DISPLAY_NAME_MAX_LENGTH) {
-            throw new AppException("Tên hiển thị không được vượt quá 100 ký tự", HttpStatus.BAD_REQUEST);
+            throw new AppException("Ten hien thi khong duoc vuot qua 100 ky tu", HttpStatus.BAD_REQUEST);
         }
         return normalized;
     }
@@ -183,15 +182,15 @@ public class UserServiceImpl implements UserUseCase {
             return null;
         }
 
-        String normalized = requireNotBlank(email, "Email không được để trống").trim();
+        String normalized = requireNotBlank(email, "Email khong duoc de trong").trim();
         if (normalized.length() > EMAIL_MAX_LENGTH) {
-            throw new AppException("Email không được vượt quá 100 ký tự", HttpStatus.BAD_REQUEST);
+            throw new AppException("Email khong duoc vuot qua 100 ky tu", HttpStatus.BAD_REQUEST);
         }
         if (!EMAIL_PATTERN.matcher(normalized).matches()) {
-            throw new AppException("Email không hợp lệ", HttpStatus.BAD_REQUEST);
+            throw new AppException("Email khong hop le", HttpStatus.BAD_REQUEST);
         }
         if (userRepository.existsByEmailAndUserIdNot(normalized, userId)) {
-            throw new AppException("Email đã được sử dụng", HttpStatus.BAD_REQUEST);
+            throw new AppException("Email da duoc su dung", HttpStatus.BAD_REQUEST);
         }
         return normalized;
     }

@@ -33,7 +33,7 @@ class EmailServiceTest {
         assertThat(mailSender.sendCount).isEqualTo(1);
         assertThat(mailSender.lastMessage.getFrom()).isEqualTo("quizcit@example.com");
         assertThat(mailSender.lastMessage.getTo()).containsExactly("student@example.com");
-        assertThat(mailSender.lastMessage.getSubject()).isEqualTo("Mã xác thực tài khoản Quizcit");
+        assertThat(mailSender.lastMessage.getSubject()).isEqualTo("Ma xac thuc tai khoan Quizcit");
         assertThat(mailSender.lastMessage.getText()).contains("123456");
     }
 

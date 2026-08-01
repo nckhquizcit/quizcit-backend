@@ -417,6 +417,7 @@ GET /api/chapters/{chapterId}/theories
       "theoryId": "string",
       "chapterId": "string",
       "content": "string",
+      "contentFormat": "plain | blocknote",
       "createdAt": "ZonedDateTime"
     }
   ]
@@ -432,7 +433,8 @@ POST /api/chapters/{chapterId}/theories
 **Request Body:**
 ```json
 {
-  "content": "string (required)"
+  "content": "string (required)",
+  "contentFormat": "plain | blocknote (optional, default: plain)"
 }
 ```
 
@@ -455,7 +457,8 @@ PUT /api/theories/{theoryId}
 **Request Body:**
 ```json
 {
-  "content": "string (required)"
+  "content": "string (required)",
+  "contentFormat": "plain | blocknote (optional, default: plain)"
 }
 ```
 

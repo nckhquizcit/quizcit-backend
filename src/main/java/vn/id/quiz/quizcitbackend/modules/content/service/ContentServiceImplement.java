@@ -104,7 +104,7 @@ public class ContentServiceImplement implements ContentService {
             throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
 
-        Theory response = Theory.create(chapterId, request.content());
+        Theory response = Theory.create(chapterId, request.content(), request.contentFormat());
         contentRepository.save(response);
         return mapper.toTheoryResponse(response);
     }
@@ -151,7 +151,7 @@ public class ContentServiceImplement implements ContentService {
     public void updateTheory(String theoryId, UpdateTheoryRequest request){
         Theory theory = contentRepository.findTheoryById(theoryId)
                 .orElseThrow(()-> new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu", HttpStatus.NOT_FOUND));
-        theory.updateTheory(request.content());
+        theory.updateTheory(request.content(), request.contentFormat());
         contentRepository.save(theory);
     }
 

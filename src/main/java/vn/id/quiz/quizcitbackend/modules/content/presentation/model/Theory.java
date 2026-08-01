@@ -22,18 +22,41 @@ public class Theory {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
+    @Column(name = "content_format", length = 20)
+    @Builder.Default
+    private String contentFormat = "plain";
+
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
     public static Theory create(String chapterId, String content) {
+        return create(chapterId, content, "plain");
+    }
+
+    public static Theory create(String chapterId, String content, String contentFormat) {
         return Theory.builder()
                 .theoryId(UUID.randomUUID().toString())
                 .chapterId(chapterId)
                 .content(content)
+                .contentFormat(normalizeContentFormat(contentFormat))
                 .createdAt(ZonedDateTime.now())
                 .build();
     }
-    public void updateTheory(String content){
+
+    public void updateTheory(String content, String contentFormat){
         this.content = content;
+        this.contentFormat = normalizeContentFormat(contentFormat);
+    }
+
+    public void updateTheory(String content){
+        updateTheory(content, "plain");
+    }
+
+    public String getContentFormat() {
+        return normalizeContentFormat(contentFormat);
+    }
+
+    private static String normalizeContentFormat(String value) {
+        return "blocknote".equalsIgnoreCase(value) ? "blocknote" : "plain";
     }
 }
