@@ -34,9 +34,12 @@ public class Subject {
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
+    @Column(name = "display_order", nullable = false)
+    private int displayOrder;
+
     @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL, orphanRemoval = true) //map với field subject trong chapter
 
-    public static Subject create(String courseCode, String name, String description){
+    public static Subject create(String courseCode, String name, String description, int displayOrder){
         if(courseCode==null||courseCode.isBlank()){
             throw new IllegalArgumentException("Mã học phần không được để trống");
         }
@@ -50,13 +53,19 @@ public class Subject {
                 .description(description)
                 .visible(true)
                 .createdAt(ZonedDateTime.now())
+                .displayOrder(displayOrder)
                 .build();
     }
-    public void updateSubject(String courseCode, String name, String description, boolean visible){
+    public void updateSubject(String courseCode, String name, String description, boolean visible, int displayOrder){
         this.courseCode = courseCode;
         this.name = name;
         this.description = description;
         this.visible = visible;
+        this.displayOrder = displayOrder;
+    }
+
+    public void updateDisplayOrder(int displayOrder) {
+        this.displayOrder = displayOrder;
     }
 
 }

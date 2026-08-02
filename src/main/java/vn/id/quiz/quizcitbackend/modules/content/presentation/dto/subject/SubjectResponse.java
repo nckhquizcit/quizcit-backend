@@ -8,7 +8,8 @@ public record SubjectResponse(
         String name,
         String description,
         boolean visible,
-        ZonedDateTime createdAt
+        ZonedDateTime createdAt,
+        int displayOrder
 ) {
     public SubjectResponse{
         if(createdAt==null){

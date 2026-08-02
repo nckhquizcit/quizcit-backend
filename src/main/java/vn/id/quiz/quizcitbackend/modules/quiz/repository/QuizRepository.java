@@ -48,6 +48,7 @@ public interface QuizRepository {
 
     List<Quiz> findQuizzesByChapterId(
             String chapterId);
+    default int nextQuizDisplayOrder(String chapterId) { return 1; }
 
     /**
      * Phase 2 (P1): lấy tất cả quiz thuộc về một subject.

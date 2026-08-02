@@ -1,5 +1,6 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.presentation.model;
 
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.*;
@@ -35,13 +36,20 @@ public class Quiz {
 
     private int duration;
 
+    @Column(name = "display_order", nullable = false)
+    private int displayOrder;
+
+    @Column(name = "created_at", nullable = false)
+    private ZonedDateTime createdAt;
+
     public static Quiz create(
             String subjectId,
             String chapterId,
             String name,
             int totalQuestion,
             QuizType type,
-            int duration) {
+            int duration,
+            int displayOrder) {
 
         return Quiz.builder()
                 .quizId(UUID.randomUUID().toString())
@@ -51,6 +59,12 @@ public class Quiz {
                 .totalQuestion(totalQuestion)
                 .type(type)
                 .duration(duration)
+                .displayOrder(displayOrder)
+                .createdAt(ZonedDateTime.now())
                 .build();
+    }
+
+    public void updateDisplayOrder(int displayOrder) {
+        this.displayOrder = displayOrder;
     }
 }

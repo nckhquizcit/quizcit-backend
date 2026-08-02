@@ -6,7 +6,8 @@ public record ChapterResponse(
         String chapterId,
         String subjectId,
         String name,
-        ZonedDateTime createdAt
+        ZonedDateTime createdAt,
+        int displayOrder
 ) {
     public ChapterResponse{
         if(createdAt==null){

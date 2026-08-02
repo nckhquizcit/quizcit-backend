@@ -21,6 +21,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
+import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -91,7 +92,8 @@ public class QuizServiceImplement implements QuizService {
                 request.getName(),
                 selected.size(),
                 request.getType(),
-                request.getDuration());
+                request.getDuration(),
+                positiveOrDefault(request.getDisplayOrder(), quizRepository.nextQuizDisplayOrder(request.getChapterId())));
 
         quizRepository.save(quiz);
 
@@ -121,17 +123,50 @@ public class QuizServiceImplement implements QuizService {
                         ErrorMessages.QUIZ_NOT_FOUND,
                         HttpStatus.NOT_FOUND));
 
+        String chapterId = request.getChapterId() == null ? quiz.getChapterId() : request.getChapterId();
+        contentRepository.findChapterById(chapterId)
+                .filter(chapter -> quiz.getSubjectId().equals(chapter.getSubjectId()))
+                .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
+
+        List<Question> selected = null;
+        if (request.getQuestionIds() != null) {
+            if (request.getQuestionIds().isEmpty()) {
+                throw new AppException("Vui lòng chọn ít nhất một câu hỏi", HttpStatus.BAD_REQUEST);
+            }
+            if (request.getQuestionIds().stream().distinct().count() != request.getQuestionIds().size()) {
+                throw new AppException("Danh sách câu hỏi không được trùng lặp", HttpStatus.BAD_REQUEST);
+            }
+            selected = request.getQuestionIds().stream()
+                    .map(questionId -> quizRepository.findQuestionById(questionId)
+                            .orElseThrow(() -> new AppException(ErrorMessages.QUESTION_NOT_FOUND, HttpStatus.NOT_FOUND)))
+                    .filter(question -> chapterId.equals(question.getChapterId()))
+                    .toList();
+            if (selected.size() != request.getQuestionIds().size()) {
+                throw new AppException("Có câu hỏi không thuộc chương đã chọn", HttpStatus.BAD_REQUEST);
+            }
+        }
+
         Quiz updated = Quiz.builder()
                 .quizId(quiz.getQuizId())
                 .subjectId(quiz.getSubjectId())
-                .chapterId(quiz.getChapterId())
+                .chapterId(chapterId)
                 .name(request.getName())
                 .type(quiz.getType())
-                .totalQuestion(quiz.getTotalQuestion())
+                .totalQuestion(selected == null ? quiz.getTotalQuestion() : selected.size())
                 .duration(request.getDuration())
+                .displayOrder(positiveOrDefault(request.getDisplayOrder(), quiz.getDisplayOrder()))
+                .createdAt(quiz.getCreatedAt())
                 .build();
 
         quizRepository.save(updated);
+
+        if (selected != null) {
+            quizRepository.deleteQuizQuestionsByQuizId(quizId);
+            int order = 1;
+            for (Question question : selected) {
+                quizRepository.save(QuizQuestion.create(quizId, question.getQuestionId(), order++));
+            }
+        }
     }
 
     @Override
@@ -158,5 +193,23 @@ public class QuizServiceImplement implements QuizService {
         visibilityGuard.requireVisibleChapter(chapterId);
         return mapper.toResponseList(
                 quizRepository.findQuizzesByChapterId(chapterId));
+    }
+
+    @Override
+    @Transactional
+    public void reorderQuizzes(String chapterId, ReorderRequest request) {
+        contentRepository.findChapterById(chapterId)
+                .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
+        request.items().forEach(item -> {
+            Quiz quiz = quizRepository.findQuizById(item.id())
+                    .filter(value -> chapterId.equals(value.getChapterId()))
+                    .orElseThrow(() -> new AppException(ErrorMessages.QUIZ_NOT_FOUND, HttpStatus.NOT_FOUND));
+            quiz.updateDisplayOrder(item.displayOrder());
+            quizRepository.save(quiz);
+        });
+    }
+
+    private int positiveOrDefault(Integer requested, int fallback) {
+        return requested != null && requested > 0 ? requested : fallback;
     }
 }

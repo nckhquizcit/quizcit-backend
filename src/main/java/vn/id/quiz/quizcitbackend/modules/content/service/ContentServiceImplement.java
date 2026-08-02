@@ -24,6 +24,7 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 import java.util.List;
+import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -89,7 +90,8 @@ public class ContentServiceImplement implements ContentService {
         if(contentRepository.existsByCourseCode(request.courseCode())){
             throw new AppException("Mã học phần đã tồn tại.", HttpStatus.CONFLICT);
         }
-        Subject subject = Subject.create(request.courseCode(), request.name(), request.description());
+        int displayOrder = positiveOrDefault(request.displayOrder(), contentRepository.nextSubjectDisplayOrder());
+        Subject subject = Subject.create(request.courseCode(), request.name(), request.description(), displayOrder);
         return mapper.toSubjectResponse(contentRepository.save(subject));
     }
 
@@ -99,7 +101,8 @@ public class ContentServiceImplement implements ContentService {
         if(!contentRepository.existsBySubjectId(subjectId)){
             throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
-        Chapter response = Chapter.create(subjectId, request.name());
+        int displayOrder = positiveOrDefault(request.displayOrder(), contentRepository.nextChapterDisplayOrder(subjectId));
+        Chapter response = Chapter.create(subjectId, request.name(), displayOrder);
         contentRepository.save(response);
         return mapper.toChapterResponse(response);
     }
@@ -142,7 +145,8 @@ public class ContentServiceImplement implements ContentService {
     public void updateSubject(String subjectId, UpdateSubjectRequest request){
         Subject subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(()-> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
-        subject.updateSubject(request.courseCode(), request.name(), request.description(), request.visible());
+        int displayOrder = positiveOrDefault(request.displayOrder(), subject.getDisplayOrder());
+        subject.updateSubject(request.courseCode(), request.name(), request.description(), request.visible(), displayOrder);
         contentRepository.save(subject);
     }
     @Transactional
@@ -151,7 +155,8 @@ public class ContentServiceImplement implements ContentService {
         Chapter chapter = contentRepository.findChapterById(chapterId)
                         .orElseThrow(()->new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
 
-        chapter.updateChapter(request.name());
+        int displayOrder = positiveOrDefault(request.displayOrder(), chapter.getDisplayOrder());
+        chapter.updateChapter(request.name(), displayOrder);
         contentRepository.save(chapter);
     }
     @Transactional
@@ -178,5 +183,35 @@ public class ContentServiceImplement implements ContentService {
     @Transactional
     public void deleteTheory(String theoryId) {
         contentRepository.deleteTheoryById(theoryId);
+    }
+
+    @Override
+    @Transactional
+    public void reorderSubjects(ReorderRequest request) {
+        request.items().forEach(item -> {
+            Subject subject = contentRepository.findSubjectById(item.id())
+                    .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
+            subject.updateDisplayOrder(item.displayOrder());
+            contentRepository.save(subject);
+        });
+    }
+
+    @Override
+    @Transactional
+    public void reorderChapters(String subjectId, ReorderRequest request) {
+        if (!contentRepository.existsBySubjectId(subjectId)) {
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+        request.items().forEach(item -> {
+            Chapter chapter = contentRepository.findChapterById(item.id())
+                    .filter(value -> subjectId.equals(value.getSubjectId()))
+                    .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
+            chapter.updateDisplayOrder(item.displayOrder());
+            contentRepository.save(chapter);
+        });
+    }
+
+    private int positiveOrDefault(Integer requested, int fallback) {
+        return requested != null && requested > 0 ? requested : fallback;
     }
 }

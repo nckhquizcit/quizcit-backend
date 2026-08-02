@@ -8,7 +8,9 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import java.util.List;
 
 public interface JpaSubjectRepository extends JpaRepository<Subject, String> {
-    List<Subject> findByVisibleTrue();
+    List<Subject> findAllByOrderByDisplayOrderAscCreatedAtAscSubjectIdAsc();
+    List<Subject> findByVisibleTrueOrderByDisplayOrderAscCreatedAtAscSubjectIdAsc();
     boolean existsByCourseCode(String courseCode);
-}
 
+    Subject findTopByOrderByDisplayOrderDesc();
+}

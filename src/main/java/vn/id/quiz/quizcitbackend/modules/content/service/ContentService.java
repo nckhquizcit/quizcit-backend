@@ -12,6 +12,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryR
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.UpdateTheoryRequest;
 
 import java.util.List;
+import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
 
 
 public interface ContentService {
@@ -36,4 +37,6 @@ public interface ContentService {
     void updateTheory(String theoryId, UpdateTheoryRequest request);
     void deleteChapter(String chapterId);
     void deleteTheory(String theoryId);
+    void reorderSubjects(ReorderRequest request);
+    void reorderChapters(String subjectId, ReorderRequest request);
 }

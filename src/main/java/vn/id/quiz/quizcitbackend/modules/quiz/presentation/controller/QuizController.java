@@ -11,6 +11,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.service.QuizService;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 import java.util.List;
+import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +47,15 @@ public class QuizController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
+    }
+
+    @PutMapping("/chapters/{chapterId}/quizzes/display-order")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> reorderQuizzes(
+            @PathVariable String chapterId,
+            @Valid @RequestBody ReorderRequest request) {
+        quizService.reorderQuizzes(chapterId, request);
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật thứ tự đề thi", null));
     }
 
     @GetMapping("/quizzes/{quizId}")

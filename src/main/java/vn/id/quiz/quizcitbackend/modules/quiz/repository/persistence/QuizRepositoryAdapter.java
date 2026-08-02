@@ -100,13 +100,19 @@ public class QuizRepositoryAdapter implements QuizRepository {
             String chapterId) {
 
         return jpaQuizRepository
-                .findByChapterId(chapterId);
+                .findByChapterIdOrderByDisplayOrderAscCreatedAtAscQuizIdAsc(chapterId);
+    }
+
+    @Override
+    public int nextQuizDisplayOrder(String chapterId) {
+        Quiz last = jpaQuizRepository.findTopByChapterIdOrderByDisplayOrderDesc(chapterId);
+        return last == null ? 1 : last.getDisplayOrder() + 1;
     }
 
     // Phase 2 (P1): danh sách đề của một môn học
     @Override
     public List<Quiz> findQuizzesBySubjectId(String subjectId) {
-        return jpaQuizRepository.findBySubjectId(subjectId);
+        return jpaQuizRepository.findBySubjectIdOrderByDisplayOrderAscCreatedAtAscQuizIdAsc(subjectId);
     }
 
     @Override

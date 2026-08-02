@@ -12,14 +12,16 @@ public interface JpaQuizRepository extends JpaRepository<Quiz, String>{
     Optional<Quiz> findByQuizId(
             String quizId);
 
-    List<Quiz> findByChapterId(
+    List<Quiz> findByChapterIdOrderByDisplayOrderAscCreatedAtAscQuizIdAsc(
             String chapterId);
 
     /**
      * Phase 2 (P1): lấy tất cả quiz thuộc về một subject (gom qua các chapter).
      */
-    List<Quiz> findBySubjectId(
+    List<Quiz> findBySubjectIdOrderByDisplayOrderAscCreatedAtAscQuizIdAsc(
             String subjectId);
+
+    Quiz findTopByChapterIdOrderByDisplayOrderDesc(String chapterId);
 
     void deleteByQuizId(
             String quizId);

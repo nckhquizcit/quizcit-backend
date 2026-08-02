@@ -11,6 +11,7 @@ public record UpdateSubjectRequest (
         @Size(max = 200, message = "Tên học phần không được vượt quá 200 ký tự")
         String name,
         String description,
-        boolean visible
+        boolean visible,
+        Integer displayOrder
 ) {
 }

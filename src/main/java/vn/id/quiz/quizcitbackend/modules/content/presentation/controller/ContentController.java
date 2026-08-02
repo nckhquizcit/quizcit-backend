@@ -21,6 +21,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.QuizSummaryRes
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 import java.util.List;
+import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
 
 @RestController
 @RequestMapping("/api") // Đổi thành /api để quản lý chung các resource phẳng
@@ -62,6 +63,13 @@ public class ContentController {
     ) {
         subjectUseCase.updateSubject(subjectId, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật học phần thành công", null));
+    }
+
+    @PutMapping("/subjects/display-order")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> reorderSubjects(@Valid @RequestBody ReorderRequest request) {
+        subjectUseCase.reorderSubjects(request);
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật thứ tự môn học", null));
     }
 
     @DeleteMapping("/subjects/{subjectId}")
@@ -110,6 +118,15 @@ public class ContentController {
     ) {
         subjectUseCase.updateChapter(chapterId, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật chương thành công", null));
+    }
+
+    @PutMapping("/subjects/{subjectId}/chapters/display-order")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> reorderChapters(
+            @PathVariable String subjectId,
+            @Valid @RequestBody ReorderRequest request) {
+        subjectUseCase.reorderChapters(subjectId, request);
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật thứ tự chương", null));
     }
 
     // Flat Route: Xóa chương

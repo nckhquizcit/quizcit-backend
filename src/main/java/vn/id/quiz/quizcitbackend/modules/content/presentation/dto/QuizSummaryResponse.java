@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+import java.time.ZonedDateTime;
 
 /**
  * Phase 2 (P1) - Response rút gọn cho {@code Quiz}.
@@ -26,6 +27,8 @@ public class QuizSummaryResponse {
     private Integer totalQuestion;
     private Integer duration;
     private String type;
+    private Integer displayOrder;
+    private ZonedDateTime createdAt;
 
     public static QuizSummaryResponse from(Quiz quiz) {
         if (quiz == null) {
@@ -39,6 +42,8 @@ public class QuizSummaryResponse {
                 .totalQuestion(quiz.getTotalQuestion())
                 .duration(quiz.getDuration())
                 .type(quiz.getType() != null ? quiz.getType().name() : null)
+                .displayOrder(quiz.getDisplayOrder())
+                .createdAt(quiz.getCreatedAt())
                 .build();
     }
 }

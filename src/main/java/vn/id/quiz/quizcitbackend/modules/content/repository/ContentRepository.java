@@ -15,6 +15,8 @@ public interface ContentRepository {
     }
     List<Chapter> findAllChapter(String subjectId);
     List<Theory> findAllTheory(String chapterId);
+    default int nextSubjectDisplayOrder() { return 1; }
+    default int nextChapterDisplayOrder(String subjectId) { return 1; }
 
     Subject save(Subject subject);
     Chapter save(Chapter chapter);

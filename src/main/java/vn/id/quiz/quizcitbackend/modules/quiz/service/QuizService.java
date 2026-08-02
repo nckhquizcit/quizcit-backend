@@ -4,6 +4,7 @@ import java.util.List;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.CreateQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.UpdateQuizRequest;
+import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
 
 public interface QuizService {
     //Tạo đề
@@ -22,4 +23,5 @@ public interface QuizService {
     //Lấy đề theo chương
     List<QuizResponse> getQuizzesByChapter(
             String chapterId);
+    void reorderQuizzes(String chapterId, ReorderRequest request);
 }

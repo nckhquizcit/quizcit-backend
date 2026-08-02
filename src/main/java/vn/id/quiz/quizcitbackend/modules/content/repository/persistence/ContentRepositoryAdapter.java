@@ -19,19 +19,31 @@ public class ContentRepositoryAdapter implements ContentRepository {
 
 
     @Override
-    public List<Subject> findAllSubject(){return jpaSubjectRepository.findAll();}
+    public List<Subject> findAllSubject(){return jpaSubjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAscSubjectIdAsc();}
 
     @Override
-    public List<Subject> findAllVisibleSubject(){return jpaSubjectRepository.findByVisibleTrue();}
+    public List<Subject> findAllVisibleSubject(){return jpaSubjectRepository.findByVisibleTrueOrderByDisplayOrderAscCreatedAtAscSubjectIdAsc();}
 
     @Override
     public List<Chapter> findAllChapter(String subjectId) {
-        return jpaChapterRepository.findBySubjectId(subjectId);
+        return jpaChapterRepository.findBySubjectIdOrderByDisplayOrderAscCreatedAtAscChapterIdAsc(subjectId);
     }
 
     @Override
     public List<Theory> findAllTheory(String chapterId) {
         return jpaTheoryRepository.findByChapterId(chapterId);
+    }
+
+    @Override
+    public int nextSubjectDisplayOrder() {
+        Subject last = jpaSubjectRepository.findTopByOrderByDisplayOrderDesc();
+        return last == null ? 1 : last.getDisplayOrder() + 1;
+    }
+
+    @Override
+    public int nextChapterDisplayOrder(String subjectId) {
+        Chapter last = jpaChapterRepository.findTopBySubjectIdOrderByDisplayOrderDesc(subjectId);
+        return last == null ? 1 : last.getDisplayOrder() + 1;
     }
 
     @Override

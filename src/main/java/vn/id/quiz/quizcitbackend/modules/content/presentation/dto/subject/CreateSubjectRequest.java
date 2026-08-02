@@ -11,6 +11,7 @@ public record CreateSubjectRequest(
         @NotBlank(message="Tên học phần không được để trống")
         @Size(max = 200, message = "Tên học phần không được vượt quá 200 ký tự")
         String name,
-        String description
+        String description,
+        Integer displayOrder
 ) {
 }

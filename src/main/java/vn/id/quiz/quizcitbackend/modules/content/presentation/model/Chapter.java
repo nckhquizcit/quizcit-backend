@@ -28,16 +28,24 @@ public class Chapter {
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
+    @Column(name = "display_order", nullable = false)
+    private int displayOrder;
 
-    public static Chapter create(String subjectId, String name){
+
+    public static Chapter create(String subjectId, String name, int displayOrder){
         return Chapter.builder()
                 .chapterId(UUID.randomUUID().toString())
                 .subjectId(subjectId)
                 .name(name)
                 .createdAt(ZonedDateTime.now())
+                .displayOrder(displayOrder)
                 .build();
     }
-    public void updateChapter(String name){
+    public void updateChapter(String name, int displayOrder){
         this.name=name;
+        this.displayOrder=displayOrder;
+    }
+    public void updateDisplayOrder(int displayOrder) {
+        this.displayOrder = displayOrder;
     }
 }

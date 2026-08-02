@@ -6,5 +6,6 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import java.util.List;
 
 public interface JpaChapterRepository extends JpaRepository<Chapter, String> {
-    List<Chapter> findBySubjectId(String subjectId);
+    List<Chapter> findBySubjectIdOrderByDisplayOrderAscCreatedAtAscChapterIdAsc(String subjectId);
+    Chapter findTopBySubjectIdOrderByDisplayOrderDesc(String subjectId);
 }

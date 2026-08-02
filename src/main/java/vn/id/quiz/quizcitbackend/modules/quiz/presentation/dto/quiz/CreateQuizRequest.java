@@ -23,4 +23,6 @@ public class CreateQuizRequest {
     private QuizType type;
 
     private List<String> questionIds;
+
+    private Integer displayOrder;
 }

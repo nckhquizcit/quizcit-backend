@@ -7,6 +7,7 @@ public record CreateChapterRequest (
 
         @NotBlank(message="Tên chương không được để trống")
         @Size(max=200, message="Tên chương không được vượt quá 200 ký tự")
-        String name
+        String name,
+        Integer displayOrder
 ){
 }
