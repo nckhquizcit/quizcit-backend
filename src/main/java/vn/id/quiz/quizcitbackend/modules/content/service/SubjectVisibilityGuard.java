@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
@@ -16,13 +18,24 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 @Component
 @RequiredArgsConstructor
 public class SubjectVisibilityGuard {
+    public static final String VIEW_AS_HEADER = "X-QuizCIT-View-As";
+    public static final String USER_VIEW = "USER";
+
     private final ContentRepository contentRepository;
     private final QuizRepository quizRepository;
 
     public boolean isAdministrator() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication != null && authentication.getAuthorities().stream()
+        boolean isAdministrator = authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(authority -> "ROLE_ADMINISTRATOR".equals(authority.getAuthority()));
+        return isAdministrator && !isUserViewRequested();
+    }
+
+    private boolean isUserViewRequested() {
+        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
+            return false;
+        }
+        return USER_VIEW.equalsIgnoreCase(attributes.getRequest().getHeader(VIEW_AS_HEADER));
     }
 
     public void requireVisibleSubject(String subjectId) {
