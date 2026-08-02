@@ -49,8 +49,8 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 public class AttemptServiceImplement
         implements AttemptService {
 
-    private static final double EXISTING_THETA_WEIGHT = 0.7;
-    private static final double NEW_THETA_WEIGHT = 0.3;
+    private static final double NEW_THETA_WEIGHT = 0.7;
+    private static final double EXISTING_THETA_WEIGHT = 0.3;
 
     private final QuizRepository quizRepository;
     private final ContentRepository contentRepository;
@@ -86,6 +86,12 @@ public class AttemptServiceImplement
                         "Không tìm thấy đề thi",
                         HttpStatus.NOT_FOUND));
 
+        if (quiz.getType() == QuizType.ADAPTIVE) {
+            throw new AppException(
+                    "Bài thích ứng phải được bắt đầu từ môn học",
+                    HttpStatus.BAD_REQUEST);
+        }
+
         List<QuizQuestion> questions = quizRepository.findQuizQuestionsByQuizId(
                 quizId);
 
@@ -109,8 +115,8 @@ public class AttemptServiceImplement
     @Transactional
     public QuizResultResponse submitQuiz(
             SubmitQuizRequest request) {
-        Attempt attempt = quizRepository //tìm attempt
-                .findAttemptById(
+        Attempt attempt = quizRepository // khóa attempt để double-submit không ghi response/history hai lần
+                .findAttemptByIdForUpdate(
                         request.getAttemptId())
                 .orElseThrow(
                         () -> new AppException(
@@ -361,7 +367,19 @@ public class AttemptServiceImplement
         List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByAttemptId(
                 attemptId);
 
-        List<SkillResultResponse> skillResults = histories.stream()
+        // Adaptive attempts create one history row per 5-question batch. Keep
+        // all rows for the progress timeline, but show only the latest value
+        // of each skill in the final quiz result.
+        Map<String, AbilityHistory> latestHistoryBySkill = histories.stream()
+                .collect(Collectors.toMap(
+                        AbilityHistory::getSkillId,
+                        history -> history,
+                        (first, second) -> first.getCreatedAt().isAfter(second.getCreatedAt())
+                                ? first
+                                : second,
+                        LinkedHashMap::new));
+
+        List<SkillResultResponse> skillResults = latestHistoryBySkill.values().stream()
                 .map(history -> SkillResultResponse.builder()
                         .skillId(history.getSkillId())
                         .skillName(skillRepository.findById(history.getSkillId())
@@ -411,16 +429,46 @@ public class AttemptServiceImplement
         List<Attempt> attempts = quizRepository.findAttemptsByUserId(
                 userId);
 
-        return mapper.toQuizResultResponseList(
-                attempts);
+        return attempts.stream()
+                .filter(this::isCompletedAttempt)
+                .map(this::toAttemptSummary)
+                .toList();
+    }
+
+    private QuizResultResponse toAttemptSummary(Attempt attempt) {
+        Quiz quiz = quizRepository.findQuizById(attempt.getQuizId()).orElse(null);
+        Subject subject = quiz == null ? null : contentRepository
+                .findSubjectById(quiz.getSubjectId()).orElse(null);
+        return QuizResultResponse.builder()
+                .attemptId(attempt.getAttemptId())
+                .quizId(attempt.getQuizId())
+                .quizName(quiz == null ? null : quiz.getName())
+                .subjectName(subject == null ? null : subject.getName())
+                .submittedAt(attempt.getCreatedAt())
+                .rawScore(attempt.getRawScore())
+                .totalQuestion(attempt.getTotalQuestion())
+                .overallTheta(attempt.getOverallTheta())
+                .skillResults(List.of())
+                .questionResults(List.of())
+                .build();
+    }
+
+    private boolean isCompletedAttempt(Attempt attempt) {
+        List<Response> responses = quizRepository.findResponsesByAttemptId(attempt.getAttemptId());
+        if (responses.isEmpty()) {
+            return false;
+        }
+        Quiz quiz = quizRepository.findQuizById(attempt.getQuizId()).orElse(null);
+        return quiz == null || quiz.getType() != QuizType.ADAPTIVE
+                || responses.size() >= attempt.getTotalQuestion();
     }
 
     private double blendTheta(
             double oldTheta,
             double newTheta) {
 
-        return oldTheta * EXISTING_THETA_WEIGHT
-                + newTheta * NEW_THETA_WEIGHT;
+        return newTheta * NEW_THETA_WEIGHT
+                + oldTheta * EXISTING_THETA_WEIGHT;
     }
 
     private List<QuestionResultResponse> buildQuestionResults(

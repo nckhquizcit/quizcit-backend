@@ -172,6 +172,11 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public Optional<Attempt> findAttemptByIdForUpdate(String attemptId) {
+        return jpaAttemptRepository.findByAttemptIdForUpdate(attemptId);
+    }
+
+    @Override
     public List<Attempt> findAttemptsByUserId(
             String userId) {
 

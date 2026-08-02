@@ -30,6 +30,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.Question
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.UpdateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
@@ -187,6 +188,13 @@ public class QuestionServiceImplement implements QuestionService {
      */
     public List<QuestionResponse> getQuestionsByQuiz(String quizId) {
         visibilityGuard().requireVisibleQuiz(quizId);
+        quizRepository.findQuizById(quizId).ifPresent(quiz -> {
+            if (quiz.getType() == QuizType.ADAPTIVE) {
+                throw new AppException(
+                        "Câu hỏi thích ứng chỉ được tải theo batch của attempt",
+                        HttpStatus.BAD_REQUEST);
+            }
+        });
         List<Question> questions = quizRepository.findQuestionsByQuizId(quizId);
         return questions.stream()
                 .map(q -> {

@@ -106,6 +106,10 @@ public interface QuizRepository {
     Optional<Attempt> findAttemptById(
             String attemptId);
 
+    default Optional<Attempt> findAttemptByIdForUpdate(String attemptId) {
+        return findAttemptById(attemptId);
+    }
+
     List<Attempt> findAttemptsByUserId(
             String userId);
 

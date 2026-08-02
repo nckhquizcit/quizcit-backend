@@ -22,6 +22,7 @@ import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
@@ -40,7 +41,6 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
-import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaAttemptRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
@@ -49,8 +49,8 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 public class AdaptiveQuizService {
     private static final int PAGE_SIZE = 5;
     private static final int INITIAL_BUFFER_SIZE = 10;
-    private static final double OLD_THETA_WEIGHT = 0.7;
-    private static final double NEW_THETA_WEIGHT = 0.3;
+    private static final double NEW_THETA_WEIGHT = 0.7;
+    private static final double OLD_THETA_WEIGHT = 0.3;
 
     private final QuizRepository quizRepository;
     private final ContentRepository contentRepository;
@@ -59,7 +59,7 @@ public class AdaptiveQuizService {
     private final JpaUserUnlockedChapterRepository unlockedChapterRepository;
     private final QuestionMapper questionMapper;
     private final AIService aiService;
-    private final JpaAttemptRepository attemptRepository;
+    private final JpaChapterSkillRepository chapterSkillRepository;
 
     @Transactional
     public AdaptiveQuizResponse start(String userId, String subjectId, int totalQuestion) {
@@ -88,7 +88,7 @@ public class AdaptiveQuizService {
 
     @Transactional
     public AdaptiveQuizResponse submitBatch(String userId, String attemptId, List<SubmitAnswerRequest> answers) {
-        Attempt locked = attemptRepository.findByAttemptIdForUpdate(attemptId)
+        Attempt locked = quizRepository.findAttemptByIdForUpdate(attemptId)
                 .orElseThrow(() -> new AppException("Không tìm thấy attempt", HttpStatus.NOT_FOUND));
         Attempt attempt = requireAttempt(userId, locked);
         List<Response> existing = quizRepository.findResponsesByAttemptId(attemptId);
@@ -128,14 +128,16 @@ public class AdaptiveQuizService {
         }
 
         int unansweredBuffered = assigned.size() - answeredCount;
-        if (unansweredBuffered < PAGE_SIZE && assigned.size() < attempt.getTotalQuestion()) {
+        // Luôn giữ sẵn 10 câu chưa làm: 5 câu đang hiển thị và 5 câu kế
+        // tiếp được chọn bằng theta vừa cập nhật.
+        if (unansweredBuffered <= PAGE_SIZE && assigned.size() < attempt.getTotalQuestion()) {
             appendQuestions(attempt, unlockedChapters(userId,
                     quizRepository.findQuizById(attempt.getQuizId()).orElseThrow().getSubjectId()), PAGE_SIZE);
         }
         return state(attempt);
     }
 
-    private void validateTotal(int total) {
+    static void validateTotal(int total) {
         if (total < 40 || total % PAGE_SIZE != 0) {
             throw new AppException("Số câu phải từ 40 trở lên và chia hết cho 5", HttpStatus.BAD_REQUEST);
         }
@@ -178,18 +180,58 @@ public class AdaptiveQuizService {
         List<Question> pool = chapters.stream().flatMap(chapter ->
                 quizRepository.findQuestionsByChapterId(chapter.getChapterId()).stream())
                 .filter(question -> !excluded.contains(question.getQuestionId())).collect(Collectors.toCollection(ArrayList::new));
+        Set<String> answerableQuestionIds = quizRepository
+                .findOptionsByQuestionIds(pool.stream().map(Question::getQuestionId).toList())
+                .stream()
+                .collect(Collectors.groupingBy(Option::getQuestionId))
+                .entrySet().stream()
+                .filter(entry -> entry.getValue().size() >= 2
+                        && entry.getValue().stream().anyMatch(Option::isCorrected))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+        pool.removeIf(question -> !answerableQuestionIds.contains(question.getQuestionId()));
         Collections.shuffle(pool); // trộn trước mỗi lần chọn để tie không thiên vị thứ tự DB
+        Map<String, Set<String>> chapterSkillIds = chapters.stream().collect(Collectors.toMap(
+                Chapter::getChapterId,
+                chapter -> chapterSkillRepository.findByChapterId(chapter.getChapterId()).stream()
+                        .map(value -> value.getSkillId())
+                        .collect(Collectors.toSet())));
+        Map<String, String> chapterByQuestionId = pool.stream().collect(Collectors.toMap(
+                Question::getQuestionId, Question::getChapterId));
         Map<String, List<QuestionSkill>> mappings = progressRepository
                 .findQuestionSkillsByQuestionIds(pool.stream().map(Question::getQuestionId).toList()).stream()
                 .filter(mapping -> theta.containsKey(mapping.getSkillId()))
+                .filter(mapping -> chapterSkillIds
+                        .getOrDefault(chapterByQuestionId.get(mapping.getQuestionId()), Set.of())
+                        .contains(mapping.getSkillId()))
                 .collect(Collectors.groupingBy(QuestionSkill::getQuestionId));
         return pool.stream().filter(question -> mappings.containsKey(question.getQuestionId()))
-                .sorted(Comparator.comparing((Question question) -> mappings.get(question.getQuestionId()).stream()
+                .sorted(Comparator
+                        .comparing((Question question) -> mappings.get(question.getQuestionId()).stream()
                                 .noneMatch(QuestionSkill::isPrimary))
-                        .thenComparingDouble(question -> mappings.get(question.getQuestionId()).stream()
-                                .mapToDouble(mapping -> Math.abs(theta.get(mapping.getSkillId()) - question.getDifficultyB()))
-                                .min().orElse(Double.MAX_VALUE)))
+                        .thenComparingDouble(question -> matchingThetaDistance(
+                                question, mappings.get(question.getQuestionId()), theta)))
                 .toList();
+    }
+
+    /**
+     * Nếu câu có primary skill trùng với user thì dùng các primary skill để
+     * đánh giá trước; nếu không có mới fallback sang các skill trùng còn lại.
+     * Trong nhóm được chọn, một skill đủ gần là đủ để câu hỏi hợp lệ.
+     */
+    static double matchingThetaDistance(
+            Question question,
+            List<QuestionSkill> matchingSkills,
+            Map<String, Double> thetaBySkill) {
+        List<QuestionSkill> primary = matchingSkills.stream()
+                .filter(QuestionSkill::isPrimary)
+                .toList();
+        List<QuestionSkill> compared = primary.isEmpty() ? matchingSkills : primary;
+        return compared.stream()
+                .mapToDouble(mapping -> Math.abs(
+                        thetaBySkill.get(mapping.getSkillId()) - question.getDifficultyB()))
+                .min()
+                .orElse(Double.MAX_VALUE);
     }
 
     private void validateBatch(List<String> expected, List<SubmitAnswerRequest> answers) {
@@ -205,8 +247,13 @@ public class AdaptiveQuizService {
 
     private void updateTheta(Attempt attempt, Map<String, Question> questions, List<Response> responses) {
         Map<String, Response> responseMap = responses.stream().collect(Collectors.toMap(Response::getQuestionId, r -> r));
+        Set<String> existingSkillIds = progressRepository.findUserSkillAbilities(attempt.getUserId()).stream()
+                .map(UserSkillAbility::getSkillId)
+                .collect(Collectors.toSet());
         Map<String, List<QuestionSkill>> mappings = progressRepository
-                .findQuestionSkillsByQuestionIds(questions.keySet()).stream().collect(Collectors.groupingBy(QuestionSkill::getSkillId));
+                .findQuestionSkillsByQuestionIds(questions.keySet()).stream()
+                .filter(mapping -> existingSkillIds.contains(mapping.getSkillId()))
+                .collect(Collectors.groupingBy(QuestionSkill::getSkillId));
         Map<String, EstimateThetaRequest> requests = new LinkedHashMap<>();
         mappings.forEach((skillId, values) -> requests.put(skillId, new EstimateThetaRequest(
                 values.stream().map(value -> responseMap.get(value.getQuestionId()).isScore() ? 1 : 0).toList(),
@@ -217,9 +264,20 @@ public class AdaptiveQuizService {
             UserSkillAbility ability = progressRepository.findUserSkillAbility(attempt.getUserId(), skillId)
                     .orElseGet(() -> UserSkillAbility.create(attempt.getUserId(), skillId));
             double old = ability.getTheta() == null ? 0 : ability.getTheta();
-            ability.updateAbility(old * OLD_THETA_WEIGHT + newTheta * NEW_THETA_WEIGHT);
+            double blendedTheta = blendTheta(old, newTheta);
+            ability.updateAbility(blendedTheta);
             progressRepository.save(ability);
+            progressRepository.save(AbilityHistory.create(
+                    attempt.getUserId(),
+                    skillId,
+                    blendedTheta,
+                    blendedTheta - old,
+                    attempt.getAttemptId()));
         });
+    }
+
+    static double blendTheta(double oldTheta, double newTheta) {
+        return newTheta * NEW_THETA_WEIGHT + oldTheta * OLD_THETA_WEIGHT;
     }
 
     private void complete(Attempt attempt) {
@@ -232,7 +290,6 @@ public class AdaptiveQuizService {
             progressRepository.findUserSkillAbility(attempt.getUserId(), skillId).ifPresent(ability -> {
                 double value = ability.getTheta() == null ? 0 : ability.getTheta();
                 theta.add(value);
-                progressRepository.save(AbilityHistory.create(attempt.getUserId(), skillId, value, 0, attempt.getAttemptId()));
             });
         }
         attempt.complete(responses.stream().filter(Response::isScore).count(),
@@ -260,7 +317,10 @@ public class AdaptiveQuizService {
                 .map(QuizQuestion::getQuestionId).filter(id -> !answered.contains(id)).limit(PAGE_SIZE).toList();
         return AdaptiveQuizResponse.builder().quizId(attempt.getQuizId()).attemptId(attempt.getAttemptId())
                 .totalQuestion(attempt.getTotalQuestion()).answeredQuestion(responses.size())
-                .page(responses.size() / PAGE_SIZE + 1).completed(responses.size() >= attempt.getTotalQuestion())
+                .page(responses.size() >= attempt.getTotalQuestion()
+                        ? attempt.getTotalQuestion() / PAGE_SIZE
+                        : responses.size() / PAGE_SIZE + 1)
+                .completed(responses.size() >= attempt.getTotalQuestion())
                 .questions(toQuestionResponses(nextIds)).build();
     }
 

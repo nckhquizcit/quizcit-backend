@@ -79,14 +79,14 @@ public class ProgressRepositoryAdapter
 
     @Override
     public List<AbilityHistory> findAbilityHistoriesByUserId(String userId) {
-        return abilityHistoryRepository.findByUserId(userId);
+        return abilityHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     @Override
     public List<AbilityHistory> findAbilityHistoriesByUserIdAndSkillId(
             String userId,
             String skillId) {
-        return abilityHistoryRepository.findByUserIdAndSkillId(userId, skillId);
+        return abilityHistoryRepository.findByUserIdAndSkillIdOrderByCreatedAtDesc(userId, skillId);
     }
 
     @Override
@@ -110,7 +110,7 @@ public class ProgressRepositoryAdapter
     public List<AbilityHistory> findAbilityHistoriesByAttemptId(
             String attemptId) {
 
-        return abilityHistoryRepository.findByAttemptId(
+        return abilityHistoryRepository.findByAttemptIdOrderByCreatedAtAsc(
                 attemptId);
     }
 }

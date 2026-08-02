@@ -41,6 +41,44 @@ import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 class AttemptServiceImplementTest {
 
     @Test
+    void historyContainsOnlyCompletedNormalAndAdaptiveAttempts() {
+        QuizRepository quizRepository = mock(QuizRepository.class);
+        ContentRepository contentRepository = mock(ContentRepository.class);
+        AttemptMapper mapper = mock(AttemptMapper.class);
+        ProgressRepository progressRepository = mock(ProgressRepository.class);
+        SkillRepository skillRepository = mock(SkillRepository.class);
+        AIService aiService = mock(AIService.class);
+        AttemptServiceImplement service = new AttemptServiceImplement(
+                quizRepository, contentRepository, mapper, progressRepository,
+                skillRepository, aiService);
+
+        Attempt normalIncomplete = attempt("normal-incomplete", "normal-quiz", 5);
+        Attempt normalComplete = attempt("normal-complete", "normal-quiz", 5);
+        Attempt adaptivePartial = attempt("adaptive-partial", "adaptive-quiz", 40);
+        Attempt adaptiveComplete = attempt("adaptive-complete", "adaptive-quiz", 40);
+        when(quizRepository.findAttemptsByUserId("user-1")).thenReturn(List.of(
+                normalIncomplete, normalComplete, adaptivePartial, adaptiveComplete));
+        when(quizRepository.findQuizById("normal-quiz")).thenReturn(Optional.of(
+                Quiz.builder().quizId("normal-quiz").type(QuizType.CHAPTER).build()));
+        when(quizRepository.findQuizById("adaptive-quiz")).thenReturn(Optional.of(
+                Quiz.builder().quizId("adaptive-quiz").type(QuizType.ADAPTIVE).build()));
+        when(quizRepository.findResponsesByAttemptId("normal-incomplete")).thenReturn(List.of());
+        when(quizRepository.findResponsesByAttemptId("normal-complete"))
+                .thenReturn(List.of(Response.create("normal-complete", "q1", "o1", true)));
+        when(quizRepository.findResponsesByAttemptId("adaptive-partial"))
+                .thenReturn(responses("adaptive-partial", 5));
+        when(quizRepository.findResponsesByAttemptId("adaptive-complete"))
+                .thenReturn(responses("adaptive-complete", 40));
+        when(contentRepository.findSubjectById(any())).thenReturn(Optional.of(
+                Subject.builder().subjectId("subject-1").name("Subject").build()));
+
+        List<QuizResultResponse> results = service.getUserResults("user-1");
+
+        assertThat(results).extracting(QuizResultResponse::getAttemptId)
+                .containsExactly("normal-complete", "adaptive-complete");
+    }
+
+    @Test
     void submitQuizShouldBlendExistingAbilityThetaWithNewEstimate() {
         QuizRepository quizRepository = mock(QuizRepository.class);
         ContentRepository contentRepository = mock(ContentRepository.class);
@@ -107,6 +145,8 @@ class AttemptServiceImplementTest {
         ability.updateAbility(0.5);
         List<AbilityHistory> savedHistories = new ArrayList<>();
 
+        when(quizRepository.findAttemptByIdForUpdate("attempt-1"))
+                .thenReturn(Optional.of(attempt));
         when(quizRepository.findAttemptById("attempt-1"))
                 .thenReturn(Optional.of(attempt));
         when(quizRepository.findQuizById("quiz-1"))
@@ -146,7 +186,7 @@ class AttemptServiceImplementTest {
 
         QuizResultResponse result = service.submitQuiz(submitRequest());
 
-        double blendedTheta = 0.5 * 0.7 + 2.5 * 0.3;
+        double blendedTheta = 2.5 * 0.7 + 0.5 * 0.3;
         assertThat(ability.getTheta()).isCloseTo(blendedTheta, within(0.0001));
         assertThat(savedHistories).hasSize(1);
         assertThat(savedHistories.get(0).getTheta())
@@ -267,8 +307,25 @@ class AttemptServiceImplementTest {
                         Response.create("attempt-1", "question-1", "option-1", true),
                         Response.create("attempt-1", "question-2", "option-4", false)));
         when(progressRepository.findAbilityHistoriesByAttemptId("attempt-1"))
-                .thenReturn(List.of(AbilityHistory.create(
-                        "user-1", "skill-1", 0.75, 0.25, "attempt-1")));
+                .thenReturn(List.of(
+                        AbilityHistory.builder()
+                                .historyId("history-old")
+                                .userId("user-1")
+                                .skillId("skill-1")
+                                .theta(0.25)
+                                .delta(0.25)
+                                .attemptId("attempt-1")
+                                .createdAt(java.time.LocalDateTime.parse("2026-06-29T09:00:00"))
+                                .build(),
+                        AbilityHistory.builder()
+                                .historyId("history-new")
+                                .userId("user-1")
+                                .skillId("skill-1")
+                                .theta(0.75)
+                                .delta(0.50)
+                                .attemptId("attempt-1")
+                                .createdAt(java.time.LocalDateTime.parse("2026-06-29T10:00:00"))
+                                .build()));
         when(skillRepository.findById("skill-1"))
                 .thenReturn(Optional.of(Skill.builder()
                         .skillId("skill-1")
@@ -283,6 +340,7 @@ class AttemptServiceImplementTest {
         assertThat(result.getSkillResults()).hasSize(1);
         assertThat(result.getSkillResults().get(0).getSkillName())
                 .isEqualTo("Biến và kiểu dữ liệu");
+        assertThat(result.getSkillResults().get(0).getTheta()).isEqualTo(0.75);
         assertThat(result.getQuestionResults()).hasSize(2);
         assertThat(result.getQuestionResults().get(0).getQuestionNumber()).isEqualTo(1);
         assertThat(result.getQuestionResults().get(0).getContent()).isEqualTo("Đâu là đáp án C");
@@ -306,5 +364,18 @@ class AttemptServiceImplementTest {
         request.setQuizId("quiz-1");
         request.setAnswers(List.of(answer));
         return request;
+    }
+
+    private static Attempt attempt(String attemptId, String quizId, int total) {
+        return Attempt.builder().attemptId(attemptId).userId("user-1")
+                .quizId(quizId).totalQuestion(total).build();
+    }
+
+    private static List<Response> responses(String attemptId, int count) {
+        List<Response> responses = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            responses.add(Response.create(attemptId, "q" + index, "o" + index, true));
+        }
+        return responses;
     }
 }

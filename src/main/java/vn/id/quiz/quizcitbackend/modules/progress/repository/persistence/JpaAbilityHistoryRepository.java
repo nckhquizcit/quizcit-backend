@@ -8,15 +8,15 @@ import java.util.List;
 public interface JpaAbilityHistoryRepository
         extends JpaRepository<AbilityHistory, String> {
 
-    List<AbilityHistory> findByUserId(String userId);
+    List<AbilityHistory> findByUserIdOrderByCreatedAtDesc(String userId);
 
-    List<AbilityHistory> findByUserIdAndSkillId(
+    List<AbilityHistory> findByUserIdAndSkillIdOrderByCreatedAtDesc(
             String userId,
             String skillId);
 
     AbilityHistory save(
             AbilityHistory history);
 
-    List<AbilityHistory> findByAttemptId(
+    List<AbilityHistory> findByAttemptIdOrderByCreatedAtAsc(
             String attemptId);
 }
