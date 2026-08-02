@@ -18,9 +18,14 @@ public interface ContentMapper {
     List<SubjectResponse> toSubjectResponseList(List<Subject> entities);
 
     // --- Chapter Mapping ---
-    ChapterResponse toChapterResponse(Chapter entity);
+    default ChapterResponse toChapterResponse(Chapter entity) {
+        return new ChapterResponse(entity.getChapterId(), entity.getSubjectId(), entity.getName(),
+                entity.getCreatedAt(), entity.getDisplayOrder(), List.of());
+    }
 
-    List<ChapterResponse> toChapterResponseList(List<Chapter> entities);
+    default List<ChapterResponse> toChapterResponseList(List<Chapter> entities) {
+        return entities.stream().map(this::toChapterResponse).toList();
+    }
 
     // --- Theory Mapping ---
     TheoryResponse toTheoryResponse(Theory entity);

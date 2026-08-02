@@ -7,6 +7,8 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
@@ -31,6 +33,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class QuestionServiceImplementTest {
     private FakeQuizRepository quizRepository;
@@ -43,11 +47,16 @@ class QuestionServiceImplementTest {
         quizRepository = new FakeQuizRepository();
         contentRepository = new FakeContentRepository();
         skillRepository = new FakeSkillRepository();
+        JpaChapterSkillRepository chapterSkillRepository = mock(JpaChapterSkillRepository.class);
+        when(chapterSkillRepository.findByChapterId(org.mockito.ArgumentMatchers.anyString())).thenReturn(List.of(
+                ChapterSkill.create("chapter-new", "skill-a", 0),
+                ChapterSkill.create("chapter-new", "skill-b", 0)));
         service = new QuestionServiceImplement(
                 quizRepository,
                 contentRepository,
                 new FakeQuestionMapper(),
-                skillRepository);
+                skillRepository,
+                chapterSkillRepository);
 
         quizRepository.question = Question.create(
                 "subject-old",

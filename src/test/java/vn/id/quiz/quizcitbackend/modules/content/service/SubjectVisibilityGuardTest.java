@@ -10,6 +10,13 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
+import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
@@ -80,6 +87,52 @@ class SubjectVisibilityGuardTest {
         stubQuizWithSubjectVisibility(false);
 
         guard.requireVisibleQuiz("quiz-1");
+    }
+
+    @Test
+    void eligibleUserCanAccessChapterAtRequiredTheta() {
+        JpaChapterSkillRepository requirements = mock(JpaChapterSkillRepository.class);
+        JpaUserUnlockedChapterRepository unlocked = mock(JpaUserUnlockedChapterRepository.class);
+        JpaUserSkillAbilityRepository abilities = mock(JpaUserSkillAbilityRepository.class);
+        SubjectVisibilityGuard accessGuard = new SubjectVisibilityGuard(
+                contentRepository, quizRepository, requirements, unlocked, abilities);
+        authenticateAsUserPrincipal("user-1");
+        stubVisibleChapter();
+        when(requirements.findByChapterId("chapter-1"))
+                .thenReturn(List.of(ChapterSkill.create("chapter-1", "skill-1", 0.5)));
+        UserSkillAbility ability = UserSkillAbility.create("user-1", "skill-1");
+        ability.updateAbility(0.5);
+        when(abilities.findByUserId("user-1")).thenReturn(List.of(ability));
+
+        accessGuard.requireVisibleChapter("chapter-1");
+
+    }
+
+    @Test
+    void previouslyUnlockedUserKeepsAccessAfterThetaDrops() {
+        JpaChapterSkillRepository requirements = mock(JpaChapterSkillRepository.class);
+        JpaUserUnlockedChapterRepository unlocked = mock(JpaUserUnlockedChapterRepository.class);
+        JpaUserSkillAbilityRepository abilities = mock(JpaUserSkillAbilityRepository.class);
+        SubjectVisibilityGuard accessGuard = new SubjectVisibilityGuard(
+                contentRepository, quizRepository, requirements, unlocked, abilities);
+        authenticateAsUserPrincipal("user-1");
+        stubVisibleChapter();
+        when(unlocked.existsByUserIdAndChapterId("user-1", "chapter-1")).thenReturn(true);
+
+        accessGuard.requireVisibleChapter("chapter-1");
+    }
+
+    private void stubVisibleChapter() {
+        when(contentRepository.findChapterById("chapter-1")).thenReturn(Optional.of(
+                Chapter.builder().chapterId("chapter-1").subjectId("subject-1").name("Chương 1").build()));
+        when(contentRepository.findSubjectById("subject-1")).thenReturn(Optional.of(
+                Subject.builder().subjectId("subject-1").courseCode("CT101").name("Môn học").visible(true).build()));
+    }
+
+    private void authenticateAsUserPrincipal(String userId) {
+        CustomUserPrincipal principal = new CustomUserPrincipal(userId, "student", "student@example.com", "USER", "ACTIVE");
+        SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken(
+                principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
     }
 
     private void stubQuizWithSubjectVisibility(boolean visible) {

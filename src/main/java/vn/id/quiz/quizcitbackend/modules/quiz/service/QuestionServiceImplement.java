@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
@@ -41,6 +42,7 @@ public class QuestionServiceImplement implements QuestionService {
     private final ContentRepository contentRepository;
     private final QuestionMapper mapper;
     private final SkillRepository skillRepository;
+    private final JpaChapterSkillRepository chapterSkillRepository;
 
 
     @Override
@@ -49,7 +51,7 @@ public class QuestionServiceImplement implements QuestionService {
             CreateQuestionRequest request) {
 
         validateQuestionPlacement(request.getSubjectId(), request.getChapterId());
-        validateSkillMappings(request.getSkills());
+        validateSkillMappings(request.getSkills(), request.getChapterId());
 
         Question question = Question.create(
                 request.getSubjectId(),
@@ -103,7 +105,7 @@ public class QuestionServiceImplement implements QuestionService {
                 : question.getChapterId();
 
         validateQuestionPlacement(nextSubjectId, nextChapterId);
-        validateSkillMappings(request.getSkills());
+        validateSkillMappings(request.getSkills(), nextChapterId);
 
         question.setSubjectId(nextSubjectId);
         question.setChapterId(nextChapterId);
@@ -293,12 +295,14 @@ public class QuestionServiceImplement implements QuestionService {
         }
     }
 
-    private void validateSkillMappings(List<QuestionSkillMappingRequest> skills) {
+    private void validateSkillMappings(List<QuestionSkillMappingRequest> skills, String chapterId) {
         if (skills == null || skills.isEmpty()) {
             return;
         }
 
         Set<String> seenSkillIds = new HashSet<>();
+        Set<String> chapterSkillIds = chapterSkillRepository.findByChapterId(chapterId).stream()
+                .map(chapterSkill -> chapterSkill.getSkillId()).collect(java.util.stream.Collectors.toSet());
         double weightSum = 0.0;
 
         long primaryCount = skills.stream()
@@ -322,6 +326,12 @@ public class QuestionServiceImplement implements QuestionService {
             if (!seenSkillIds.add(skill.getSkillId())) {
                 throw new AppException(
                         "Một kỹ năng không được gắn lặp lại trong cùng câu hỏi",
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            if (!chapterSkillIds.contains(skill.getSkillId())) {
+                throw new AppException(
+                        "Kỹ năng của câu hỏi phải thuộc danh sách kỹ năng của chương",
                         HttpStatus.BAD_REQUEST);
             }
 
