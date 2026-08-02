@@ -35,3 +35,4 @@ build/
 ### Envỉontment ###
 application.properties
 **/application.properties
+.local/

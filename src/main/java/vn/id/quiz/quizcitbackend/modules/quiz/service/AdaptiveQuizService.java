@@ -338,7 +338,8 @@ public class AdaptiveQuizService {
         return ids.stream().map(id -> {
             QuestionResponse result = questionMapper.toResponse(questions.get(id));
             result.setOptions(options.getOrDefault(id, List.of()).stream().map(option -> OptionResponse.builder()
-                    .optionId(option.getOptionId()).content(option.getContent()).corrected(false).build()).toList());
+                    .optionId(option.getOptionId()).content(option.getContent())
+                    .contentFormat(questions.get(id).getContentFormat()).corrected(false).build()).toList());
             result.setSkills(mappings.getOrDefault(id, List.of()).stream().map(mapping -> QuestionSkillResponse.builder()
                     .skillId(mapping.getSkillId()).name(skillNames.get(mapping.getSkillId()))
                     .weight(mapping.getWeight()).primary(mapping.isPrimary()).build()).toList());

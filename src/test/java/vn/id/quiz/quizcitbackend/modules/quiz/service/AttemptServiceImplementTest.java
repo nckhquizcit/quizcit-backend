@@ -259,6 +259,7 @@ class AttemptServiceImplementTest {
                 .subjectId("subject-1")
                 .chapterId("chapter-1")
                 .content("Đâu là đáp án C")
+                .contentFormat("blocknote")
                 .explanation("Vì C đúng.")
                 .difficultyB(0.1)
                 .build();
@@ -361,10 +362,13 @@ class AttemptServiceImplementTest {
         assertThat(result.getQuestionResults()).hasSize(2);
         assertThat(result.getQuestionResults().get(0).getQuestionNumber()).isEqualTo(1);
         assertThat(result.getQuestionResults().get(0).getContent()).isEqualTo("Đâu là đáp án C");
+        assertThat(result.getQuestionResults().get(0).getContentFormat()).isEqualTo("blocknote");
         assertThat(result.getQuestionResults().get(0).getSelectedOptionId()).isEqualTo("option-1");
         assertThat(result.getQuestionResults().get(0).getCorrectOptionId()).isEqualTo("option-1");
         assertThat(result.getQuestionResults().get(0).isCorrect()).isTrue();
         assertThat(result.getQuestionResults().get(0).getOptions()).hasSize(2);
+        assertThat(result.getQuestionResults().get(0).getOptions()).allSatisfy(option ->
+                assertThat(option.getContentFormat()).isEqualTo("blocknote"));
         assertThat(result.getQuestionResults().get(1).getQuestionNumber()).isEqualTo(2);
         assertThat(result.getQuestionResults().get(1).getSelectedOptionId()).isEqualTo("option-4");
         assertThat(result.getQuestionResults().get(1).getCorrectOptionId()).isEqualTo("option-3");

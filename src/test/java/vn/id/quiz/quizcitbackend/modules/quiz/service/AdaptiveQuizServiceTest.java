@@ -139,8 +139,10 @@ class AdaptiveQuizServiceTest {
                 .containsExactlyElementsOf(assigned.subList(0, 5).stream()
                         .map(QuizQuestion::getQuestionId).toList());
         assertThat(state.getQuestions()).allSatisfy(questionResponse ->
-                assertThat(questionResponse.getOptions()).allSatisfy(optionResponse ->
-                        assertThat(optionResponse.isCorrected()).isFalse()));
+                assertThat(questionResponse.getOptions()).allSatisfy(optionResponse -> {
+                    assertThat(optionResponse.getContentFormat()).isEqualTo("blocknote");
+                    assertThat(optionResponse.isCorrected()).isFalse();
+                }));
     }
 
     @Test
@@ -352,7 +354,8 @@ class AdaptiveQuizServiceTest {
     private static Question question(String id, double difficulty) {
         return Question.builder()
                 .questionId(id).subjectId("subject-1").chapterId("chapter-1")
-                .content("Question " + id).difficultyB(difficulty).build();
+                .content("Question " + id).contentFormat("blocknote")
+                .difficultyB(difficulty).build();
     }
 
     private static Option option(String questionId, String optionId, boolean correct) {
