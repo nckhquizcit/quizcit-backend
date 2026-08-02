@@ -24,6 +24,7 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHist
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.OptionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuestionResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResultResponse;
@@ -53,6 +54,7 @@ public class AttemptServiceImplement
     private final ContentRepository contentRepository;
     private final AttemptMapper mapper;
     private final ProgressRepository progressRepository;
+    private final SkillRepository skillRepository;
 
     private final AIService aiService;
 
@@ -331,6 +333,9 @@ public class AttemptServiceImplement
         List<SkillResultResponse> skillResults = histories.stream()
                 .map(history -> SkillResultResponse.builder()
                         .skillId(history.getSkillId())
+                        .skillName(skillRepository.findById(history.getSkillId())
+                                .map(skill -> skill.getName())
+                                .orElse(null))
                         .theta(history.getTheta())
                         .build())
                 .toList();

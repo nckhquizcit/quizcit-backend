@@ -24,6 +24,8 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHist
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitAnswerRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitQuizRequest;
@@ -44,6 +46,7 @@ class AttemptServiceImplementTest {
         ContentRepository contentRepository = mock(ContentRepository.class);
         AttemptMapper mapper = mock(AttemptMapper.class);
         ProgressRepository progressRepository = mock(ProgressRepository.class);
+        SkillRepository skillRepository = mock(SkillRepository.class);
         AIService aiService = new AIService(new AIClient(null) {
             @Override
             public EstimateThetaResponse estimateTheta(
@@ -66,6 +69,7 @@ class AttemptServiceImplementTest {
                 contentRepository,
                 mapper,
                 progressRepository,
+                skillRepository,
                 aiService);
 
         Attempt attempt = Attempt.builder()
@@ -162,12 +166,14 @@ class AttemptServiceImplementTest {
         ContentRepository contentRepository = mock(ContentRepository.class);
         AttemptMapper mapper = mock(AttemptMapper.class);
         ProgressRepository progressRepository = mock(ProgressRepository.class);
+        SkillRepository skillRepository = mock(SkillRepository.class);
         AIService aiService = mock(AIService.class);
         AttemptServiceImplement service = new AttemptServiceImplement(
                 quizRepository,
                 contentRepository,
                 mapper,
                 progressRepository,
+                skillRepository,
                 aiService);
 
         Attempt attempt = Attempt.builder()
@@ -261,13 +267,22 @@ class AttemptServiceImplementTest {
                         Response.create("attempt-1", "question-1", "option-1", true),
                         Response.create("attempt-1", "question-2", "option-4", false)));
         when(progressRepository.findAbilityHistoriesByAttemptId("attempt-1"))
-                .thenReturn(List.of());
+                .thenReturn(List.of(AbilityHistory.create(
+                        "user-1", "skill-1", 0.75, 0.25, "attempt-1")));
+        when(skillRepository.findById("skill-1"))
+                .thenReturn(Optional.of(Skill.builder()
+                        .skillId("skill-1")
+                        .name("Biến và kiểu dữ liệu")
+                        .build()));
 
         QuizResultResponse result = service.getResult("attempt-1");
 
         assertThat(result.getQuizName()).isEqualTo("Đề test 5 câu");
         assertThat(result.getSubjectName()).isEqualTo("Lập trình căn bản");
         assertThat(result.getSubmittedAt()).isEqualTo(attempt.getCreatedAt());
+        assertThat(result.getSkillResults()).hasSize(1);
+        assertThat(result.getSkillResults().get(0).getSkillName())
+                .isEqualTo("Biến và kiểu dữ liệu");
         assertThat(result.getQuestionResults()).hasSize(2);
         assertThat(result.getQuestionResults().get(0).getQuestionNumber()).isEqualTo(1);
         assertThat(result.getQuestionResults().get(0).getContent()).isEqualTo("Đâu là đáp án C");
