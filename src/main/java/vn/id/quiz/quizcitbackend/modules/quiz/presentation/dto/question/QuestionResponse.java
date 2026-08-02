@@ -34,6 +34,8 @@ public class QuestionResponse {
 
     private String explanation;
 
+    private String contentFormat;
+
     private double difficultyB;
 
     /**

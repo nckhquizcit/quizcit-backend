@@ -18,6 +18,8 @@ public class QuestionResultResponse {
 
     private String explanation;
 
+    private String contentFormat;
+
     private String selectedOptionId;
 
     private String correctOptionId;

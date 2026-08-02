@@ -2,6 +2,9 @@ package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.CreateOptionRequest;
@@ -24,9 +27,19 @@ public class UpdateQuestionRequest {
 
     private String chapterId;
 
+    /**
+     * {@code updateQuestion} hiện luôn ghi đè trực tiếp {@code content} lên
+     * entity (không coi {@code null} là "giữ nguyên" như với {@code options}
+     * / {@code skills}), nên bắt buộc không được để trống giống request tạo mới.
+     */
+    @NotBlank(message = "Nội dung câu hỏi không được để trống")
+    @Size(max = 200000, message = "Nội dung câu hỏi quá dài")
     private String content;
 
+    @Size(max = 200000, message = "Giải thích quá dài")
     private String explanation;
+
+    private String contentFormat;
 
     private double difficultyB;
 
@@ -35,6 +48,7 @@ public class UpdateQuestionRequest {
      * bằng danh sách này (xoá option cũ, insert lại). Cho phép null để giữ
      * nguyên option hiện tại.
      */
+    @Valid
     private List<CreateOptionRequest> options;
 
     /**
@@ -42,4 +56,8 @@ public class UpdateQuestionRequest {
      * này. Cho phép null để giữ nguyên.
      */
     private List<QuestionSkillMappingRequest> skills;
+
+    public String getContentFormat() {
+        return "blocknote".equalsIgnoreCase(contentFormat) ? "blocknote" : "plain";
+    }
 }

@@ -21,6 +21,14 @@ public class OptionResponse {
     private String content;
 
     /**
+     * Định dạng nội dung ({@code "plain"} hoặc {@code "blocknote"}) để
+     * frontend biết cách render. Option luôn được tạo và cập nhật cùng với
+     * câu hỏi cha nên không có cột riêng cho trường này; giá trị được sao
+     * chép từ {@code contentFormat} của câu hỏi cha.
+     */
+    private String contentFormat;
+
+    /**
      * Cờ đánh dấu đáp án đúng. Tuỳ theo ngữ cảnh (làm bài / xem chi tiết)
      * mà service có thể ẩn/hiện cờ này.
      */

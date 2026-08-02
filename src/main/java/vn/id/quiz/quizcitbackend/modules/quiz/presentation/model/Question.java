@@ -31,6 +31,10 @@ public class Question {
     @Column(name = "explanation", columnDefinition = "TEXT")
     private String explanation;
 
+    @Column(name = "content_format", length = 20)
+    @Builder.Default
+    private String contentFormat = "plain";
+
     @Column(name = "difficulty_b")
     private double difficultyB;
 

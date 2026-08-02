@@ -2,6 +2,9 @@ package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.CreateOptionRequest;
@@ -20,12 +23,18 @@ public class CreateQuestionRequest {
 
     private String chapterId;
 
+    @NotBlank(message = "Nội dung câu hỏi không được để trống")
+    @Size(max = 200000, message = "Nội dung câu hỏi quá dài")
     private String content;
 
+    @Size(max = 200000, message = "Giải thích quá dài")
     private String explanation;
+
+    private String contentFormat;
 
     private double difficultyB;
 
+    @Valid
     private List<CreateOptionRequest> options;
 
     /**
@@ -33,4 +42,8 @@ public class CreateQuestionRequest {
      * Hỗ trợ Phase 2 (P1): API quản lý kỹ năng / IRT.
      */
     private List<QuestionSkillMappingRequest> skills;
+
+    public String getContentFormat() {
+        return "blocknote".equalsIgnoreCase(contentFormat) ? "blocknote" : "plain";
+    }
 }

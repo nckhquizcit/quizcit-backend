@@ -19,6 +19,7 @@ public interface QuestionMapper {
 
     List<QuestionResponse> toResponseList(List<Question> questions);
 
+    @Mapping(target = "contentFormat", ignore = true)
     OptionResponse toOptionResponse(Option option);
 
     List<OptionResponse> toOptionResponseList(List<Option> options);

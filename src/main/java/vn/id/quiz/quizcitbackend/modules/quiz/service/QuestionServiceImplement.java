@@ -60,12 +60,14 @@ public class QuestionServiceImplement implements QuestionService {
                 request.getContent(),
                 request.getExplanation(),
                 request.getDifficultyB());
+        question.setContentFormat(request.getContentFormat());
 
         quizRepository.save(question);
 
         List<OptionResponse> optionResponses = createOptionsForQuestion(
                 question.getQuestionId(),
-                request.getOptions());
+                request.getOptions(),
+                question.getContentFormat());
 
         // Phase 2 (P1): lưu skill mapping nếu có
         if (request.getSkills() != null) {
@@ -112,13 +114,14 @@ public class QuestionServiceImplement implements QuestionService {
         question.setChapterId(nextChapterId);
         question.setContent(request.getContent());
         question.setExplanation(request.getExplanation());
+        question.setContentFormat(request.getContentFormat());
         question.setDifficultyB(request.getDifficultyB());
         quizRepository.save(question);
 
         // Phase 2 (P1): replace options nếu request chỉ định
         if (request.getOptions() != null) {
             quizRepository.deleteOptionsByQuestionId(questionId);
-            createOptionsForQuestion(questionId, request.getOptions());
+            createOptionsForQuestion(questionId, request.getOptions(), question.getContentFormat());
         }
 
         // Phase 2 (P1): replace skill mapping nếu request chỉ định
@@ -156,6 +159,7 @@ public class QuestionServiceImplement implements QuestionService {
         visibilityGuard().requireVisibleSubject(question.getSubjectId());
         List<Option> options = quizRepository.findOptionsByQuestionId(questionId);
         List<OptionResponse> optionResponses = mapper.toOptionResponseList(options);
+        optionResponses.forEach(o -> o.setContentFormat(question.getContentFormat()));
 
         QuestionResponse response = mapper.toResponse(question);
         response.setOptions(optionResponses);
@@ -206,6 +210,7 @@ public class QuestionServiceImplement implements QuestionService {
                             // Khi làm bài, ẩn cờ corrected khỏi response để
                             // tránh lộ đáp án.
                             .peek(o -> o.setCorrected(false))
+                            .peek(o -> o.setContentFormat(q.getContentFormat()))
                             .toList();
                     QuestionResponse r = mapper.toResponse(q);
                     r.setOptions(optionResponses);
@@ -221,7 +226,8 @@ public class QuestionServiceImplement implements QuestionService {
     private List<OptionResponse> createOptionsForQuestion(
 
             String questionId,
-            List<CreateOptionRequest> optionRequests) {
+            List<CreateOptionRequest> optionRequests,
+            String contentFormat) {
 
         if (optionRequests == null) {
             return Collections.emptyList();
@@ -234,7 +240,11 @@ public class QuestionServiceImplement implements QuestionService {
                             opt.getContent(),
                             opt.isCorrected());
                     quizRepository.save(option);
-                    return mapper.toOptionResponse(option);
+                    OptionResponse response = mapper.toOptionResponse(option);
+                    // Option không có cột riêng cho contentFormat, giá trị
+                    // luôn được sao chép từ câu hỏi cha.
+                    response.setContentFormat(contentFormat);
+                    return response;
                 })
                 .toList();
     }
