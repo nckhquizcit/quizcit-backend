@@ -18,6 +18,8 @@ public interface JpaUserSkillAbilityRepository
     List<UserSkillAbility> findByUserId(
             String userId);
 
+    boolean existsBySkillId(String skillId);
+
     @Query("""
             SELECT COALESCE(AVG(u.theta), 0)
             FROM UserSkillAbility u

@@ -14,6 +14,8 @@ public interface JpaAbilityHistoryRepository
             String userId,
             String skillId);
 
+    boolean existsBySkillId(String skillId);
+
     AbilityHistory save(
             AbilityHistory history);
 

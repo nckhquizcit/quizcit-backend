@@ -11,6 +11,10 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillRequest;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillResponse;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaAbilityHistoryRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaQuestionSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 @Service
@@ -18,6 +22,10 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 public class SkillServiceImplement implements SkillService {
 
     private final SkillRepository skillRepository;
+    private final JpaChapterSkillRepository chapterSkillRepository;
+    private final JpaQuestionSkillRepository questionSkillRepository;
+    private final JpaUserSkillAbilityRepository userSkillAbilityRepository;
+    private final JpaAbilityHistoryRepository abilityHistoryRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -59,6 +67,16 @@ public class SkillServiceImplement implements SkillService {
         if (skillRepository.findById(skillId).isEmpty()) {
             throw new AppException("Không tìm thấy kỹ năng", HttpStatus.NOT_FOUND);
         }
+
+        if (chapterSkillRepository.existsBySkillId(skillId)
+                || questionSkillRepository.existsBySkillId(skillId)
+                || userSkillAbilityRepository.existsBySkillId(skillId)
+                || abilityHistoryRepository.existsBySkillId(skillId)) {
+            throw new AppException(
+                    "Không thể xóa kỹ năng đang được sử dụng. Hãy đổi tên hoặc ngừng sử dụng kỹ năng trước.",
+                    HttpStatus.CONFLICT);
+        }
+
         skillRepository.deleteById(skillId);
     }
 }

@@ -9,6 +9,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill
 
 public interface JpaChapterSkillRepository extends JpaRepository<ChapterSkill, ChapterSkillId> {
     List<ChapterSkill> findByChapterId(String chapterId);
+    boolean existsBySkillId(String skillId);
     List<ChapterSkill> findByChapterIdIn(Collection<String> chapterIds);
     void deleteByChapterId(String chapterId);
 
