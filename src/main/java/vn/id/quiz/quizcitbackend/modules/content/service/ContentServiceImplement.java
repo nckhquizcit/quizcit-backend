@@ -31,6 +31,7 @@ public class ContentServiceImplement implements ContentService {
     private final ContentRepository contentRepository;
     private final ContentMapper mapper;
     private final QuizRepository quizRepository;
+    private final SubjectVisibilityGuard visibilityGuard;
 
     // =========================================================================
     // Phase 2 (P1): Lấy danh sách đề thi thuộc về 1 môn học
@@ -38,6 +39,7 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional(readOnly = true)
     public List<QuizSummaryResponse> getQuizzesBySubject(String subjectId) {
+        visibilityGuard.requireVisibleSubject(subjectId);
         if (!contentRepository.existsBySubjectId(subjectId)) {
             throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
@@ -50,13 +52,15 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional(readOnly = true)
     public List<SubjectResponse> getAllSubject(){
-        List<Subject> subjects = contentRepository.findAllSubject();
+        List<Subject> subjects = visibilityGuard.isAdministrator()
+                ? contentRepository.findAllSubject()
+                : contentRepository.findAllVisibleSubject();
         return mapper.toSubjectResponseList(subjects);
     }
     @Override
     @Transactional(readOnly = true)
     public SubjectResponse getSubjectById(String subjectId){
-
+        visibilityGuard.requireVisibleSubject(subjectId);
         Subject subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(()-> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
         return mapper.toSubjectResponse(subject);
@@ -64,6 +68,7 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional(readOnly = true)
     public ChapterResponse getChapterById(String chapterId){
+        visibilityGuard.requireVisibleChapter(chapterId);
         Chapter chapter = contentRepository.findChapterById(chapterId)
                 .orElseThrow(()-> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
         return mapper.toChapterResponse(chapter);
@@ -71,6 +76,7 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional(readOnly = true)
     public TheoryResponse getTheoryById(String theoryId){
+        visibilityGuard.requireVisibleTheory(theoryId);
         Theory theory = contentRepository.findTheoryById(theoryId)
                 .orElseThrow(()-> new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu", HttpStatus.NOT_FOUND));
         return mapper.toTheoryResponse(theory);
@@ -113,6 +119,7 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional(readOnly = true)
     public List<ChapterResponse> getAllChapters(String subjectId){
+        visibilityGuard.requireVisibleSubject(subjectId);
         if(!contentRepository.existsBySubjectId(subjectId)){
             throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
@@ -123,6 +130,7 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional(readOnly = true)
     public List<TheoryResponse> getAllTheories(String chapterId){
+        visibilityGuard.requireVisibleChapter(chapterId);
         if(!contentRepository.existsByChapterId(chapterId)){
             throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
@@ -134,7 +142,7 @@ public class ContentServiceImplement implements ContentService {
     public void updateSubject(String subjectId, UpdateSubjectRequest request){
         Subject subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(()-> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
-        subject.updateSubject(request.courseCode(), request.name(), request.description());
+        subject.updateSubject(request.courseCode(), request.name(), request.description(), request.visible());
         contentRepository.save(subject);
     }
     @Transactional

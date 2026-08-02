@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
@@ -149,6 +150,7 @@ public class QuestionServiceImplement implements QuestionService {
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy câu hỏi",
                         HttpStatus.NOT_FOUND));
+        visibilityGuard().requireVisibleSubject(question.getSubjectId());
         List<Option> options = quizRepository.findOptionsByQuestionId(questionId);
         List<OptionResponse> optionResponses = mapper.toOptionResponseList(options);
 
@@ -165,6 +167,7 @@ public class QuestionServiceImplement implements QuestionService {
     @Override
     public List<QuestionResponse> getQuestionsByChapter(
             String chapterId) {
+        visibilityGuard().requireVisibleChapter(chapterId);
         List<Question> questions = quizRepository.findQuestionsByChapterId(chapterId);
         return questions.stream()
                 .map(q -> {
@@ -181,6 +184,7 @@ public class QuestionServiceImplement implements QuestionService {
      * để frontend làm bài trắc nghiệm.
      */
     public List<QuestionResponse> getQuestionsByQuiz(String quizId) {
+        visibilityGuard().requireVisibleQuiz(quizId);
         List<Question> questions = quizRepository.findQuestionsByQuizId(quizId);
         return questions.stream()
                 .map(q -> {
@@ -345,5 +349,9 @@ public class QuestionServiceImplement implements QuestionService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private SubjectVisibilityGuard visibilityGuard() {
+        return new SubjectVisibilityGuard(contentRepository, quizRepository);
     }
 }

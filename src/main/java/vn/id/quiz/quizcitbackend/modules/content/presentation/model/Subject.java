@@ -27,6 +27,10 @@ public class Subject {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "is_visible", nullable = false)
+    @Builder.Default
+    private boolean visible = true;
+
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
@@ -44,13 +48,15 @@ public class Subject {
                 .courseCode(courseCode)
                 .name(name)
                 .description(description)
+                .visible(true)
                 .createdAt(ZonedDateTime.now())
                 .build();
     }
-    public void updateSubject(String courseCode, String name, String description){
+    public void updateSubject(String courseCode, String name, String description, boolean visible){
         this.courseCode = courseCode;
         this.name = name;
         this.description = description;
+        this.visible = visible;
     }
 
 }

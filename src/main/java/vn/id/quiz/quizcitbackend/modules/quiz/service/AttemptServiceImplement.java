@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
@@ -61,6 +62,8 @@ public class AttemptServiceImplement
             String userId,
             String quizId) {
 
+        new SubjectVisibilityGuard(contentRepository, quizRepository).requireVisibleQuiz(quizId);
+
         Quiz quiz = quizRepository.findQuizById(quizId)
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy đề thi",
@@ -96,6 +99,9 @@ public class AttemptServiceImplement
                         () -> new AppException(
                                 "Không tìm thấy attempt",
                                 HttpStatus.NOT_FOUND));
+
+        new SubjectVisibilityGuard(contentRepository, quizRepository)
+                .requireVisibleQuiz(attempt.getQuizId());
 
         if (request.getQuizId() != null && !request.getQuizId().isBlank()
                 && !attempt.getQuizId().equals(request.getQuizId())) {
@@ -315,6 +321,9 @@ public class AttemptServiceImplement
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy kết quả bài thi",
                         HttpStatus.NOT_FOUND));
+
+        new SubjectVisibilityGuard(contentRepository, quizRepository)
+                .requireVisibleQuiz(attempt.getQuizId());
 
         List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByAttemptId(
                 attemptId);

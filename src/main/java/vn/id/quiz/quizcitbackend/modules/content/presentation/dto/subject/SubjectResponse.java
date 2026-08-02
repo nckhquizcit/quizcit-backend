@@ -7,6 +7,7 @@ public record SubjectResponse(
         String courseCode,
         String name,
         String description,
+        boolean visible,
         ZonedDateTime createdAt
 ) {
     public SubjectResponse{

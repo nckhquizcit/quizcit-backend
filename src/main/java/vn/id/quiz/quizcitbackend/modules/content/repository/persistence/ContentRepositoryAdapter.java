@@ -22,6 +22,9 @@ public class ContentRepositoryAdapter implements ContentRepository {
     public List<Subject> findAllSubject(){return jpaSubjectRepository.findAll();}
 
     @Override
+    public List<Subject> findAllVisibleSubject(){return jpaSubjectRepository.findByVisibleTrue();}
+
+    @Override
     public List<Chapter> findAllChapter(String subjectId) {
         return jpaChapterRepository.findBySubjectId(subjectId);
     }

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.CreateQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.UpdateQuizRequest;
@@ -28,6 +29,7 @@ public class QuizServiceImplement implements QuizService {
     private final QuizRepository quizRepository;
     private final ContentRepository contentRepository;
     private final QuizMapper mapper;
+    private final SubjectVisibilityGuard visibilityGuard;
 
     @Override
     @Transactional
@@ -142,7 +144,7 @@ public class QuizServiceImplement implements QuizService {
 
     @Override
     public QuizResponse getQuizById(String quizId) {
-
+        visibilityGuard.requireVisibleQuiz(quizId);
         return mapper.toResponse(
                 quizRepository.findQuizById(quizId)
                         .orElseThrow(() -> new AppException(
@@ -153,7 +155,7 @@ public class QuizServiceImplement implements QuizService {
     @Override
     public List<QuizResponse> getQuizzesByChapter(
             String chapterId) {
-
+        visibilityGuard.requireVisibleChapter(chapterId);
         return mapper.toResponseList(
                 quizRepository.findQuizzesByChapterId(chapterId));
     }

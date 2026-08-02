@@ -10,6 +10,9 @@ import java.util.Optional;
 
 public interface ContentRepository {
     List<Subject> findAllSubject();
+    default List<Subject> findAllVisibleSubject() {
+        return findAllSubject().stream().filter(Subject::isVisible).toList();
+    }
     List<Chapter> findAllChapter(String subjectId);
     List<Theory> findAllTheory(String chapterId);
 
