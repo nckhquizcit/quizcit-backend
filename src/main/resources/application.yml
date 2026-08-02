@@ -3,3 +3,15 @@ spring:
     enabled: true
     baseline-on-migrate: true
     baseline-version: 0
+    # Remote PostgreSQL/Supabase connections can be reset while Flyway waits
+    # for an advisory lock. Fail/reconnect sooner instead of holding one socket
+    # for roughly a minute.
+    connect-retries: 3
+    connect-retries-interval: 2s
+    lock-retry-count: 5
+
+app:
+  database:
+    migration:
+      max-attempts: 4
+      retry-delay-ms: 1500
