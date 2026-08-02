@@ -138,8 +138,8 @@ public class AdaptiveQuizService {
     }
 
     static void validateTotal(int total) {
-        if (total < 40 || total % PAGE_SIZE != 0) {
-            throw new AppException("Số câu phải từ 40 trở lên và chia hết cho 5", HttpStatus.BAD_REQUEST);
+        if (total < 15 || total % PAGE_SIZE != 0) {
+            throw new AppException("Số câu phải từ 15 trở lên và chia hết cho 5", HttpStatus.BAD_REQUEST);
         }
     }
 

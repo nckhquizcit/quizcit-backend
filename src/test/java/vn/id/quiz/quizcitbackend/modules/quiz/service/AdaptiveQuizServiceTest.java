@@ -144,12 +144,12 @@ class AdaptiveQuizServiceTest {
     }
 
     @Test
-    void totalQuestionMustBeAtLeastFortyAndDivisibleByFive() {
-        assertThatThrownBy(() -> AdaptiveQuizService.validateTotal(35))
+    void totalQuestionMustBeAtLeastFifteenAndDivisibleByFive() {
+        assertThatThrownBy(() -> AdaptiveQuizService.validateTotal(10))
                 .isInstanceOf(AppException.class);
-        assertThatThrownBy(() -> AdaptiveQuizService.validateTotal(42))
+        assertThatThrownBy(() -> AdaptiveQuizService.validateTotal(17))
                 .isInstanceOf(AppException.class);
-        assertThatCode(() -> AdaptiveQuizService.validateTotal(40))
+        assertThatCode(() -> AdaptiveQuizService.validateTotal(15))
                 .doesNotThrowAnyException();
         assertThatCode(() -> AdaptiveQuizService.validateTotal(75))
                 .doesNotThrowAnyException();

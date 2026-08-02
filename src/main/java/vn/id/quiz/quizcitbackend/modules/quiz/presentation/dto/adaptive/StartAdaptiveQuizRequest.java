@@ -9,6 +9,6 @@ import lombok.Setter;
 @Setter
 public class StartAdaptiveQuizRequest {
     @NotNull(message = "totalQuestion không được để trống")
-    @Min(value = 40, message = "Bài thích ứng phải có ít nhất 40 câu")
+    @Min(value = 15, message = "Bài thích ứng phải có ít nhất 15 câu")
     private Integer totalQuestion;
 }
