@@ -87,12 +87,28 @@ class AttemptServiceImplementTest {
                 .content("Answer")
                 .isCorrected(true)
                 .build();
+        Quiz quiz = Quiz.builder()
+                .quizId("quiz-1")
+                .subjectId("subject-1")
+                .chapterId("chapter-1")
+                .name("Quiz visible")
+                .build();
+        Subject subject = Subject.builder()
+                .subjectId("subject-1")
+                .courseCode("CT101")
+                .name("Lập trình căn bản")
+                .visible(true)
+                .build();
         UserSkillAbility ability = UserSkillAbility.create("user-1", "skill-1");
         ability.updateAbility(0.5);
         List<AbilityHistory> savedHistories = new ArrayList<>();
 
         when(quizRepository.findAttemptById("attempt-1"))
                 .thenReturn(Optional.of(attempt));
+        when(quizRepository.findQuizById("quiz-1"))
+                .thenReturn(Optional.of(quiz));
+        when(contentRepository.findSubjectById("subject-1"))
+                .thenReturn(Optional.of(subject));
         when(quizRepository.findResponsesByAttemptId("attempt-1"))
                 .thenReturn(List.of());
         when(quizRepository.findQuizQuestionsByQuizId("quiz-1"))
