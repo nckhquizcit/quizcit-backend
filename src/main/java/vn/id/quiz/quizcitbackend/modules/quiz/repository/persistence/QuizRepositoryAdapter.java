@@ -36,6 +36,16 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public List<Question> findQuestionsByChapterIds(java.util.Collection<String> chapterIds) {
+        return chapterIds == null || chapterIds.isEmpty() ? List.of() : jpaQuestionRepository.findByChapterIdIn(chapterIds);
+    }
+
+    @Override
+    public List<Question> findAllQuestions() {
+        return jpaQuestionRepository.findAll();
+    }
+
+    @Override
     public Question save(Question question) {
         return jpaQuestionRepository.save(question);
     }
@@ -113,6 +123,11 @@ public class QuizRepositoryAdapter implements QuizRepository {
     @Override
     public List<Quiz> findQuizzesBySubjectId(String subjectId) {
         return jpaQuizRepository.findBySubjectIdOrderByDisplayOrderAscCreatedAtAscQuizIdAsc(subjectId);
+    }
+
+    @Override
+    public List<Quiz> findQuizzesByIds(java.util.Collection<String> quizIds) {
+        return quizIds == null || quizIds.isEmpty() ? List.of() : jpaQuizRepository.findAllById(quizIds);
     }
 
     @Override
@@ -206,6 +221,12 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public List<Response> findResponsesByAttemptIds(java.util.Collection<String> attemptIds) {
+        return attemptIds == null || attemptIds.isEmpty()
+                ? List.of() : jpaResponseRepository.findByAttemptIdIn(attemptIds);
+    }
+
+    @Override
     public void deleteResponsesByQuestionId(String questionId) {
         jpaResponseRepository.deleteByQuestionId(questionId);
     }
@@ -225,15 +246,7 @@ public class QuizRepositoryAdapter implements QuizRepository {
 
     @Override
     public List<Question> findQuestionsByQuizId(String quizId) {
-        // Lấy quan hệ quiz-question đã sắp xếp theo index, rồi map sang Question
-        List<QuizQuestion> quizQuestions =
-                jpaQuizQuestionRepository.findByQuizIdOrderByIndexOrder(quizId);
-        return quizQuestions.stream()
-                .map(qq -> jpaQuestionRepository
-                        .findByQuestionId(qq.getQuestionId())
-                        .orElse(null))
-                .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toList());
+        return jpaQuestionRepository.findByQuizIdOrderByQuizIndex(quizId);
     }
 
     // =========================================================================
@@ -248,6 +261,12 @@ public class QuizRepositoryAdapter implements QuizRepository {
     @Override
     public List<QuestionSkill> findQuestionSkillsByQuestionId(String questionId) {
         return jpaQuestionSkillRepository.findByQuestionId(questionId);
+    }
+
+    @Override
+    public List<QuestionSkill> findQuestionSkillsByQuestionIds(java.util.Collection<String> questionIds) {
+        return questionIds == null || questionIds.isEmpty()
+                ? List.of() : jpaQuestionSkillRepository.findByQuestionIdIn(questionIds);
     }
 
     @Override

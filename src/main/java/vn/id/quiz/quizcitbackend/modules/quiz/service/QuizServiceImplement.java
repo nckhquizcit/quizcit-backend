@@ -3,6 +3,7 @@ package vn.id.quiz.quizcitbackend.modules.quiz.service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -51,11 +52,11 @@ public class QuizServiceImplement implements QuizService {
         List<Question> selected;
 
         if (request.getQuestionIds() != null && !request.getQuestionIds().isEmpty()) {
+            Map<String, Question> questionsById = quizRepository.findQuestionsByIds(request.getQuestionIds())
+                    .stream().collect(java.util.stream.Collectors.toMap(Question::getQuestionId, question -> question));
             selected = request.getQuestionIds().stream()
-                    .map(questionId -> quizRepository.findQuestionById(questionId)
-                            .orElseThrow(() -> new AppException(
-                                    ErrorMessages.QUESTION_NOT_FOUND,
-                                    HttpStatus.NOT_FOUND)))
+                    .map(questionId -> java.util.Optional.ofNullable(questionsById.get(questionId))
+                            .orElseThrow(() -> new AppException(ErrorMessages.QUESTION_NOT_FOUND, HttpStatus.NOT_FOUND)))
                     .filter(question -> Objects.equals(question.getChapterId(), request.getChapterId()))
                     .toList();
 
@@ -137,8 +138,10 @@ public class QuizServiceImplement implements QuizService {
             if (request.getQuestionIds().stream().distinct().count() != request.getQuestionIds().size()) {
                 throw new AppException("Danh sách câu hỏi không được trùng lặp", HttpStatus.BAD_REQUEST);
             }
+            Map<String, Question> questionsById = quizRepository.findQuestionsByIds(request.getQuestionIds())
+                    .stream().collect(java.util.stream.Collectors.toMap(Question::getQuestionId, question -> question));
             selected = request.getQuestionIds().stream()
-                    .map(questionId -> quizRepository.findQuestionById(questionId)
+                    .map(questionId -> java.util.Optional.ofNullable(questionsById.get(questionId))
                             .orElseThrow(() -> new AppException(ErrorMessages.QUESTION_NOT_FOUND, HttpStatus.NOT_FOUND)))
                     .filter(question -> chapterId.equals(question.getChapterId()))
                     .toList();
@@ -203,10 +206,13 @@ public class QuizServiceImplement implements QuizService {
     public void reorderQuizzes(String chapterId, ReorderRequest request) {
         contentRepository.findChapterById(chapterId)
                 .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
+        Map<String, Quiz> quizzesById = quizRepository.findQuizzesByIds(
+                request.items().stream().map(item -> item.id()).toList()).stream()
+                .collect(java.util.stream.Collectors.toMap(Quiz::getQuizId, quiz -> quiz));
         request.items().forEach(item -> {
-            Quiz quiz = quizRepository.findQuizById(item.id())
-                    .filter(value -> chapterId.equals(value.getChapterId()))
-                    .orElseThrow(() -> new AppException(ErrorMessages.QUIZ_NOT_FOUND, HttpStatus.NOT_FOUND));
+            Quiz quiz = java.util.Optional.ofNullable(quizzesById.get(item.id()))
+                    .filter(value -> chapterId.equals(value.getChapterId())).orElseThrow(
+                            () -> new AppException(ErrorMessages.QUIZ_NOT_FOUND, HttpStatus.NOT_FOUND));
             quiz.updateDisplayOrder(item.displayOrder());
             quizRepository.save(quiz);
         });

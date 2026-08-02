@@ -27,6 +27,11 @@ public interface QuizRepository {
 
     List<Question> findQuestionsByChapterId(
             String chapterId);
+    default List<Question> findQuestionsByChapterIds(Collection<String> chapterIds) {
+        return chapterIds == null ? List.of() : chapterIds.stream()
+                .flatMap(id -> findQuestionsByChapterId(id).stream()).toList();
+    }
+    default List<Question> findAllQuestions() { return List.of(); }
 
     // Batch: lấy nhiều câu hỏi theo danh sách id (tránh N+1).
     List<Question> findQuestionsByIds(
@@ -55,6 +60,10 @@ public interface QuizRepository {
      */
     List<Quiz> findQuizzesBySubjectId(
             String subjectId);
+    default List<Quiz> findQuizzesByIds(Collection<String> quizIds) {
+        return quizIds == null ? List.of() : quizIds.stream().map(this::findQuizById)
+                .flatMap(Optional::stream).toList();
+    }
 
     void deleteQuizById(
             String quizId);
@@ -126,6 +135,10 @@ public interface QuizRepository {
 
     List<Response> findResponsesByAttemptId(
             String attemptId);
+    default List<Response> findResponsesByAttemptIds(Collection<String> attemptIds) {
+        return attemptIds == null ? List.of() : attemptIds.stream()
+                .flatMap(id -> findResponsesByAttemptId(id).stream()).toList();
+    }
 
 
     void deleteResponsesByQuestionId(
@@ -147,6 +160,11 @@ public interface QuizRepository {
     QuestionSkill saveQuestionSkill(QuestionSkill questionSkill);
 
     List<QuestionSkill> findQuestionSkillsByQuestionId(String questionId);
+
+    default List<QuestionSkill> findQuestionSkillsByQuestionIds(Collection<String> questionIds) {
+        return questionIds == null ? List.of() : questionIds.stream()
+                .flatMap(id -> findQuestionSkillsByQuestionId(id).stream()).toList();
+    }
 
     void deleteQuestionSkillsByQuestionId(String questionId);
 }

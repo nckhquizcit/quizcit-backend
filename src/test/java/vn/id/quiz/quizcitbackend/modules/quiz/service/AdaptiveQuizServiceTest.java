@@ -88,12 +88,15 @@ class AdaptiveQuizServiceTest {
                 UserUnlockedChapter.create("user-1", "chapter-1")));
         when(chapterSkillRepository.findByChapterId("chapter-1")).thenReturn(List.of(
                 ChapterSkill.create("chapter-1", "skill-1", -4.0)));
+        when(chapterSkillRepository.findByChapterIdIn(any())).thenReturn(List.of(
+                ChapterSkill.create("chapter-1", "skill-1", -4.0)));
         when(progressRepository.findUserSkillAbilities("user-1")).thenReturn(List.of(ability));
         when(progressRepository.findQuestionSkillsByQuestionIds(any())).thenAnswer(invocation -> {
             Collection<String> ids = invocation.getArgument(0);
             return mappings.stream().filter(mapping -> ids.contains(mapping.getQuestionId())).toList();
         });
         when(quizRepository.findQuestionsByChapterId("chapter-1")).thenReturn(bank);
+        when(quizRepository.findQuestionsByChapterIds(any())).thenReturn(bank);
         when(quizRepository.findOptionsByQuestionIds(any())).thenAnswer(invocation -> {
             Collection<String> ids = invocation.getArgument(0);
             return options.stream().filter(option -> ids.contains(option.getQuestionId())).toList();
@@ -220,6 +223,7 @@ class AdaptiveQuizServiceTest {
                 .thenAnswer(invocation -> List.copyOf(persistedResponses));
         when(quizRepository.findQuizQuestionsByQuizId("quiz-1")).thenReturn(assigned);
         when(quizRepository.findQuestionsByChapterId("chapter-1")).thenReturn(questions);
+        when(quizRepository.findQuestionsByChapterIds(any())).thenReturn(questions);
         when(quizRepository.findQuestionsByIds(any())).thenAnswer(invocation -> {
             Collection<String> ids = invocation.getArgument(0);
             return questions.stream().filter(question -> ids.contains(question.getQuestionId())).toList();
@@ -255,6 +259,12 @@ class AdaptiveQuizServiceTest {
             histories.add(history);
             return history;
         });
+        when(progressRepository.saveUserSkillAbilities(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(progressRepository.saveAbilityHistories(any())).thenAnswer(invocation -> {
+            List<AbilityHistory> saved = new ArrayList<>(invocation.getArgument(0));
+            histories.addAll(saved);
+            return saved;
+        });
         when(questionMapper.toResponse(any(Question.class))).thenAnswer(invocation -> {
             Question source = invocation.getArgument(0);
             return QuestionResponse.builder()
@@ -269,6 +279,9 @@ class AdaptiveQuizServiceTest {
         when(unlockedRepository.findByUserIdAndChapterIdIn(any(), any()))
                 .thenReturn(List.of(UserUnlockedChapter.create("user-1", "chapter-1")));
         when(chapterSkillRepository.findByChapterId("chapter-1")).thenReturn(List.of(
+                ChapterSkill.create("chapter-1", "owned-skill", -4.0),
+                ChapterSkill.create("chapter-1", "unowned-skill", -4.0)));
+        when(chapterSkillRepository.findByChapterIdIn(any())).thenReturn(List.of(
                 ChapterSkill.create("chapter-1", "owned-skill", -4.0),
                 ChapterSkill.create("chapter-1", "unowned-skill", -4.0)));
 

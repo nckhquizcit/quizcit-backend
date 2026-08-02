@@ -24,6 +24,7 @@ public interface QuestionService {
     //Lấy toàn bộ câu hỏi của chương
     List<QuestionResponse> getQuestionsByChapter(
             String chapterId);
+    List<QuestionResponse> getAllQuestions();
 
     // Phase 2 (P0): Lấy danh sách câu hỏi trong một quiz kèm theo option
     List<QuestionResponse> getQuestionsByQuiz(String quizId);

@@ -30,8 +30,19 @@ public class ContentRepositoryAdapter implements ContentRepository {
     }
 
     @Override
+    public List<Chapter> findAllChapters(java.util.Collection<String> subjectIds) {
+        return subjectIds == null || subjectIds.isEmpty() ? List.of()
+                : jpaChapterRepository.findBySubjectIdInOrderBySubjectIdAscDisplayOrderAscCreatedAtAscChapterIdAsc(subjectIds);
+    }
+
+    @Override
     public List<Theory> findAllTheory(String chapterId) {
         return jpaTheoryRepository.findByChapterId(chapterId);
+    }
+
+    @Override
+    public List<Theory> findAllTheories(java.util.Collection<String> chapterIds) {
+        return chapterIds == null || chapterIds.isEmpty() ? List.of() : jpaTheoryRepository.findByChapterIdIn(chapterIds);
     }
 
     @Override
@@ -61,6 +72,11 @@ public class ContentRepositoryAdapter implements ContentRepository {
 
     @Override
     public Optional<Subject> findSubjectById(String id) { return jpaSubjectRepository.findById(id); }
+
+    @Override
+    public List<Subject> findSubjectsByIds(java.util.Collection<String> ids) {
+        return ids == null || ids.isEmpty() ? List.of() : jpaSubjectRepository.findAllById(ids);
+    }
 
 
     @Override
@@ -104,5 +120,10 @@ public class ContentRepositoryAdapter implements ContentRepository {
     @Override
     public Optional<Chapter> findChapterById(String id) {
         return jpaChapterRepository.findById(id);
+    }
+
+    @Override
+    public List<Chapter> findChaptersByIds(java.util.Collection<String> ids) {
+        return ids == null || ids.isEmpty() ? List.of() : jpaChapterRepository.findAllById(ids);
     }
 }

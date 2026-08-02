@@ -21,6 +21,7 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -40,8 +41,10 @@ public class UserServiceImpl implements UserUseCase {
     @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
         List<User> users = userRepository.findAll();
+        Map<String, UserRole> roles = userRepository.findRolesByUserIds(
+                users.stream().map(User::getUserId).toList());
         return users.stream()
-                .map(user -> mapper.toUserResponse(user, resolveUserRole(user.getUserId())))
+                .map(user -> mapper.toUserResponse(user, roles.get(user.getUserId())))
                 .toList();
     }
 

@@ -26,6 +26,11 @@ public class SkillRepositoryAdapter implements SkillRepository {
     }
 
     @Override
+    public List<Skill> findByIds(java.util.Collection<String> skillIds) {
+        return skillIds == null || skillIds.isEmpty() ? List.of() : jpa.findAllById(skillIds);
+    }
+
+    @Override
     public Skill save(Skill skill) {
         return jpa.save(skill);
     }

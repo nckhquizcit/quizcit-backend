@@ -26,6 +26,12 @@ public class QuestionController {
 
     private final QuestionService questionService;
 
+    @GetMapping("/questions")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<List<QuestionResponse>>> getAllQuestions() {
+        return ResponseEntity.ok(ApiResponse.success(questionService.getAllQuestions()));
+    }
+
     @GetMapping("/chapters/{chapterId}/questions")
     public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestionsByChapter(
             @PathVariable String chapterId) {

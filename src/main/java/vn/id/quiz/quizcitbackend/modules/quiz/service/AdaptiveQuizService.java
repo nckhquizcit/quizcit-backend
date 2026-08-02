@@ -177,8 +177,8 @@ public class AdaptiveQuizService {
                 .collect(Collectors.toMap(UserSkillAbility::getSkillId,
                         ability -> ability.getTheta() == null ? 0.0 : ability.getTheta(), (a, b) -> a));
         if (theta.isEmpty()) return List.of();
-        List<Question> pool = chapters.stream().flatMap(chapter ->
-                quizRepository.findQuestionsByChapterId(chapter.getChapterId()).stream())
+        List<Question> pool = quizRepository.findQuestionsByChapterIds(
+                chapters.stream().map(Chapter::getChapterId).toList()).stream()
                 .filter(question -> !excluded.contains(question.getQuestionId())).collect(Collectors.toCollection(ArrayList::new));
         Set<String> answerableQuestionIds = quizRepository
                 .findOptionsByQuestionIds(pool.stream().map(Question::getQuestionId).toList())
@@ -191,11 +191,10 @@ public class AdaptiveQuizService {
                 .collect(Collectors.toSet());
         pool.removeIf(question -> !answerableQuestionIds.contains(question.getQuestionId()));
         Collections.shuffle(pool); // trộn trước mỗi lần chọn để tie không thiên vị thứ tự DB
-        Map<String, Set<String>> chapterSkillIds = chapters.stream().collect(Collectors.toMap(
-                Chapter::getChapterId,
-                chapter -> chapterSkillRepository.findByChapterId(chapter.getChapterId()).stream()
-                        .map(value -> value.getSkillId())
-                        .collect(Collectors.toSet())));
+        Map<String, Set<String>> chapterSkillIds = chapterSkillRepository.findByChapterIdIn(
+                chapters.stream().map(Chapter::getChapterId).toList()).stream()
+                .collect(Collectors.groupingBy(value -> value.getChapterId(),
+                        Collectors.mapping(value -> value.getSkillId(), Collectors.toSet())));
         Map<String, String> chapterByQuestionId = pool.stream().collect(Collectors.toMap(
                 Question::getQuestionId, Question::getChapterId));
         Map<String, List<QuestionSkill>> mappings = progressRepository
@@ -247,8 +246,10 @@ public class AdaptiveQuizService {
 
     private void updateTheta(Attempt attempt, Map<String, Question> questions, List<Response> responses) {
         Map<String, Response> responseMap = responses.stream().collect(Collectors.toMap(Response::getQuestionId, r -> r));
-        Set<String> existingSkillIds = progressRepository.findUserSkillAbilities(attempt.getUserId()).stream()
-                .map(UserSkillAbility::getSkillId)
+        Map<String, UserSkillAbility> abilitiesBySkill = progressRepository
+                .findUserSkillAbilities(attempt.getUserId()).stream()
+                .collect(Collectors.toMap(UserSkillAbility::getSkillId, ability -> ability));
+        Set<String> existingSkillIds = abilitiesBySkill.values().stream().map(UserSkillAbility::getSkillId)
                 .collect(Collectors.toSet());
         Map<String, List<QuestionSkill>> mappings = progressRepository
                 .findQuestionSkillsByQuestionIds(questions.keySet()).stream()
@@ -260,20 +261,24 @@ public class AdaptiveQuizService {
                 values.stream().map(value -> questions.get(value.getQuestionId()).getDifficultyB()).toList(),
                 values.stream().map(QuestionSkill::getWeight).toList())));
         Map<String, Double> estimated = aiService.estimateThetaBatch(requests);
+        List<UserSkillAbility> abilitiesToSave = new ArrayList<>();
+        List<AbilityHistory> historiesToSave = new ArrayList<>();
         estimated.forEach((skillId, newTheta) -> {
-            UserSkillAbility ability = progressRepository.findUserSkillAbility(attempt.getUserId(), skillId)
-                    .orElseGet(() -> UserSkillAbility.create(attempt.getUserId(), skillId));
+            UserSkillAbility ability = abilitiesBySkill.computeIfAbsent(skillId,
+                    ignored -> UserSkillAbility.create(attempt.getUserId(), skillId));
             double old = ability.getTheta() == null ? 0 : ability.getTheta();
             double blendedTheta = blendTheta(old, newTheta);
             ability.updateAbility(blendedTheta);
-            progressRepository.save(ability);
-            progressRepository.save(AbilityHistory.create(
+            abilitiesToSave.add(ability);
+            historiesToSave.add(AbilityHistory.create(
                     attempt.getUserId(),
                     skillId,
                     blendedTheta,
                     blendedTheta - old,
                     attempt.getAttemptId()));
         });
+        progressRepository.saveUserSkillAbilities(abilitiesToSave);
+        progressRepository.saveAbilityHistories(historiesToSave);
     }
 
     static double blendTheta(double oldTheta, double newTheta) {
@@ -285,13 +290,9 @@ public class AdaptiveQuizService {
         Set<String> questionIds = responses.stream().map(Response::getQuestionId).collect(Collectors.toSet());
         Set<String> skillIds = progressRepository.findQuestionSkillsByQuestionIds(questionIds).stream()
                 .map(QuestionSkill::getSkillId).collect(Collectors.toSet());
-        List<Double> theta = new ArrayList<>();
-        for (String skillId : skillIds) {
-            progressRepository.findUserSkillAbility(attempt.getUserId(), skillId).ifPresent(ability -> {
-                double value = ability.getTheta() == null ? 0 : ability.getTheta();
-                theta.add(value);
-            });
-        }
+        List<Double> theta = progressRepository.findUserSkillAbilities(attempt.getUserId()).stream()
+                .filter(ability -> skillIds.contains(ability.getSkillId()))
+                .map(ability -> ability.getTheta() == null ? 0 : ability.getTheta()).toList();
         attempt.complete(responses.stream().filter(Response::isScore).count(),
                 theta.stream().mapToDouble(Double::doubleValue).average().orElse(0));
         quizRepository.save(attempt);
@@ -331,12 +332,15 @@ public class AdaptiveQuizService {
                 .collect(Collectors.groupingBy(Option::getQuestionId));
         Map<String, List<QuestionSkill>> mappings = progressRepository.findQuestionSkillsByQuestionIds(ids).stream()
                 .collect(Collectors.groupingBy(QuestionSkill::getQuestionId));
+        Map<String, String> skillNames = skillRepository.findByIds(mappings.values().stream().flatMap(List::stream)
+                .map(QuestionSkill::getSkillId).distinct().toList()).stream()
+                .collect(Collectors.toMap(skill -> skill.getSkillId(), skill -> skill.getName()));
         return ids.stream().map(id -> {
             QuestionResponse result = questionMapper.toResponse(questions.get(id));
             result.setOptions(options.getOrDefault(id, List.of()).stream().map(option -> OptionResponse.builder()
                     .optionId(option.getOptionId()).content(option.getContent()).corrected(false).build()).toList());
             result.setSkills(mappings.getOrDefault(id, List.of()).stream().map(mapping -> QuestionSkillResponse.builder()
-                    .skillId(mapping.getSkillId()).name(skillRepository.findById(mapping.getSkillId()).map(s -> s.getName()).orElse(null))
+                    .skillId(mapping.getSkillId()).name(skillNames.get(mapping.getSkillId()))
                     .weight(mapping.getWeight()).primary(mapping.isPrimary()).build()).toList());
             return result;
         }).toList();

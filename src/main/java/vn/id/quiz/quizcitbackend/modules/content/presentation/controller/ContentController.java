@@ -40,6 +40,11 @@ public class ContentController {
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
+    @GetMapping("/chapters")
+    public ResponseEntity<ApiResponse<List<ChapterResponse>>> getAllAccessibleChapters() {
+        return ResponseEntity.ok(ApiResponse.success(subjectUseCase.getAllAccessibleChapters()));
+    }
+
     @GetMapping("/subjects/{subjectId}")
     public ResponseEntity<ApiResponse<SubjectResponse>> getSubjectById(@PathVariable String subjectId) {
         SubjectResponse response = subjectUseCase.getSubjectById(subjectId);
@@ -147,6 +152,11 @@ public class ContentController {
     public ResponseEntity<ApiResponse<List<TheoryResponse>>> getAllTheories(@PathVariable String chapterId) {
         List<TheoryResponse> response = subjectUseCase.getAllTheories(chapterId);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/subjects/{subjectId}/theories")
+    public ResponseEntity<ApiResponse<List<TheoryResponse>>> getAllTheoriesBySubject(@PathVariable String subjectId) {
+        return ResponseEntity.ok(ApiResponse.success(subjectUseCase.getAllTheoriesBySubject(subjectId)));
     }
 
     // Nested Route: Thêm lý thuyết VÀO 1 chương

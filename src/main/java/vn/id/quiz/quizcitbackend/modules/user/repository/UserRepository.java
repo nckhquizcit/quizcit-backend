@@ -7,6 +7,8 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignm
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.Collection;
 
 public interface UserRepository {
     List<User> findAll();
@@ -22,6 +24,13 @@ public interface UserRepository {
     Optional<Role> findRoleByName(UserRole name);
 
     Optional<Role> findRoleByUserId(String userId);
+    default Map<String, UserRole> findRolesByUserIds(Collection<String> userIds) {
+        if (userIds == null) return Map.of();
+        Map<String, UserRole> roles = new java.util.HashMap<>();
+        userIds.forEach(id -> findRoleByUserId(id).map(Role::getName)
+                .ifPresent(role -> roles.put(id, role)));
+        return roles;
+    }
 
     boolean existsById(String userId);
 
