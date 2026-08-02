@@ -17,7 +17,6 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill;
-import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserUnlockedChapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSkillRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSkillResponse;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
@@ -29,6 +28,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
@@ -64,6 +64,7 @@ public class ContentServiceImplement implements ContentService {
         }
         List<Quiz> quizzes = quizRepository.findQuizzesBySubjectId(subjectId);
         return quizzes.stream()
+                .filter(quiz -> quiz.getType() != QuizType.ADAPTIVE)
                 .map(QuizSummaryResponse::from)
                 .toList();
     }
@@ -248,7 +249,9 @@ public class ContentServiceImplement implements ContentService {
                 .stream().collect(Collectors.toMap(a -> a.getSkillId(), a -> a.getTheta() == null ? 0.0 : a.getTheta()));
         boolean eligible = requirements.stream()
                 .allMatch(requirement -> thetaBySkill.getOrDefault(requirement.getSkillId(), 0.0) >= requirement.getRequiredTheta());
-        if (eligible && userId != null) unlockedChapterRepository.save(UserUnlockedChapter.create(userId, chapterId));
+        if (eligible && userId != null) {
+            unlockedChapterRepository.insertIfAbsent(userId, chapterId);
+        }
         return eligible;
     }
 

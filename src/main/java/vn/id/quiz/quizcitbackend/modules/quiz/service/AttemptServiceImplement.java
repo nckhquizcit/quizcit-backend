@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
@@ -38,12 +39,13 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class AttemptServiceImplement
         implements AttemptService {
 
@@ -57,6 +59,19 @@ public class AttemptServiceImplement
     private final SkillRepository skillRepository;
 
     private final AIService aiService;
+    private final AdaptiveQuizService adaptiveQuizService;
+
+    // Giữ constructor này để tương thích các unit test/service consumer cũ.
+    AttemptServiceImplement(
+            QuizRepository quizRepository,
+            ContentRepository contentRepository,
+            AttemptMapper mapper,
+            ProgressRepository progressRepository,
+            SkillRepository skillRepository,
+            AIService aiService) {
+        this(quizRepository, contentRepository, mapper, progressRepository,
+                skillRepository, aiService, null);
+    }
 
     @Override
     @Transactional
@@ -111,6 +126,22 @@ public class AttemptServiceImplement
                     "Attempt không thuộc đề thi đang nộp",
                     HttpStatus.BAD_REQUEST);
         }// kiêm tra xem attempt và đề thi có
+
+        Quiz submittedQuiz = quizRepository.findQuizById(attempt.getQuizId())
+                .orElseThrow(() -> new AppException("Không tìm thấy đề thi", HttpStatus.NOT_FOUND));
+        if (submittedQuiz.getType() == QuizType.ADAPTIVE) {
+            if (adaptiveQuizService == null) {
+                throw new AppException("Dịch vụ bài thích ứng chưa sẵn sàng", HttpStatus.SERVICE_UNAVAILABLE);
+            }
+            var adaptiveState = adaptiveQuizService.submitBatch(
+                    attempt.getUserId(), attempt.getAttemptId(), request.getAnswers());
+            if (!adaptiveState.isCompleted()) {
+                throw new AppException(
+                        "Bài thích ứng chỉ có thể nộp hoàn toàn ở nhóm 5 câu cuối",
+                        HttpStatus.BAD_REQUEST);
+            }
+            return getResult(attempt.getAttemptId());
+        }
 
         if (!quizRepository.findResponsesByAttemptId(attempt.getAttemptId()).isEmpty()) {
             return getResult(attempt.getAttemptId());

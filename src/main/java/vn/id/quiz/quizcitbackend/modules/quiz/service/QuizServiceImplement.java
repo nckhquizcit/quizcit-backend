@@ -18,6 +18,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.UpdateQuizRe
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
@@ -192,7 +193,9 @@ public class QuizServiceImplement implements QuizService {
             String chapterId) {
         visibilityGuard.requireVisibleChapter(chapterId);
         return mapper.toResponseList(
-                quizRepository.findQuizzesByChapterId(chapterId));
+                quizRepository.findQuizzesByChapterId(chapterId).stream()
+                        .filter(quiz -> quiz.getType() != QuizType.ADAPTIVE)
+                        .toList());
     }
 
     @Override
