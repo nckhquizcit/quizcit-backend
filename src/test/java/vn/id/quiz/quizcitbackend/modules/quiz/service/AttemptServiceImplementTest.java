@@ -69,6 +69,14 @@ class AttemptServiceImplementTest {
                 .thenReturn(responses("adaptive-partial", 5));
         when(quizRepository.findResponsesByAttemptId("adaptive-complete"))
                 .thenReturn(responses("adaptive-complete", 40));
+        when(quizRepository.findResponsesByAttemptIds(any())).thenReturn(java.util.stream.Stream.of(
+                List.of(Response.create("normal-complete", "q1", "o1", true)),
+                responses("adaptive-partial", 5), responses("adaptive-complete", 40))
+                .flatMap(List::stream).toList());
+        when(quizRepository.findQuizzesByIds(any())).thenReturn(List.of(
+                Quiz.builder().quizId("normal-quiz").type(QuizType.CHAPTER).build(),
+                Quiz.builder().quizId("adaptive-quiz").type(QuizType.ADAPTIVE).build()));
+        when(contentRepository.findSubjectsByIds(any())).thenReturn(List.of());
         when(contentRepository.findSubjectById(any())).thenReturn(Optional.of(
                 Subject.builder().subjectId("subject-1").name("Subject").build()));
 
@@ -175,6 +183,13 @@ class AttemptServiceImplementTest {
                         true)));
         when(progressRepository.findUserSkillAbility("user-1", "skill-1"))
                 .thenReturn(Optional.of(ability));
+        when(progressRepository.findUserSkillAbilities("user-1")).thenReturn(List.of(ability));
+        when(progressRepository.saveUserSkillAbilities(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(progressRepository.saveAbilityHistories(any())).thenAnswer(invocation -> {
+            List<AbilityHistory> histories = new ArrayList<>(invocation.getArgument(0));
+            savedHistories.addAll(histories);
+            return histories;
+        });
         when(progressRepository.save(any(AbilityHistory.class)))
                 .thenAnswer(invocation -> {
                     AbilityHistory history = invocation.getArgument(0);
@@ -331,6 +346,8 @@ class AttemptServiceImplementTest {
                         .skillId("skill-1")
                         .name("Biến và kiểu dữ liệu")
                         .build()));
+        when(skillRepository.findByIds(any())).thenReturn(List.of(Skill.builder()
+                .skillId("skill-1").name("Biến và kiểu dữ liệu").build()));
 
         QuizResultResponse result = service.getResult("attempt-1");
 

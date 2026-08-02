@@ -17,6 +17,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserUnlockedChapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSkillRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSkillResponse;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
@@ -143,15 +144,16 @@ public class ContentServiceImplement implements ContentService {
     @Transactional
     public List<ChapterResponse> getAllChapters(String subjectId){
         visibilityGuard.requireVisibleSubject(subjectId);
-        if(!contentRepository.existsBySubjectId(subjectId)){
-            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
-        }
-        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
-        if (!visibilityGuard.isAdministrator()) {
-            String userId = currentUserId();
-            chapters = chapters.stream().filter(chapter -> canUnlock(userId, chapter.getChapterId())).toList();
-        }
-        return chapters.stream().map(this::toChapterResponse).toList();
+        return toAccessibleChapterResponses(contentRepository.findAllChapter(subjectId));
+    }
+
+    @Override
+    @Transactional
+    public List<ChapterResponse> getAllAccessibleChapters() {
+        List<Subject> subjects = visibilityGuard.isAdministrator()
+                ? contentRepository.findAllSubject() : contentRepository.findAllVisibleSubject();
+        return toAccessibleChapterResponses(contentRepository.findAllChapters(
+                subjects.stream().map(Subject::getSubjectId).toList()));
     }
 
     @Override
@@ -163,6 +165,13 @@ public class ContentServiceImplement implements ContentService {
         }
         List<Theory> theories = contentRepository.findAllTheory(chapterId);
         return mapper.toTheoryResponseList(theories);
+    }
+
+    @Override
+    @Transactional
+    public List<TheoryResponse> getAllTheoriesBySubject(String subjectId) {
+        List<String> chapterIds = getAllChapters(subjectId).stream().map(ChapterResponse::chapterId).toList();
+        return mapper.toTheoryResponseList(contentRepository.findAllTheories(chapterIds));
     }
     @Transactional
     @Override
@@ -215,8 +224,11 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public void reorderSubjects(ReorderRequest request) {
+        Map<String, Subject> subjectsById = contentRepository.findSubjectsByIds(
+                request.items().stream().map(item -> item.id()).toList()).stream()
+                .collect(Collectors.toMap(Subject::getSubjectId, subject -> subject));
         request.items().forEach(item -> {
-            Subject subject = contentRepository.findSubjectById(item.id())
+            Subject subject = java.util.Optional.ofNullable(subjectsById.get(item.id()))
                     .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
             subject.updateDisplayOrder(item.displayOrder());
             contentRepository.save(subject);
@@ -229,8 +241,11 @@ public class ContentServiceImplement implements ContentService {
         if (!contentRepository.existsBySubjectId(subjectId)) {
             throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
+        Map<String, Chapter> chaptersById = contentRepository.findChaptersByIds(
+                request.items().stream().map(item -> item.id()).toList()).stream()
+                .collect(Collectors.toMap(Chapter::getChapterId, chapter -> chapter));
         request.items().forEach(item -> {
-            Chapter chapter = contentRepository.findChapterById(item.id())
+            Chapter chapter = java.util.Optional.ofNullable(chaptersById.get(item.id()))
                     .filter(value -> subjectId.equals(value.getSubjectId()))
                     .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
             chapter.updateDisplayOrder(item.displayOrder());
@@ -253,6 +268,39 @@ public class ContentServiceImplement implements ContentService {
             unlockedChapterRepository.insertIfAbsent(userId, chapterId);
         }
         return eligible;
+    }
+
+    private List<ChapterResponse> toAccessibleChapterResponses(List<Chapter> chapters) {
+        if (chapters.isEmpty()) return List.of();
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+        Map<String, List<ChapterSkill>> requirementsByChapter = chapterSkillRepository
+                .findByChapterIdIn(chapterIds).stream().collect(Collectors.groupingBy(ChapterSkill::getChapterId));
+        Set<String> skillIds = requirementsByChapter.values().stream().flatMap(List::stream)
+                .map(ChapterSkill::getSkillId).collect(Collectors.toSet());
+        Map<String, String> skillNames = skillRepository.findByIds(skillIds).stream()
+                .collect(Collectors.toMap(skill -> skill.getSkillId(), skill -> skill.getName()));
+
+        List<Chapter> accessible = chapters;
+        if (!visibilityGuard.isAdministrator()) {
+            String userId = currentUserId();
+            Set<String> unlocked = userId == null ? Set.of() : unlockedChapterRepository
+                    .findByUserIdAndChapterIdIn(userId, chapterIds).stream()
+                    .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
+            Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository
+                    .findByUserId(userId).stream().collect(Collectors.toMap(
+                            ability -> ability.getSkillId(),
+                            ability -> ability.getTheta() == null ? 0.0 : ability.getTheta()));
+            accessible = chapters.stream().filter(chapter -> unlocked.contains(chapter.getChapterId())
+                    || requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of()).stream()
+                    .allMatch(requirement -> thetaBySkill.getOrDefault(requirement.getSkillId(), 0.0)
+                            >= requirement.getRequiredTheta())).toList();
+            if (userId != null) {
+                accessible.stream().map(Chapter::getChapterId).filter(id -> !unlocked.contains(id))
+                        .forEach(id -> unlockedChapterRepository.insertIfAbsent(userId, id));
+            }
+        }
+        return accessible.stream().map(chapter -> toChapterResponse(
+                chapter, requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of()), skillNames)).toList();
     }
 
     private String currentUserId() {
@@ -287,11 +335,17 @@ public class ContentServiceImplement implements ContentService {
     }
 
     private ChapterResponse toChapterResponse(Chapter chapter) {
-        List<ChapterSkillResponse> skills = chapterSkillRepository.findByChapterId(chapter.getChapterId()).stream()
-                .map(item -> new ChapterSkillResponse(item.getSkillId(),
-                        skillRepository.findById(item.getSkillId()).map(skill -> skill.getName()).orElse(null),
-                        item.getRequiredTheta()))
-                .toList();
+        List<ChapterSkill> requirements = chapterSkillRepository.findByChapterId(chapter.getChapterId());
+        Map<String, String> names = skillRepository.findByIds(requirements.stream().map(ChapterSkill::getSkillId).toList())
+                .stream().collect(Collectors.toMap(skill -> skill.getSkillId(), skill -> skill.getName()));
+        return toChapterResponse(chapter, requirements, names);
+    }
+
+    private ChapterResponse toChapterResponse(
+            Chapter chapter, List<ChapterSkill> requirements, Map<String, String> skillNames) {
+        List<ChapterSkillResponse> skills = requirements.stream()
+                .map(item -> new ChapterSkillResponse(item.getSkillId(), skillNames.get(item.getSkillId()),
+                        item.getRequiredTheta())).toList();
         return new ChapterResponse(chapter.getChapterId(), chapter.getSubjectId(), chapter.getName(),
                 chapter.getCreatedAt(), chapter.getDisplayOrder(), skills);
     }

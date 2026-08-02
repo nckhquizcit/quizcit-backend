@@ -17,6 +17,9 @@ public interface ProgressRepository {
     QuestionSkill save(QuestionSkill questionSkill);
 
     UserSkillAbility save(UserSkillAbility ability);
+    default List<UserSkillAbility> saveUserSkillAbilities(Collection<UserSkillAbility> abilities) {
+        return abilities == null ? List.of() : abilities.stream().map(this::save).toList();
+    }
 
     List<QuestionSkill> findQuestionSkillsByQuestionId(
             String questionId);
@@ -46,6 +49,9 @@ public interface ProgressRepository {
 
     AbilityHistory save(
             AbilityHistory history);
+    default List<AbilityHistory> saveAbilityHistories(Collection<AbilityHistory> histories) {
+        return histories == null ? List.of() : histories.stream().map(this::save).toList();
+    }
 
     List<AbilityHistory> findAbilityHistoriesByAttemptId(
             String attemptId);

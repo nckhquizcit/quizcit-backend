@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
@@ -283,6 +285,17 @@ public class AttemptServiceImplement
         Map<String, Double> estimatedThetaBySkill = aiService.estimateThetaBatch(thetaRequests);
 
         Map<String, Double> skillThetaMap = new HashMap<>();
+        List<UserSkillAbility> loadedAbilities = progressRepository.findUserSkillAbilities(attempt.getUserId());
+        if (loadedAbilities == null) {
+            loadedAbilities = skillMap.keySet().stream().map(skillId -> progressRepository
+                    .findUserSkillAbility(attempt.getUserId(), skillId).orElse(null))
+                    .filter(java.util.Objects::nonNull).toList();
+        }
+        Map<String, UserSkillAbility> abilityBySkill = loadedAbilities.stream()
+                .filter(ability -> skillMap.containsKey(ability.getSkillId()))
+                .collect(Collectors.toMap(UserSkillAbility::getSkillId, ability -> ability));
+        List<UserSkillAbility> abilitiesToSave = new ArrayList<>();
+        List<AbilityHistory> historiesToSave = new ArrayList<>();
 
         for (var entry : skillMap.entrySet()) {
 
@@ -290,12 +303,7 @@ public class AttemptServiceImplement
 
             double estimatedTheta = estimatedThetaBySkill.getOrDefault(skillId, 0.0);
 
-            UserSkillAbility ability = progressRepository
-
-                    .findUserSkillAbility(
-                            attempt.getUserId(),
-                            skillId)
-                    .orElse(null);
+            UserSkillAbility ability = abilityBySkill.get(skillId);
 
             double oldTheta = 0.0;
 
@@ -321,8 +329,7 @@ public class AttemptServiceImplement
             ability.updateAbility(
                     blendedTheta);
 
-            progressRepository.save(
-                    ability);
+            abilitiesToSave.add(ability);
 
             AbilityHistory history = AbilityHistory.create(
                     attempt.getUserId(),
@@ -332,8 +339,13 @@ public class AttemptServiceImplement
                     attempt.getAttemptId());
 
 
-            progressRepository.save(
-                    history);
+            historiesToSave.add(history);
+        }
+        if (progressRepository.saveUserSkillAbilities(abilitiesToSave) == null) {
+            abilitiesToSave.forEach(progressRepository::save);
+        }
+        if (progressRepository.saveAbilityHistories(historiesToSave) == null) {
+            historiesToSave.forEach(progressRepository::save);
         }
         double overallTheta = skillThetaMap.values()
                 .stream()
@@ -379,12 +391,15 @@ public class AttemptServiceImplement
                                 : second,
                         LinkedHashMap::new));
 
+        List<Skill> loadedSkills = skillRepository.findByIds(latestHistoryBySkill.keySet());
+        if (loadedSkills == null) loadedSkills = latestHistoryBySkill.keySet().stream()
+                .map(skillRepository::findById).flatMap(Optional::stream).toList();
+        Map<String, String> skillNames = loadedSkills.stream()
+                .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
         List<SkillResultResponse> skillResults = latestHistoryBySkill.values().stream()
                 .map(history -> SkillResultResponse.builder()
                         .skillId(history.getSkillId())
-                        .skillName(skillRepository.findById(history.getSkillId())
-                                .map(skill -> skill.getName())
-                                .orElse(null))
+                        .skillName(skillNames.get(history.getSkillId()))
                         .theta(history.getTheta())
                         .build())
                 .toList();
@@ -428,17 +443,40 @@ public class AttemptServiceImplement
 
         List<Attempt> attempts = quizRepository.findAttemptsByUserId(
                 userId);
+        List<String> attemptIds = attempts.stream().map(Attempt::getAttemptId).toList();
+        List<Response> loadedResponses = quizRepository.findResponsesByAttemptIds(attemptIds);
+        if (loadedResponses == null) loadedResponses = attemptIds.stream()
+                .flatMap(id -> quizRepository.findResponsesByAttemptId(id).stream()).toList();
+        Map<String, Long> responseCountByAttempt = loadedResponses
+                .stream().collect(Collectors.groupingBy(Response::getAttemptId, Collectors.counting()));
+        List<String> quizIds = attempts.stream().map(Attempt::getQuizId).distinct().toList();
+        List<Quiz> loadedQuizzes = quizRepository.findQuizzesByIds(quizIds);
+        if (loadedQuizzes == null) loadedQuizzes = quizIds.stream().map(quizRepository::findQuizById)
+                .flatMap(Optional::stream).toList();
+        Map<String, Quiz> quizById = loadedQuizzes.stream()
+                .collect(Collectors.toMap(Quiz::getQuizId, quiz -> quiz));
+        List<String> subjectIds = quizById.values().stream().map(Quiz::getSubjectId)
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        List<Subject> loadedSubjects = contentRepository.findSubjectsByIds(subjectIds);
+        if (loadedSubjects == null) loadedSubjects = subjectIds.stream().map(contentRepository::findSubjectById)
+                .flatMap(Optional::stream).toList();
+        Map<String, Subject> subjectById = loadedSubjects.stream()
+                .collect(Collectors.toMap(Subject::getSubjectId, subject -> subject));
 
-        return attempts.stream()
-                .filter(this::isCompletedAttempt)
-                .map(this::toAttemptSummary)
+        return attempts.stream().filter(attempt -> {
+                    long responseCount = responseCountByAttempt.getOrDefault(attempt.getAttemptId(), 0L);
+                    Quiz quiz = quizById.get(attempt.getQuizId());
+                    return responseCount > 0 && (quiz == null || quiz.getType() != QuizType.ADAPTIVE
+                            || responseCount >= attempt.getTotalQuestion());
+                })
+                .map(attempt -> toAttemptSummary(attempt, quizById, subjectById))
                 .toList();
     }
 
-    private QuizResultResponse toAttemptSummary(Attempt attempt) {
-        Quiz quiz = quizRepository.findQuizById(attempt.getQuizId()).orElse(null);
-        Subject subject = quiz == null ? null : contentRepository
-                .findSubjectById(quiz.getSubjectId()).orElse(null);
+    private QuizResultResponse toAttemptSummary(
+            Attempt attempt, Map<String, Quiz> quizById, Map<String, Subject> subjectById) {
+        Quiz quiz = quizById.get(attempt.getQuizId());
+        Subject subject = quiz == null ? null : subjectById.get(quiz.getSubjectId());
         return QuizResultResponse.builder()
                 .attemptId(attempt.getAttemptId())
                 .quizId(attempt.getQuizId())
@@ -451,16 +489,6 @@ public class AttemptServiceImplement
                 .skillResults(List.of())
                 .questionResults(List.of())
                 .build();
-    }
-
-    private boolean isCompletedAttempt(Attempt attempt) {
-        List<Response> responses = quizRepository.findResponsesByAttemptId(attempt.getAttemptId());
-        if (responses.isEmpty()) {
-            return false;
-        }
-        Quiz quiz = quizRepository.findQuizById(attempt.getQuizId()).orElse(null);
-        return quiz == null || quiz.getType() != QuizType.ADAPTIVE
-                || responses.size() >= attempt.getTotalQuestion();
     }
 
     private double blendTheta(

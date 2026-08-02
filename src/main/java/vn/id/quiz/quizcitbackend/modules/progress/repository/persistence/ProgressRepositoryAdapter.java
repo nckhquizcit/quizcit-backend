@@ -42,6 +42,11 @@ public class ProgressRepositoryAdapter
     }
 
     @Override
+    public List<UserSkillAbility> saveUserSkillAbilities(java.util.Collection<UserSkillAbility> abilities) {
+        return abilities == null || abilities.isEmpty() ? List.of() : userSkillAbilityRepository.saveAll(abilities);
+    }
+
+    @Override
     public List<QuestionSkill> findQuestionSkillsByQuestionId(
             String questionId) {
         return questionSkillRepository.findByQuestionId(questionId);
@@ -104,6 +109,11 @@ public class ProgressRepositoryAdapter
             AbilityHistory history) {
 
         return abilityHistoryRepository.save(history);
+    }
+
+    @Override
+    public List<AbilityHistory> saveAbilityHistories(java.util.Collection<AbilityHistory> histories) {
+        return histories == null || histories.isEmpty() ? List.of() : abilityHistoryRepository.saveAll(histories);
     }
 
     @Override

@@ -3,6 +3,7 @@ package vn.id.quiz.quizcitbackend.modules.quiz.service;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -171,12 +172,24 @@ public class QuestionServiceImplement implements QuestionService {
     public List<QuestionResponse> getQuestionsByChapter(
             String chapterId) {
         visibilityGuard().requireVisibleChapter(chapterId);
-        List<Question> questions = quizRepository.findQuestionsByChapterId(chapterId);
+        return toQuestionSummaries(quizRepository.findQuestionsByChapterId(chapterId));
+    }
+
+    @Override
+    public List<QuestionResponse> getAllQuestions() {
+        return toQuestionSummaries(quizRepository.findAllQuestions());
+    }
+
+    private List<QuestionResponse> toQuestionSummaries(List<Question> questions) {
+        Map<String, List<QuestionSkill>> skillsByQuestion = quizRepository
+                .findQuestionSkillsByQuestionIds(questions.stream().map(Question::getQuestionId).toList())
+                .stream().collect(java.util.stream.Collectors.groupingBy(QuestionSkill::getQuestionId));
+        Map<String, String> skillNames = loadSkillNames(skillsByQuestion.values().stream().flatMap(List::stream).toList());
         return questions.stream()
                 .map(q -> {
                     QuestionResponse r = mapper.toResponse(q);
                     r.setOptions(Collections.emptyList());
-                    r.setSkills(toSkillResponses(quizRepository.findQuestionSkillsByQuestionId(q.getQuestionId())));
+                    r.setSkills(toSkillResponses(skillsByQuestion.getOrDefault(q.getQuestionId(), List.of()), skillNames));
                     return r;
                 })
                 .toList();
@@ -196,10 +209,15 @@ public class QuestionServiceImplement implements QuestionService {
             }
         });
         List<Question> questions = quizRepository.findQuestionsByQuizId(quizId);
+        List<String> questionIds = questions.stream().map(Question::getQuestionId).toList();
+        Map<String, List<Option>> optionsByQuestion = quizRepository.findOptionsByQuestionIds(questionIds)
+                .stream().collect(java.util.stream.Collectors.groupingBy(Option::getQuestionId));
+        Map<String, List<QuestionSkill>> skillsByQuestion = quizRepository.findQuestionSkillsByQuestionIds(questionIds)
+                .stream().collect(java.util.stream.Collectors.groupingBy(QuestionSkill::getQuestionId));
+        Map<String, String> skillNames = loadSkillNames(skillsByQuestion.values().stream().flatMap(List::stream).toList());
         return questions.stream()
                 .map(q -> {
-                    List<Option> options = quizRepository.findOptionsByQuestionId(
-                            q.getQuestionId());
+                    List<Option> options = optionsByQuestion.getOrDefault(q.getQuestionId(), List.of());
                     List<OptionResponse> optionResponses = mapper
                             .toOptionResponseList(options)
                             .stream()
@@ -211,8 +229,7 @@ public class QuestionServiceImplement implements QuestionService {
                     r.setOptions(optionResponses);
                     // Task 1: map skill (kèm tên) để FE hiển thị popup skill.
                     r.setSkills(toSkillResponses(
-                            quizRepository.findQuestionSkillsByQuestionId(
-                                    q.getQuestionId())));
+                            skillsByQuestion.getOrDefault(q.getQuestionId(), List.of()), skillNames));
                     return r;
                 })
                 .toList();
@@ -262,16 +279,23 @@ public class QuestionServiceImplement implements QuestionService {
             return Collections.emptyList();
         }
 
+        return toSkillResponses(questionSkills, loadSkillNames(questionSkills));
+    }
+
+    private Map<String, String> loadSkillNames(List<QuestionSkill> questionSkills) {
+        if (questionSkills == null || questionSkills.isEmpty()) return Map.of();
+        return skillRepository.findByIds(questionSkills.stream().map(QuestionSkill::getSkillId).distinct().toList())
+                .stream().collect(java.util.stream.Collectors.toMap(Skill::getSkillId, Skill::getName));
+    }
+
+    private List<QuestionSkillResponse> toSkillResponses(
+            List<QuestionSkill> questionSkills, Map<String, String> skillNames) {
+        if (questionSkills == null) return Collections.emptyList();
         return questionSkills.stream()
                 .map(questionSkill -> {
-                    // Task 1: enrich tên skill từ SkillRepository (nếu còn tồn tại).
-                    String skillName = skillRepository
-                            .findById(questionSkill.getSkillId())
-                            .map(Skill::getName)
-                            .orElse(null);
                     return QuestionSkillResponse.builder()
                             .skillId(questionSkill.getSkillId())
-                            .name(skillName)
+                            .name(skillNames.get(questionSkill.getSkillId()))
                             .weight(questionSkill.getWeight())
                             .primary(questionSkill.isPrimary())
                             .build();

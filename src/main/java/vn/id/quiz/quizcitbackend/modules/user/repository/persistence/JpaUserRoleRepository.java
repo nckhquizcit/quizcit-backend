@@ -5,9 +5,11 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignm
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignmentId;
 
 import java.util.List;
+import java.util.Collection;
 
 public interface JpaUserRoleRepository extends JpaRepository<UserRoleAssignment, UserRoleAssignmentId> {
     List<UserRoleAssignment> findByUserId(String userId);
+    List<UserRoleAssignment> findByUserIdIn(Collection<String> userIds);
 
     void deleteByUserId(String userId);
 }

@@ -10,6 +10,9 @@ import vn.id.quiz.quizcitbackend.modules.user.repository.UserRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -56,6 +59,19 @@ public class UserRepositoryAdapter implements UserRepository {
                 .stream()
                 .findFirst()
                 .flatMap(userRole -> jpaRoleRepository.findById(userRole.getRoleId()));
+    }
+
+    @Override
+    public Map<String, UserRole> findRolesByUserIds(Collection<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) return Map.of();
+        List<UserRoleAssignment> assignments = jpaUserRoleRepository.findByUserIdIn(userIds);
+        Map<String, Role> rolesById = jpaRoleRepository.findAllById(assignments.stream()
+                .map(UserRoleAssignment::getRoleId).distinct().toList()).stream()
+                .collect(Collectors.toMap(Role::getRoleId, role -> role));
+        return assignments.stream().filter(assignment -> rolesById.containsKey(assignment.getRoleId()))
+                .collect(Collectors.toMap(UserRoleAssignment::getUserId,
+                        assignment -> rolesById.get(assignment.getRoleId()).getName(),
+                        (first, ignored) -> first));
     }
 
     @Override

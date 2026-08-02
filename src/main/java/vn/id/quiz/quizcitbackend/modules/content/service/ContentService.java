@@ -25,7 +25,9 @@ public interface ContentService {
     TheoryResponse addTheory(String chapterId, CreateTheoryRequest request);
     void deleteSubject(String subjectId);
     List<TheoryResponse> getAllTheories(String chapterId);
+    List<TheoryResponse> getAllTheoriesBySubject(String subjectId);
     List<ChapterResponse> getAllChapters(String subjectId);
+    List<ChapterResponse> getAllAccessibleChapters();
 
     /**
      * Phase 2 (P1): lấy danh sách đề thi thuộc về một môn học.
