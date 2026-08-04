@@ -26,6 +26,7 @@ public interface ContentService {
     void deleteSubject(String subjectId);
     List<TheoryResponse> getAllTheories(String chapterId);
     List<TheoryResponse> getAllTheoriesBySubject(String subjectId);
+    int reindexTheoriesBySubject(String subjectId);
     List<ChapterResponse> getAllChapters(String subjectId);
     List<ChapterResponse> getAllAccessibleChapters();
 

@@ -20,6 +20,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserUnlockedChapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSkillRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSkillResponse;
+import vn.id.quiz.quizcitbackend.modules.chatbot.service.TheoryIndexingService;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
@@ -52,6 +53,7 @@ public class ContentServiceImplement implements ContentService {
     private final JpaUserUnlockedChapterRepository unlockedChapterRepository;
     private final JpaUserSkillAbilityRepository userSkillAbilityRepository;
     private final SkillRepository skillRepository;
+    private final TheoryIndexingService theoryIndexingService;
 
     // =========================================================================
     // Phase 2 (P1): Lấy danh sách đề thi thuộc về 1 môn học
@@ -136,6 +138,8 @@ public class ContentServiceImplement implements ContentService {
 
         Theory response = Theory.create(chapterId, request.content(), request.contentFormat());
         contentRepository.save(response);
+        theoryIndexingService.index(
+                response.getTheoryId(), chapterId, request.content(), request.contentFormat());
         return mapper.toTheoryResponse(response);
     }
 
@@ -173,6 +177,24 @@ public class ContentServiceImplement implements ContentService {
         List<String> chapterIds = getAllChapters(subjectId).stream().map(ChapterResponse::chapterId).toList();
         return mapper.toTheoryResponseList(contentRepository.findAllTheories(chapterIds));
     }
+
+    @Override
+    public int reindexTheoriesBySubject(String subjectId) {
+        if (!contentRepository.existsBySubjectId(subjectId)) {
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+
+        List<String> chapterIds = contentRepository.findAllChapter(subjectId).stream()
+                .map(Chapter::getChapterId)
+                .toList();
+        int indexedChunks = 0;
+        for (Theory theory : contentRepository.findAllTheories(chapterIds)) {
+            indexedChunks += theoryIndexingService.reindex(
+                    theory.getTheoryId(), theory.getChapterId(),
+                    theory.getContent(), theory.getContentFormat());
+        }
+        return indexedChunks;
+    }
     @Transactional
     @Override
     public void updateSubject(String subjectId, UpdateSubjectRequest request){
@@ -202,6 +224,8 @@ public class ContentServiceImplement implements ContentService {
                 .orElseThrow(()-> new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu", HttpStatus.NOT_FOUND));
         theory.updateTheory(request.content(), request.contentFormat());
         contentRepository.save(theory);
+        theoryIndexingService.reindex(
+                theoryId, theory.getChapterId(), request.content(), request.contentFormat());
     }
 
     @Override
@@ -219,6 +243,7 @@ public class ContentServiceImplement implements ContentService {
     @Transactional
     public void deleteTheory(String theoryId) {
         contentRepository.deleteTheoryById(theoryId);
+        theoryIndexingService.delete(theoryId);
     }
 
     @Override

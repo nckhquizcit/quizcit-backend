@@ -44,6 +44,12 @@ public class Attempt {
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
+    // MỚI: lời khuyên cải thiện được AI sinh 1 LẦN tại thời điểm nộp bài
+    // (dựa trên delta theta từng skill), lưu lại để xem kết quả không phải
+    // gọi lại LLM mỗi lần tải trang.
+    @Column(name = "advice_text", columnDefinition = "TEXT")
+    private String adviceText;
+
     public static Attempt create(
             String userId,
             String quizId,
@@ -64,5 +70,10 @@ public class Attempt {
 
         this.rawScore = rawScore;
         this.overallTheta = overallTheta;
+    }
+
+    /** MỚI: gắn lời khuyên cải thiện sau khi AI Service sinh xong. */
+    public void attachAdvice(String adviceText) {
+        this.adviceText = adviceText;
     }
 }

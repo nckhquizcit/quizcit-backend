@@ -31,6 +31,13 @@ import org.springframework.web.client.RestClient;
  * giây thay vì fallback sang thuật toán IRT nội bộ. Thêm connect/read
  * timeout để {@code AIService} chuyển sang fallback gần như tức thì khi
  * AI Service không phản hồi kịp.</p>
+ *
+ * <p><b>Chatbox + lời khuyên (Gemini):</b> Sinh nội dung bằng LLM chậm hơn
+ * nhiều so với tính Rasch (thường 1-5s, có thể lâu hơn khi AI Service cold
+ * start). Dùng chung timeout ngắn của {@code aiRestClient} sẽ khiến chat
+ * luôn timeout giả. Nên có bean {@code aiChatRestClient} riêng với timeout
+ * dài hơn, trỏ cùng {@code base-url} nhưng không ảnh hưởng tới đường
+ * {@code /estimate}, {@code /estimate-batch} vốn cần fallback nhanh.</p>
  */
 @Configuration
 public class AIConfig {
@@ -41,6 +48,24 @@ public class AIConfig {
             @Value("${quizcit.ai.connect-timeout-ms:500}") long connectTimeoutMs,
             @Value("${quizcit.ai.read-timeout-ms:750}") long readTimeoutMs) {
 
+        return buildClient(baseUrl, connectTimeoutMs, readTimeoutMs);
+    }
+
+    /**
+     * RestClient dành riêng cho các endpoint gọi Gemini ({@code /embed},
+     * {@code /chat}, {@code /advice}) — timeout dài hơn hẳn vì generation
+     * chậm hơn nhiều so với tính Rasch.
+     */
+    @Bean
+    public RestClient aiChatRestClient(
+            @Value("${quizcit.ai.base-url:http://localhost:8000}") String baseUrl,
+            @Value("${quizcit.ai.chat-connect-timeout-ms:3000}") long connectTimeoutMs,
+            @Value("${quizcit.ai.chat-read-timeout-ms:20000}") long readTimeoutMs) {
+
+        return buildClient(baseUrl, connectTimeoutMs, readTimeoutMs);
+    }
+
+    private RestClient buildClient(String baseUrl, long connectTimeoutMs, long readTimeoutMs) {
         ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
                 .withConnectTimeout(Duration.ofMillis(connectTimeoutMs))
                 .withReadTimeout(Duration.ofMillis(readTimeoutMs));

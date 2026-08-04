@@ -21,6 +21,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.SkillDeltaItem;
 import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
@@ -357,9 +358,43 @@ public class AttemptServiceImplement
                 rawScore,
                 overallTheta);
 
+        // MỚI: sinh lời khuyên cải thiện dựa trên delta theta từng skill vừa tính,
+        // lưu 1 lần tại thời điểm nộp bài (không tính lại mỗi lần xem kết quả).
+        String adviceText = aiService.generateAdvice(buildSkillDeltaItems(historiesToSave));
+        attempt.attachAdvice(adviceText);
+
         quizRepository.save(
                 attempt);
         return getResult(attempt.getAttemptId());
+    }
+
+    /**
+     * Chuyển các {@link AbilityHistory} vừa tính trong lần nộp bài này thành
+     * input cho AI sinh lời khuyên. {@code oldTheta} suy ra ngược từ
+     * {@code theta - delta} thay vì phải track riêng, vì
+     * {@code AbilityHistory.delta = blendedTheta - oldTheta} đã được lưu sẵn.
+     */
+    private List<SkillDeltaItem> buildSkillDeltaItems(List<AbilityHistory> historiesToSave) {
+        if (historiesToSave.isEmpty()) {
+            return List.of();
+        }
+        Set<String> skillIds = historiesToSave.stream()
+                .map(AbilityHistory::getSkillId).collect(Collectors.toSet());
+        List<Skill> skills = skillRepository.findByIds(skillIds);
+        if (skills == null) {
+            skills = skillIds.stream().map(skillRepository::findById)
+                    .flatMap(Optional::stream).toList();
+        }
+        Map<String, String> skillNames = skills.stream()
+                .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+
+        return historiesToSave.stream()
+                .map(history -> new SkillDeltaItem(
+                        skillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
+                        history.getTheta() - history.getDelta(),
+                        history.getTheta(),
+                        history.getDelta()))
+                .toList();
     }
 
     @Override
@@ -401,6 +436,7 @@ public class AttemptServiceImplement
                         .skillId(history.getSkillId())
                         .skillName(skillNames.get(history.getSkillId()))
                         .theta(history.getTheta())
+                        .delta(history.getDelta())
                         .build())
                 .toList();
         Quiz quiz = quizRepository.findQuizById(attempt.getQuizId())
@@ -421,6 +457,7 @@ public class AttemptServiceImplement
                 .overallTheta(attempt.getOverallTheta())
                 .skillResults(skillResults)
                 .questionResults(buildQuestionResults(attempt))
+                .overallAdvice(attempt.getAdviceText())
                 .build();
     }
 

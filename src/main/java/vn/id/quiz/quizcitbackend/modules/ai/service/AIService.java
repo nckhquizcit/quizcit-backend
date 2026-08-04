@@ -1,6 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.ai.service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,10 +11,16 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import vn.id.quiz.quizcitbackend.modules.ai.client.AIClient;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.ChatRequest;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.ChatResponse;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.EmbedRequest;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.EmbedResponse;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaBatchRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaBatchResponse;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.GenerateAdviceRequest;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.SkillDeltaItem;
 import vn.id.quiz.quizcitbackend.modules.ai.utils.ThetaUtils;
 
 /**
@@ -35,7 +42,18 @@ import vn.id.quiz.quizcitbackend.modules.ai.utils.ThetaUtils;
  *       trong Python), nhưng KHÔNG round giữa chừng — chỉ round/scale khi
  *       trả cho FE qua {@link ThetaUtils#toScaled}.</li>
  * </ul>
-
+ *
+ * <p><b>Chatbox + lời khuyên:</b> Đây là các tính năng phụ thuộc LLM
+ * (Gemini) nên KHÔNG có fallback "tương đương" như Rasch — thay vào đó:
+ * <ul>
+ *   <li>{@link #embedTexts}: fail thì trả {@code null}, để caller tự quyết
+ *       định (chatbot fallback sang tìm kiếm từ khóa, indexing thì bỏ qua và
+ *       log để admin reindex lại sau).</li>
+ *   <li>{@link #chat}: fail thì trả câu xin lỗi an toàn — chat luôn phải có
+ *       phản hồi, không được để lỗi 5xx dội lên UI.</li>
+ *   <li>{@link #generateAdvice}: fail thì fallback sang lời khuyên rule-based
+ *       dựa thẳng trên delta theta (không cần LLM).</li>
+ * </ul>
  * </p>
  */
 @Service
@@ -53,6 +71,9 @@ public class AIService {
     // Clamp theta về [-4, 4] mỗi vòng lặp, khớp np.clip trong AI/main.py.
     private static final double THETA_MIN = -4.0;
     private static final double THETA_MAX = 4.0;
+
+    private static final String CHAT_FALLBACK_MESSAGE =
+            "Xin lỗi, trợ lý AI đang tạm thời không phản hồi được. Bạn vui lòng thử lại sau ít phút.";
 
 
     private final AIClient aiClient;
@@ -133,6 +154,109 @@ public class AIService {
         }
 
         return result;
+    }
+
+    /**
+     * Sinh embedding cho danh sách văn bản (dùng cho index lý thuyết và cho
+     * câu hỏi của sinh viên trước khi tìm kiếm pgvector).
+     *
+     * @return danh sách vector theo đúng thứ tự {@code texts}, hoặc
+     *         {@code null} nếu AI Service lỗi/timeout — caller phải tự xử lý
+     *         (không có fallback embedding nội bộ khả thi).
+     */
+    public List<float[]> embedTexts(List<String> texts) {
+        if (texts == null || texts.isEmpty()) {
+            return List.of();
+        }
+        try {
+            EmbedResponse response = aiClient.embed(new EmbedRequest(texts));
+            if (response == null || response.embeddings() == null) {
+                return null;
+            }
+            List<float[]> vectors = new ArrayList<>(response.embeddings().size());
+            for (List<Float> embedding : response.embeddings()) {
+                float[] vector = new float[embedding.size()];
+                for (int i = 0; i < embedding.size(); i++) {
+                    vector[i] = embedding.get(i);
+                }
+                vectors.add(vector);
+            }
+            return vectors;
+        } catch (RuntimeException ex) {
+            log.warn("AI embedding service unavailable: {}", ex.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Sinh câu trả lời RAG cho chatbox lý thuyết. Không bao giờ throw ra
+     * ngoài — chat luôn phải trả về một câu trả lời (kể cả khi là câu xin
+     * lỗi do AI Service lỗi), để trải nghiệm chat không bị vỡ giữa chừng.
+     */
+    public String chat(ChatRequest request) {
+        try {
+            ChatResponse response = aiClient.chat(request);
+            if (response != null && response.answer() != null && !response.answer().isBlank()) {
+                return response.answer();
+            }
+        } catch (RuntimeException ex) {
+            log.warn("AI chat service unavailable: {}", ex.getMessage());
+        }
+        return CHAT_FALLBACK_MESSAGE;
+    }
+
+    /**
+     * Sinh lời khuyên cải thiện dựa trên delta theta từng kỹ năng sau khi
+     * nộp bài. Nếu AI Service lỗi, fallback sang template rule-based (không
+     * cần LLM) để người dùng luôn nhận được lời khuyên nào đó.
+     */
+    public String generateAdvice(List<SkillDeltaItem> skillDeltas) {
+        if (skillDeltas == null || skillDeltas.isEmpty()) {
+            return "Bài làm này chưa ghi nhận kỹ năng nào để đưa ra lời khuyên.";
+        }
+        try {
+            var response = aiClient.generateAdvice(new GenerateAdviceRequest(skillDeltas));
+            if (response != null && response.advice() != null && !response.advice().isBlank()) {
+                return response.advice();
+            }
+        } catch (RuntimeException ex) {
+            log.warn("AI advice service unavailable, using rule-based fallback: {}", ex.getMessage());
+        }
+        return generateAdviceLocally(skillDeltas);
+    }
+
+    /**
+     * Lời khuyên rule-based khi Gemini không khả dụng: chỉ ra tối đa 3 kỹ
+     * năng giảm nhiều nhất cần ôn lại, ghi nhận kỹ năng tăng nhiều nhất nếu
+     * có, không dùng LLM.
+     */
+    private String generateAdviceLocally(List<SkillDeltaItem> skillDeltas) {
+        List<SkillDeltaItem> declined = skillDeltas.stream()
+                .filter(item -> item.delta() < 0)
+                .sorted(Comparator.comparingDouble(SkillDeltaItem::delta))
+                .limit(3)
+                .toList();
+
+        SkillDeltaItem mostImproved = skillDeltas.stream()
+                .max(Comparator.comparingDouble(SkillDeltaItem::delta))
+                .filter(item -> item.delta() > 0.05)
+                .orElse(null);
+
+        StringBuilder advice = new StringBuilder();
+        if (!declined.isEmpty()) {
+            advice.append("Bạn nên ưu tiên ôn lại: ");
+            advice.append(String.join(", ", declined.stream().map(SkillDeltaItem::skillName).toList()));
+            advice.append(" — năng lực các kỹ năng này đang giảm so với trước. ");
+        } else {
+            advice.append("Năng lực các kỹ năng của bạn không giảm ở lần làm bài này, hãy tiếp tục duy trì. ");
+        }
+
+        if (mostImproved != null) {
+            advice.append("Kỹ năng \"").append(mostImproved.skillName())
+                    .append("\" có tiến bộ rõ rệt, tiếp tục phát huy nhé!");
+        }
+
+        return advice.toString();
     }
 
     /**

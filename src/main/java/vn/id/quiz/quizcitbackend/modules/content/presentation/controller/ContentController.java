@@ -159,6 +159,14 @@ public class ContentController {
         return ResponseEntity.ok(ApiResponse.success(subjectUseCase.getAllTheoriesBySubject(subjectId)));
     }
 
+    @PostMapping("/subjects/{subjectId}/theories/reindex")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Integer>> reindexTheoriesBySubject(@PathVariable String subjectId) {
+        int indexedChunks = subjectUseCase.reindexTheoriesBySubject(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Re-indexed " + indexedChunks + " theory chunks", indexedChunks));
+    }
+
     // Nested Route: Thêm lý thuyết VÀO 1 chương
     @PostMapping("/chapters/{chapterId}/theories")
     @PreAuthorize("hasRole('ADMINISTRATOR')")

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaRequest;
+import vn.id.quiz.quizcitbackend.modules.ai.dto.SkillDeltaItem;
 import vn.id.quiz.quizcitbackend.modules.ai.service.AIService;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
@@ -26,6 +27,7 @@ import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapt
 import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.adaptive.AdaptiveQuizResponse;
@@ -295,9 +297,45 @@ public class AdaptiveQuizService {
                 .map(ability -> ability.getTheta() == null ? 0 : ability.getTheta()).toList();
         attempt.complete(responses.stream().filter(Response::isScore).count(),
                 theta.stream().mapToDouble(Double::doubleValue).average().orElse(0));
+
+        // Sinh lời khuyên dựa trên delta theta MỚI NHẤT của từng skill xuất hiện
+        // trong toàn bộ attempt này (adaptive quiz cập nhật theta theo từng batch
+        // 5 câu, nên phải gom theo skillId rồi lấy bản ghi mới nhất).
+        attempt.attachAdvice(aiService.generateAdvice(buildSkillDeltaItemsForAttempt(attempt.getAttemptId())));
+
         quizRepository.save(attempt);
     }
 
+    /**
+     * Lấy delta theta mới nhất của từng skill xuất hiện trong attempt (gom theo
+     * skillId, giữ bản ghi createdAt lớn nhất — giống cách
+     * AttemptServiceImplement.getResult tổng hợp lịch sử cho quiz cố định) để
+     * làm input cho AI sinh lời khuyên.
+     */
+    private List<SkillDeltaItem> buildSkillDeltaItemsForAttempt(String attemptId) {
+        List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByAttemptId(attemptId);
+        if (histories == null || histories.isEmpty()) {
+            return List.of();
+        }
+        Map<String, AbilityHistory> latestBySkill = histories.stream()
+                .collect(Collectors.toMap(
+                        AbilityHistory::getSkillId,
+                        history -> history,
+                        (first, second) -> first.getCreatedAt().isAfter(second.getCreatedAt()) ? first : second,
+                        LinkedHashMap::new));
+
+        List<Skill> skills = skillRepository.findByIds(latestBySkill.keySet());
+        Map<String, String> skillNames = (skills == null ? List.<Skill>of() : skills).stream()
+                .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+
+        return latestBySkill.values().stream()
+                .map(history -> new SkillDeltaItem(
+                        skillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
+                        history.getTheta() - history.getDelta(),
+                        history.getTheta(),
+                        history.getDelta()))
+                .toList();
+    }
     private Attempt requireAttempt(String userId, String attemptId) {
         Attempt attempt = quizRepository.findAttemptById(attemptId)
                 .orElseThrow(() -> new AppException("Không tìm thấy attempt", HttpStatus.NOT_FOUND));

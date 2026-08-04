@@ -13,4 +13,9 @@ public class SkillResultResponse {
 
     private double theta;
 
+    // MỚI: mức thay đổi theta so với trước lần làm bài này (âm = giảm,
+    // dương = tăng). Dùng để FE hiển thị mũi tên tăng/giảm và để AI sinh lời
+    // khuyên (xem AIService.generateAdvice).
+    private double delta;
+
 }

@@ -26,8 +26,12 @@ public class QuizResultResponse {
     private int totalQuestion;
 
     private double overallTheta;
-    
+
     private List<SkillResultResponse> skillResults;
 
     private List<QuestionResultResponse> questionResults;
+
+    // MỚI: lời khuyên cải thiện do AI sinh dựa trên delta theta từng skill,
+    // được lưu 1 lần tại thời điểm nộp bài (xem Attempt.adviceText).
+    private String overallAdvice;
 }

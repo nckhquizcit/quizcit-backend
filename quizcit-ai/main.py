@@ -1,7 +1,16 @@
 # main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import numpy as np
+
+from rag_chat import (
+    AdviceData,
+    ChatData,
+    EmbedData,
+    generate_advice,
+    generate_chat_answer,
+    embed_texts,
+)
 
 app = FastAPI()
 
@@ -63,44 +72,6 @@ def rasch_theta(responses, difficulties, weights, max_iter=20,
     }
 
 
-# BẢNG GIÁ TRỊ ĐỂ ĐỔI THETA_RAW SANG ĐIỂM CHỮ - ĐIỂM 4.
-#         (-4.0, -2.0, "F",  0.0),
-#         (-2.0, -1.0, "D",  1.0),
-#         (-1.0, -0.5, "D+", 1.5),
-#         (-0.5,  0.5, "C",  2.0),
-#         ( 0.5,  1.0, "C+", 2.5),
-#         ( 1.0,  2.0, "B",  3.0),
-#         ( 2.0,  3.0, "B+", 3.5),
-#         ( 3.0,  4.0, "A",  4.0),
-
-
-# Phần này hiện chưa xài, chỉ xài để cập nhật độ khó câu hỏi nếu cuối kỳ cảm thấy cần
-# def update_difficulty(
-#     b_old: float,
-#     theta_raws: list[float],   # theta_raw lấy từ ability_history.theta
-#     responses: list[int],      # 0/1 từ responses.score
-#     decay: float = 0.6
-# ) -> float:
-#     """
-#     Cập nhật difficulty_b cuối kỳ.
-#     Bắt buộc dùng theta_raw — KHÔNG dùng theta_scaled.
-#     Cần ít nhất 10 lượt làm mới cập nhật.
-#     """
-#     if len(theta_raws) < 10:
-#         return round(b_old, 4)
-
-#     theta_arr    = np.array(theta_raws, dtype=float)
-#     response_arr = np.array(responses,  dtype=float)
-
-#     theta_mean  = float(np.mean(theta_arr))
-#     p_observed  = float(np.clip(np.mean(response_arr), 0.01, 0.99))
-
-#     b_new   = theta_mean - np.log(p_observed / (1 - p_observed))
-#     b_new   = float(np.clip(b_new, THETA_MIN, THETA_MAX))
-#     b_final = b_old * decay + b_new * (1 - decay)
-
-#     return round(b_final, 4)
-
 @app.post("/estimate")
 def estimate_theta(data: AttemptData):
     return rasch_theta(data.responses, data.difficulties, data.weights)
@@ -132,3 +103,64 @@ def estimate_theta_batch(data: BatchData):
         })
     return {"results": results}
 
+
+# =============================================================================
+# Chatbox lý thuyết (RAG) + sinh lời khuyên cải thiện — dùng Gemini API.
+# Logic RAG (truy hồi + giới hạn theo chương đã mở khóa) nằm ở backend Java
+# (ChatbotServiceImplement + TheoryChunkRepository, pgvector). AI Service ở
+# đây chỉ đóng vai trò: (1) sinh embedding, (2) sinh câu trả lời/generation.
+# =============================================================================
+
+@app.post("/embed")
+def embed(data: EmbedData):
+    try:
+        embeddings = embed_texts(data.texts)
+    except RuntimeError as ex:
+        raise HTTPException(status_code=502, detail=str(ex)) from ex
+    return {"embeddings": embeddings}
+
+
+@app.post("/chat")
+def chat(data: ChatData):
+    try:
+        answer = generate_chat_answer(data)
+    except RuntimeError as ex:
+        raise HTTPException(status_code=502, detail=str(ex)) from ex
+    return {"answer": answer}
+
+
+@app.post("/advice")
+def advice(data: AdviceData):
+    try:
+        text = generate_advice(data)
+    except RuntimeError as ex:
+        raise HTTPException(status_code=502, detail=str(ex)) from ex
+    return {"advice": text}
+
+
+# Phần này hiện chưa xài, chỉ xài để cập nhật độ khó câu hỏi nếu cuối kỳ cảm thấy cần
+# def update_difficulty(
+#     b_old: float,
+#     theta_raws: list[float],   # theta_raw lấy từ ability_history.theta
+#     responses: list[int],      # 0/1 từ responses.score
+#     decay: float = 0.6
+# ) -> float:
+#     """
+#     Cập nhật difficulty_b cuối kỳ.
+#     Bắt buộc dùng theta_raw — KHÔNG dùng theta_scaled.
+#     Cần ít nhất 10 lượt làm mới cập nhật.
+#     """
+#     if len(theta_raws) < 10:
+#         return round(b_old, 4)
+
+#     theta_arr    = np.array(theta_raws, dtype=float)
+#     response_arr = np.array(responses,  dtype=float)
+
+#     theta_mean  = float(np.mean(theta_arr))
+#     p_observed  = float(np.clip(np.mean(response_arr), 0.01, 0.99))
+
+#     b_new   = theta_mean - np.log(p_observed / (1 - p_observed))
+#     b_new   = float(np.clip(b_new, THETA_MIN, THETA_MAX))
+#     b_final = b_old * decay + b_new * (1 - decay)
+
+#     return round(b_final, 4)
