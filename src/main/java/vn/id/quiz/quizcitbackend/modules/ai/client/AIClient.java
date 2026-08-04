@@ -1,10 +1,10 @@
 package vn.id.quiz.quizcitbackend.modules.ai.client;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.ChatRequest;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.ChatResponse;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.EmbedRequest;
@@ -38,7 +38,6 @@ import vn.id.quiz.quizcitbackend.modules.ai.dto.GenerateAdviceResponse;
  * (timeout rất ngắn, dành cho fallback nhanh của Rasch).</p>
  */
 @Component
-@RequiredArgsConstructor
 public class AIClient {
 
     // Khớp với endpoint thực tế của AI Service (AI/main.py -> @app.post("/estimate")).
@@ -55,6 +54,14 @@ public class AIClient {
 
     @Qualifier("aiChatRestClient")
     private final RestClient aiChatRestClient;
+
+    @Autowired
+    public AIClient(
+            @Qualifier("aiRestClient") RestClient aiRestClient,
+            @Qualifier("aiChatRestClient") RestClient aiChatRestClient) {
+        this.aiRestClient = aiRestClient;
+        this.aiChatRestClient = aiChatRestClient;
+    }
 
     /** Giữ tương thích với các caller cũ chỉ truyền một RestClient. */
     public AIClient(RestClient aiRestClient) {
