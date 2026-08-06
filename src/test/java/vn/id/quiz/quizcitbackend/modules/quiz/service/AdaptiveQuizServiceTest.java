@@ -38,6 +38,7 @@ import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitAnswerRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.AdaptiveQuestionSelection;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
@@ -45,6 +46,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaAdaptiveQuestionSelectionRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 class AdaptiveQuizServiceTest {
@@ -59,9 +61,10 @@ class AdaptiveQuizServiceTest {
         JpaChapterSkillRepository chapterSkillRepository = mock(JpaChapterSkillRepository.class);
         QuestionMapper questionMapper = mock(QuestionMapper.class);
         AIService aiService = mock(AIService.class);
+        JpaAdaptiveQuestionSelectionRepository selectionRepository = mock(JpaAdaptiveQuestionSelectionRepository.class);
         AdaptiveQuizService service = new AdaptiveQuizService(
                 quizRepository, contentRepository, progressRepository, skillRepository,
-                unlockedRepository, questionMapper, aiService, chapterSkillRepository);
+                unlockedRepository, questionMapper, aiService, chapterSkillRepository, selectionRepository);
 
         Chapter chapter = Chapter.builder().chapterId("chapter-1")
                 .subjectId("subject-1").name("Chapter").build();
@@ -78,6 +81,7 @@ class AdaptiveQuizServiceTest {
         UserSkillAbility ability = UserSkillAbility.create("user-1", "skill-1");
         ability.updateAbility(0.0);
         List<QuizQuestion> assigned = new ArrayList<>();
+        List<AdaptiveQuestionSelection> selectionSnapshots = new ArrayList<>();
         AtomicReference<Quiz> savedQuiz = new AtomicReference<>();
         AtomicReference<Attempt> savedAttempt = new AtomicReference<>();
 
@@ -122,6 +126,11 @@ class AdaptiveQuizServiceTest {
         });
         when(quizRepository.findQuizQuestionsByQuizId(any())).thenReturn(assigned);
         when(quizRepository.findResponsesByAttemptId(any())).thenReturn(List.of());
+        when(selectionRepository.saveAll(any())).thenAnswer(invocation -> {
+            List<AdaptiveQuestionSelection> saved = new ArrayList<>(invocation.getArgument(0));
+            selectionSnapshots.addAll(saved);
+            return saved;
+        });
         when(questionMapper.toResponse(any(Question.class))).thenAnswer(invocation -> {
             Question source = invocation.getArgument(0);
             return QuestionResponse.builder().questionId(source.getQuestionId())
@@ -134,6 +143,21 @@ class AdaptiveQuizServiceTest {
         assertThat(savedQuiz.get().getTotalQuestion()).isEqualTo(40);
         assertThat(savedAttempt.get().getTotalQuestion()).isEqualTo(40);
         assertThat(assigned).hasSize(10);
+        assertThat(selectionSnapshots).hasSize(10);
+        assertThat(selectionSnapshots).allSatisfy(snapshot -> {
+            assertThat(snapshot.getAttemptId()).isEqualTo(savedAttempt.get().getAttemptId());
+            assertThat(snapshot.getUserId()).isEqualTo("user-1");
+            assertThat(snapshot.getSkillId()).isEqualTo("skill-1");
+            assertThat(snapshot.getThetaAtSelection()).isZero();
+            assertThat(snapshot.getAbsoluteDifference())
+                    .isEqualTo(Math.abs(snapshot.getDifficultyAtSelection()));
+            assertThat(snapshot.isPrimarySkill()).isTrue();
+            assertThat(snapshot.isDrivingSkill()).isTrue();
+        });
+        assertThat(selectionSnapshots).extracting(AdaptiveQuestionSelection::getQuestionOrder)
+                .containsExactlyElementsOf(java.util.stream.IntStream.rangeClosed(1, 10).boxed().toList());
+        assertThat(selectionSnapshots).extracting(AdaptiveQuestionSelection::getBatchNumber)
+                .containsExactly(1, 1, 1, 1, 1, 2, 2, 2, 2, 2);
         assertThat(state.getQuestions()).hasSize(5);
         assertThat(state.getQuestions()).extracting(QuestionResponse::getQuestionId)
                 .containsExactlyElementsOf(assigned.subList(0, 5).stream()
@@ -186,10 +210,11 @@ class AdaptiveQuizServiceTest {
         QuestionMapper questionMapper = mock(QuestionMapper.class);
         AIService aiService = mock(AIService.class);
         JpaChapterSkillRepository chapterSkillRepository = mock(JpaChapterSkillRepository.class);
+        JpaAdaptiveQuestionSelectionRepository selectionRepository = mock(JpaAdaptiveQuestionSelectionRepository.class);
 
         AdaptiveQuizService service = new AdaptiveQuizService(
                 quizRepository, contentRepository, progressRepository, skillRepository,
-                unlockedRepository, questionMapper, aiService, chapterSkillRepository);
+                unlockedRepository, questionMapper, aiService, chapterSkillRepository, selectionRepository);
 
         Attempt attempt = Attempt.builder()
                 .attemptId("attempt-1").userId("user-1").quizId("quiz-1")
@@ -217,6 +242,7 @@ class AdaptiveQuizServiceTest {
         ability.updateAbility(0.5);
         List<Response> persistedResponses = new ArrayList<>();
         List<AbilityHistory> histories = new ArrayList<>();
+        List<AdaptiveQuestionSelection> selectionSnapshots = new ArrayList<>();
         Map<String, EstimateThetaRequest> thetaRequests = new LinkedHashMap<>();
 
         when(quizRepository.findAttemptByIdForUpdate("attempt-1")).thenReturn(Optional.of(attempt));
@@ -267,6 +293,11 @@ class AdaptiveQuizServiceTest {
             histories.addAll(saved);
             return saved;
         });
+        when(selectionRepository.saveAll(any())).thenAnswer(invocation -> {
+            List<AdaptiveQuestionSelection> saved = new ArrayList<>(invocation.getArgument(0));
+            selectionSnapshots.addAll(saved);
+            return saved;
+        });
         when(questionMapper.toResponse(any(Question.class))).thenAnswer(invocation -> {
             Question source = invocation.getArgument(0);
             return QuestionResponse.builder()
@@ -293,6 +324,13 @@ class AdaptiveQuizServiceTest {
         assertThat(result.getQuestions()).extracting(QuestionResponse::getQuestionId)
                 .containsExactly("q6", "q7", "q8", "q9", "q10");
         assertThat(assigned).hasSize(15);
+        assertThat(selectionSnapshots).hasSize(5);
+        assertThat(selectionSnapshots).allSatisfy(snapshot -> {
+            assertThat(snapshot.getThetaAtSelection()).isCloseTo(1.9, within(0.000001));
+            assertThat(snapshot.getDifficultyAtSelection()).isEqualTo(0.5);
+            assertThat(snapshot.getAbsoluteDifference()).isCloseTo(1.4, within(0.000001));
+            assertThat(snapshot.getBatchNumber()).isEqualTo(3);
+        });
         assertThat(assigned.stream().map(QuizQuestion::getQuestionId).distinct().count()).isEqualTo(15);
         assertThat(thetaRequests).containsOnlyKeys("owned-skill");
         assertThat(thetaRequests.get("owned-skill").responses()).containsExactly(1, 1, 1, 1, 1);

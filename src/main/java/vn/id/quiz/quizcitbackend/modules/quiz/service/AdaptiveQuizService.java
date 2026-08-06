@@ -1,5 +1,6 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -36,6 +37,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.Question
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionSkillResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitAnswerRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.AdaptiveQuestionSelection;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
@@ -43,6 +45,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaAdaptiveQuestionSelectionRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
@@ -62,6 +65,7 @@ public class AdaptiveQuizService {
     private final QuestionMapper questionMapper;
     private final AIService aiService;
     private final JpaChapterSkillRepository chapterSkillRepository;
+    private final JpaAdaptiveQuestionSelectionRepository adaptiveQuestionSelectionRepository;
 
     @Transactional
     public AdaptiveQuizResponse start(String userId, String subjectId, int totalQuestion) {
@@ -163,18 +167,32 @@ public class AdaptiveQuizService {
     private void appendQuestions(Attempt attempt, List<Chapter> chapters, int requested) {
         List<QuizQuestion> current = quizRepository.findQuizQuestionsByQuizId(attempt.getQuizId());
         Set<String> excluded = current.stream().map(QuizQuestion::getQuestionId).collect(Collectors.toSet());
-        List<Question> selected = eligibleQuestions(attempt.getUserId(), chapters, excluded).stream()
+        List<AdaptiveCandidate> selected = eligibleQuestions(attempt.getUserId(), chapters, excluded).stream()
                 .limit(Math.min(requested, attempt.getTotalQuestion() - current.size())).toList();
         if (selected.size() < Math.min(requested, attempt.getTotalQuestion() - current.size())) {
             throw new AppException("Không còn đủ câu hỏi phù hợp cho bài thích ứng", HttpStatus.CONFLICT);
         }
         int index = current.size() + 1;
-        for (Question question : selected) {
-            quizRepository.save(QuizQuestion.create(attempt.getQuizId(), question.getQuestionId(), index++));
+        ZonedDateTime selectedAt = ZonedDateTime.now();
+        List<AdaptiveQuestionSelection> snapshots = new ArrayList<>();
+        for (AdaptiveCandidate candidate : selected) {
+            Question question = candidate.question();
+            int questionOrder = index++;
+            int batchNumber = (questionOrder - 1) / PAGE_SIZE + 1;
+            QuestionSkill drivingSkill = candidate.drivingSkill();
+            quizRepository.save(QuizQuestion.create(attempt.getQuizId(), question.getQuestionId(), questionOrder));
+            for (QuestionSkill skill : candidate.comparedSkills()) {
+                double skillTheta = candidate.thetaBySkill().get(skill.getSkillId());
+                snapshots.add(AdaptiveQuestionSelection.create(
+                        attempt.getAttemptId(), attempt.getUserId(), question.getQuestionId(), skill.getSkillId(),
+                        skillTheta, question.getDifficultyB(), skill.isPrimary(),
+                        skill.getSkillId().equals(drivingSkill.getSkillId()), batchNumber, questionOrder, selectedAt));
+            }
         }
+        adaptiveQuestionSelectionRepository.saveAll(snapshots);
     }
 
-    private List<Question> eligibleQuestions(String userId, List<Chapter> chapters, Set<String> excluded) {
+    private List<AdaptiveCandidate> eligibleQuestions(String userId, List<Chapter> chapters, Set<String> excluded) {
         Map<String, Double> theta = progressRepository.findUserSkillAbilities(userId).stream()
                 .collect(Collectors.toMap(UserSkillAbility::getSkillId,
                         ability -> ability.getTheta() == null ? 0.0 : ability.getTheta(), (a, b) -> a));
@@ -207,12 +225,35 @@ public class AdaptiveQuizService {
                         .contains(mapping.getSkillId()))
                 .collect(Collectors.groupingBy(QuestionSkill::getQuestionId));
         return pool.stream().filter(question -> mappings.containsKey(question.getQuestionId()))
+                .map(question -> AdaptiveCandidate.create(question, mappings.get(question.getQuestionId()), theta))
                 .sorted(Comparator
-                        .comparing((Question question) -> mappings.get(question.getQuestionId()).stream()
+                        .comparing((AdaptiveCandidate candidate) -> candidate.comparedSkills().stream()
                                 .noneMatch(QuestionSkill::isPrimary))
-                        .thenComparingDouble(question -> matchingThetaDistance(
-                                question, mappings.get(question.getQuestionId()), theta)))
+                        .thenComparingDouble(AdaptiveCandidate::distance))
                 .toList();
+    }
+
+    private record AdaptiveCandidate(
+            Question question,
+            List<QuestionSkill> comparedSkills,
+            Map<String, Double> thetaBySkill,
+            QuestionSkill drivingSkill,
+            double distance) {
+
+        private static AdaptiveCandidate create(
+                Question question,
+                List<QuestionSkill> matchingSkills,
+                Map<String, Double> thetaBySkill) {
+            List<QuestionSkill> primary = matchingSkills.stream().filter(QuestionSkill::isPrimary).toList();
+            List<QuestionSkill> compared = primary.isEmpty() ? List.copyOf(matchingSkills) : primary;
+            QuestionSkill driving = compared.stream()
+                    .min(Comparator.comparingDouble((QuestionSkill skill) -> Math.abs(
+                                    thetaBySkill.get(skill.getSkillId()) - question.getDifficultyB()))
+                            .thenComparing(QuestionSkill::getSkillId))
+                    .orElseThrow();
+            double distance = Math.abs(thetaBySkill.get(driving.getSkillId()) - question.getDifficultyB());
+            return new AdaptiveCandidate(question, compared, thetaBySkill, driving, distance);
+        }
     }
 
     /**
