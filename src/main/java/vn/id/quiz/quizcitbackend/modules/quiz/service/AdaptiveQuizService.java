@@ -50,7 +50,7 @@ import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @org.springframework.beans.factory.annotation.Autowired)
 public class AdaptiveQuizService {
     private static final int PAGE_SIZE = 5;
     private static final int INITIAL_BUFFER_SIZE = 10;
@@ -66,11 +66,29 @@ public class AdaptiveQuizService {
     private final AIService aiService;
     private final JpaChapterSkillRepository chapterSkillRepository;
     private final JpaAdaptiveQuestionSelectionRepository adaptiveQuestionSelectionRepository;
+    private final SubjectVisibilityGuard visibilityGuard;
+
+    /** Compatibility constructor for isolated service tests. */
+    AdaptiveQuizService(
+            QuizRepository quizRepository,
+            ContentRepository contentRepository,
+            ProgressRepository progressRepository,
+            SkillRepository skillRepository,
+            JpaUserUnlockedChapterRepository unlockedChapterRepository,
+            QuestionMapper questionMapper,
+            AIService aiService,
+            JpaChapterSkillRepository chapterSkillRepository,
+            JpaAdaptiveQuestionSelectionRepository adaptiveQuestionSelectionRepository) {
+        this(quizRepository, contentRepository, progressRepository, skillRepository,
+                unlockedChapterRepository, questionMapper, aiService, chapterSkillRepository,
+                adaptiveQuestionSelectionRepository,
+                new SubjectVisibilityGuard(contentRepository, quizRepository));
+    }
 
     @Transactional
     public AdaptiveQuizResponse start(String userId, String subjectId, int totalQuestion) {
         validateTotal(totalQuestion);
-        new SubjectVisibilityGuard(contentRepository, quizRepository).requireVisibleSubject(subjectId);
+        visibilityGuard.requireAccessibleSubject(subjectId);
 
         List<Chapter> unlocked = unlockedChapters(userId, subjectId);
         if (unlocked.isEmpty()) {
@@ -387,6 +405,9 @@ public class AdaptiveQuizService {
         Quiz quiz = quizRepository.findQuizById(attempt.getQuizId()).orElseThrow();
         if (!attempt.getUserId().equals(userId)) throw new AppException("Bạn không có quyền truy cập attempt này", HttpStatus.FORBIDDEN);
         if (quiz.getType() != QuizType.ADAPTIVE) throw new AppException("Đây không phải bài thích ứng", HttpStatus.BAD_REQUEST);
+        if (visibilityGuard.isCourseEnrollmentCheckEnabled()) {
+            visibilityGuard.requireAccessibleSubject(quiz.getSubjectId());
+        }
         return attempt;
     }
 

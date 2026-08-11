@@ -14,6 +14,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserCourseEnrollmentRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
@@ -79,6 +80,37 @@ class SubjectVisibilityGuardTest {
         assertThatThrownBy(() -> guard.requireVisibleQuiz("quiz-1"))
                 .isInstanceOf(AppException.class)
                 .hasMessage(ErrorMessages.SUBJECT_NOT_FOUND);
+    }
+
+    @Test
+    void ordinaryUserMustEnrollBeforeAccessingCourseContent() {
+        JpaUserCourseEnrollmentRepository enrollments = mock(JpaUserCourseEnrollmentRepository.class);
+        SubjectVisibilityGuard enrollmentGuard = new SubjectVisibilityGuard(
+                contentRepository, quizRepository, null, null, null, enrollments);
+        authenticateAsUserPrincipal("user-1");
+        when(contentRepository.findSubjectById("subject-1")).thenReturn(Optional.of(
+                Subject.builder().subjectId("subject-1").courseCode("CT101")
+                        .name("Môn học").visible(true).build()));
+        when(enrollments.existsByUserIdAndSubjectId("user-1", "subject-1")).thenReturn(false);
+
+        assertThatThrownBy(() -> enrollmentGuard.requireAccessibleSubject("subject-1"))
+                .isInstanceOf(AppException.class)
+                .hasMessage(ErrorMessages.COURSE_ENROLLMENT_REQUIRED)
+                .extracting("status").isEqualTo(org.springframework.http.HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void enrolledUserCanAccessCourseContent() {
+        JpaUserCourseEnrollmentRepository enrollments = mock(JpaUserCourseEnrollmentRepository.class);
+        SubjectVisibilityGuard enrollmentGuard = new SubjectVisibilityGuard(
+                contentRepository, quizRepository, null, null, null, enrollments);
+        authenticateAsUserPrincipal("user-1");
+        when(contentRepository.findSubjectById("subject-1")).thenReturn(Optional.of(
+                Subject.builder().subjectId("subject-1").courseCode("CT101")
+                        .name("Môn học").visible(true).build()));
+        when(enrollments.existsByUserIdAndSubjectId("user-1", "subject-1")).thenReturn(true);
+
+        enrollmentGuard.requireAccessibleSubject("subject-1");
     }
 
     @Test

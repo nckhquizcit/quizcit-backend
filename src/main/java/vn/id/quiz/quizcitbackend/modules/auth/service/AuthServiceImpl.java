@@ -15,15 +15,20 @@ import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.ResetPasswordRequ
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyResetOtpRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyResetOtpResponse;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RefreshTokenRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.repository.AuthRepository;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignment;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.model.AuthChallengePurpose;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 import java.util.Optional;
+import java.util.UUID;
+import java.util.Locale;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 @Service
 @RequiredArgsConstructor
@@ -33,20 +38,26 @@ public class AuthServiceImpl implements AuthUseCase {
     private final PasswordService passwordService;
     private final TokenService tokenService;
     private final OtpService otpService;
-    private final EmailService emailService;
+    private final EmailOutboxService emailOutboxService;
+    private final RefreshTokenService refreshTokenService;
+    private final AuthChallengeService authChallengeService;
+    private final AuthRateLimitService rateLimitService;
 
     @Override
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        if (authRepository.existsByUsername(request.username())) {
-            throw new AppException("Ten dang nhap da ton tai", HttpStatus.CONFLICT);
+        String username = request.username().trim();
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        rateLimitService.check(email, "REGISTER", 5, 900);
+        if (authRepository.existsByUsername(username)) {
+            throw new AppException(ErrorMessages.USERNAME_EXISTS, HttpStatus.CONFLICT);
         }
-        if (authRepository.existsByEmail(request.email())) {
-            throw new AppException("Email da ton tai", HttpStatus.CONFLICT);
+        if (authRepository.existsByEmail(email)) {
+            throw new AppException(ErrorMessages.EMAIL_EXISTS, HttpStatus.CONFLICT);
         }
 
         String hashedPassword = passwordService.hash(request.password());
-        User user = User.create(request.username(), hashedPassword, request.email(), request.displayName());
+        User user = User.create(username, hashedPassword, email, request.displayName());
         User savedUser = authRepository.save(user);
 
         Role defaultRole = getOrCreateRole(UserRole.USER);
@@ -58,17 +69,13 @@ public class AuthServiceImpl implements AuthUseCase {
     @Override
     @Transactional
     public AuthResponse verify(VerifyRequest request) {
-        VerificationClaims claims = tokenService.parseVerificationToken(request.verificationToken());
-
-        if (!passwordService.matches(request.otp(), claims.otpHash())) {
-            throw new AppException("Ma xac thuc khong dung", HttpStatus.UNAUTHORIZED);
-        }
-
-        User user = authRepository.findUserByEmail(claims.email())
-                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
+        var challenge = authChallengeService.verify(request.verificationToken(),
+                AuthChallengePurpose.EMAIL_VERIFICATION, request.otp());
+        User user = authRepository.findUserById(challenge.getUserId())
+                .orElseThrow(() -> new AppException(ErrorMessages.ACCOUNT_NOT_FOUND, HttpStatus.NOT_FOUND));
 
         if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
+            throw new AppException(ErrorMessages.ACCOUNT_BANNED, HttpStatus.FORBIDDEN);
         }
 
         // Idempotent: bam verify lan 2 (da VERIFIED) van cap token, khong bao loi.
@@ -76,95 +83,92 @@ public class AuthServiceImpl implements AuthUseCase {
             user.setStatus(UserStatus.VERIFIED);
             authRepository.save(user);
         }
+        authChallengeService.consumeVerified(challenge.getChallengeId(), AuthChallengePurpose.EMAIL_VERIFICATION);
 
         UserRole role = resolveUserRole(user.getUserId());
-        TokenDetails tokenDetails = tokenService.generate(user, role);
-        return authMapper.toAuthResponse(user, role, tokenDetails);
+        return issueTokenPair(user, role);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public RegisterResponse resend(ResendRequest request) {
-        User user = authRepository.findUserByEmail(request.email().trim())
-                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
-
-        if (user.getStatus() == UserStatus.VERIFIED) {
-            throw new AppException("Tai khoan da duoc xac thuc", HttpStatus.CONFLICT);
+        rateLimitService.check(request.email(), "RESEND_OTP", 3, 600);
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        Optional<User> found = authRepository.findUserByEmail(email);
+        if (found.isEmpty() || found.get().getStatus() != UserStatus.UNVERIFIED) {
+            passwordService.hash(otpService.generateCode());
+            return new RegisterResponse(email, UUID.randomUUID().toString());
         }
-        if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
-        }
-
-        return sendVerificationOtp(user.getEmail());
+        return sendVerificationOtp(found.get().getEmail());
     }
 
     private RegisterResponse sendVerificationOtp(String email) {
-        String code = otpService.generateCode();
-        String otpHash = passwordService.hash(code);
-        String verificationToken = tokenService.generateVerificationToken(email, otpHash);
-        emailService.sendOtp(email, code);
-        return new RegisterResponse(email, verificationToken);
+        User user = authRepository.findUserByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorMessages.ACCOUNT_NOT_FOUND, HttpStatus.NOT_FOUND));
+        var challenge = authChallengeService.issue(user.getUserId(),
+                AuthChallengePurpose.EMAIL_VERIFICATION, email);
+        emailOutboxService.enqueueVerificationOtp(email, challenge.code());
+        return new RegisterResponse(email, challenge.challengeId());
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
-        User user = authRepository.findUserByEmail(request.email().trim())
-                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
-
-        String code = otpService.generateCode();
-        String otpHash = passwordService.hash(code);
-        String resetToken = tokenService.generatePasswordResetToken(user.getEmail(), otpHash);
-        emailService.sendPasswordResetOtp(user.getEmail(), code);
-        return new ForgotPasswordResponse(user.getEmail(), resetToken);
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        rateLimitService.check(email, "FORGOT_PASSWORD", 3, 600);
+        Optional<User> found = authRepository.findUserByEmail(email);
+        if (found.isEmpty() || found.get().getStatus() == UserStatus.BANNED) {
+            passwordService.hash(otpService.generateCode()); // cân bằng tương đối thời gian phản hồi
+            return new ForgotPasswordResponse(email, UUID.randomUUID().toString());
+        }
+        var challenge = authChallengeService.issue(found.get().getUserId(),
+                AuthChallengePurpose.PASSWORD_RESET, email);
+        emailOutboxService.enqueuePasswordResetOtp(email, challenge.code());
+        return new ForgotPasswordResponse(email, challenge.challengeId());
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public VerifyResetOtpResponse verifyResetOtp(VerifyResetOtpRequest request) {
-        VerificationClaims claims = tokenService.parsePasswordResetToken(request.resetToken());
-
-        if (!passwordService.matches(request.otp(), claims.otpHash())) {
-            throw new AppException("Ma xac thuc khong dung", HttpStatus.UNAUTHORIZED);
-        }
-
-        User user = authRepository.findUserByEmail(claims.email())
-                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
+        var challenge = authChallengeService.verify(request.resetToken(),
+                AuthChallengePurpose.PASSWORD_RESET, request.otp());
+        User user = authRepository.findUserById(challenge.getUserId())
+                .orElseThrow(() -> new AppException(ErrorMessages.ACCOUNT_NOT_FOUND, HttpStatus.NOT_FOUND));
 
         if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
+            throw new AppException(ErrorMessages.ACCOUNT_BANNED, HttpStatus.FORBIDDEN);
         }
 
-        String confirmedToken = tokenService.generatePasswordResetConfirmedToken(user.getEmail());
-        return new VerifyResetOtpResponse(user.getEmail(), confirmedToken);
+        return new VerifyResetOtpResponse(user.getEmail(), challenge.getChallengeId());
     }
 
     @Override
     @Transactional
     public AuthResponse resetPassword(ResetPasswordRequest request) {
-        VerificationClaims claims = tokenService.parsePasswordResetConfirmedToken(request.confirmedToken());
-
-        User user = authRepository.findUserByEmail(claims.email())
-                .orElseThrow(() -> new AppException("Khong tim thay tai khoan", HttpStatus.NOT_FOUND));
+        var challenge = authChallengeService.consumeVerified(request.confirmedToken(),
+                AuthChallengePurpose.PASSWORD_RESET);
+        User user = authRepository.findUserById(challenge.getUserId())
+                .orElseThrow(() -> new AppException(ErrorMessages.ACCOUNT_NOT_FOUND, HttpStatus.NOT_FOUND));
 
         if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
+            throw new AppException(ErrorMessages.ACCOUNT_BANNED, HttpStatus.FORBIDDEN);
         }
 
         user.setPassword(passwordService.hash(request.newPassword()));
+        user.revokeSessions();
         if (user.getStatus() != UserStatus.VERIFIED) {
             user.setStatus(UserStatus.VERIFIED);
         }
         authRepository.save(user);
 
         UserRole role = resolveUserRole(user.getUserId());
-        TokenDetails tokenDetails = tokenService.generate(user, role);
-        return authMapper.toAuthResponse(user, role, tokenDetails);
+        return issueTokenPair(user, role);
     }
 
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        rateLimitService.check(request.identifier(), "LOGIN", 10, 900);
         User user = findUserByIdentifier(request.identifier())
                 .orElseThrow(this::invalidCredentials);
 
@@ -173,8 +177,26 @@ public class AuthServiceImpl implements AuthUseCase {
         upgradeLegacyPasswordIfNeeded(user, request.password());
 
         UserRole role = resolveUserRole(user.getUserId());
-        TokenDetails tokenDetails = tokenService.generate(user, role);
-        return authMapper.toAuthResponse(user, role, tokenDetails);
+        return issueTokenPair(user, role);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse refresh(RefreshTokenRequest request) {
+        User user = refreshTokenService.consumeAndRotate(request.refreshToken());
+        return issueTokenPair(user, resolveUserRole(user.getUserId()));
+    }
+
+    @Override
+    @Transactional
+    public void logout(RefreshTokenRequest request) {
+        refreshTokenService.revoke(request.refreshToken());
+    }
+
+    private AuthResponse issueTokenPair(User user, UserRole role) {
+        TokenDetails access = tokenService.generate(user, role);
+        RefreshTokenDetails refresh = refreshTokenService.issue(user);
+        return authMapper.toAuthResponse(user, role, access, refresh);
     }
 
     private Optional<User> findUserByIdentifier(String identifier) {
@@ -189,10 +211,10 @@ public class AuthServiceImpl implements AuthUseCase {
 
     private void ensureUserCanAuthenticate(User user) {
         if (user.getStatus() == UserStatus.UNVERIFIED) {
-            throw new AppException("Tai khoan chua xac thuc email", HttpStatus.FORBIDDEN);
+            throw new AppException(ErrorMessages.ACCOUNT_UNVERIFIED, HttpStatus.FORBIDDEN);
         }
         if (user.getStatus() == UserStatus.BANNED) {
-            throw new AppException("Tai khoan da bi khoa", HttpStatus.FORBIDDEN);
+            throw new AppException(ErrorMessages.ACCOUNT_BANNED, HttpStatus.FORBIDDEN);
         }
     }
 
@@ -221,6 +243,6 @@ public class AuthServiceImpl implements AuthUseCase {
     }
 
     private AppException invalidCredentials() {
-        return new AppException("Thong tin dang nhap khong chinh xac", HttpStatus.UNAUTHORIZED);
+        return new AppException(ErrorMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
     }
 }

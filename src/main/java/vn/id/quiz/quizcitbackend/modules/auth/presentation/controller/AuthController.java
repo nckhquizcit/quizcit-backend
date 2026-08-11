@@ -20,6 +20,7 @@ import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.ResetPasswordRequ
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyResetOtpRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyResetOtpResponse;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RefreshTokenRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.service.AuthUseCase;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
@@ -36,7 +37,8 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request
     ) {
         RegisterResponse response = authUseCase.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.success(HttpStatus.CREATED, "Đăng ký tài khoản thành công", response));
     }
 
     // Xac thuc OTP: dung thi set VERIFIED va cap token dang nhap luon.
@@ -91,5 +93,17 @@ public class AuthController {
     ) {
         AuthResponse response = authUseCase.resetPassword(request);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponse>> refresh(
+            @Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authUseCase.refresh(request)));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authUseCase.logout(request);
+        return ResponseEntity.noContent().build();
     }
 }

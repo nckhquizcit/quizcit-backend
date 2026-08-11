@@ -9,9 +9,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Map;
 import java.util.Collection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface UserRepository {
     List<User> findAll();
+    default Page<User> findAll(Pageable pageable) {
+        List<User> users = findAll();
+        int start = Math.min((int) pageable.getOffset(), users.size());
+        int end = Math.min(start + pageable.getPageSize(), users.size());
+        return new org.springframework.data.domain.PageImpl<>(users.subList(start, end), pageable, users.size());
+    }
 
     User save(User user);
 

@@ -11,6 +11,7 @@ import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.ResetPasswordRequ
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyResetOtpRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.VerifyResetOtpResponse;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RefreshTokenRequest;
 
 public interface AuthUseCase {
     RegisterResponse register(RegisterRequest request);
@@ -26,4 +27,6 @@ public interface AuthUseCase {
     VerifyResetOtpResponse verifyResetOtp(VerifyResetOtpRequest request);
 
     AuthResponse resetPassword(ResetPasswordRequest request);
+    AuthResponse refresh(RefreshTokenRequest request);
+    void logout(RefreshTokenRequest request);
 }

@@ -7,7 +7,8 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
 
 @Component
 public class AuthMapper {
-    public AuthResponse toAuthResponse(User user, UserRole role, TokenDetails tokenDetails) {
+    public AuthResponse toAuthResponse(
+            User user, UserRole role, TokenDetails tokenDetails, RefreshTokenDetails refreshTokenDetails) {
         if (user == null) {
             return null;
         }
@@ -16,6 +17,8 @@ public class AuthMapper {
                 tokenDetails.accessToken(),
                 tokenDetails.tokenType(),
                 tokenDetails.expiresAt(),
+                refreshTokenDetails.token(),
+                refreshTokenDetails.expiresAt(),
                 user.getUserId(),
                 user.getUsername(),
                 user.getEmail(),

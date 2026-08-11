@@ -3,6 +3,7 @@ package vn.id.quiz.quizcitbackend.modules.auth.service;
 import org.junit.jupiter.api.Test;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
+import vn.id.quiz.quizcitbackend.shared.security.TokenPayload;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,6 +24,7 @@ class TokenServiceTest {
         assertThat(tokenDetails.tokenType()).isEqualTo("Bearer");
         assertThat(tokenDetails.expiresAt()).isAfter(tokenDetails.issuedAt());
         assertThat(tokenService.isValid(tokenDetails.accessToken())).isTrue();
+        assertThat(TokenPayload.from(tokenDetails.accessToken()).tokenVersion()).isZero();
     }
 
     @Test

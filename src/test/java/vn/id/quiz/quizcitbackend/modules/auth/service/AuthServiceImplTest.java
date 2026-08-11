@@ -31,31 +31,16 @@ class AuthServiceImplTest {
     @Mock
     private AuthRepository authRepository;
 
-    // Java 25 + ByteBuddy chua mock duoc concrete class, nen dung stub ghi lai loi goi.
-    private final RecordingEmailService emailService = new RecordingEmailService();
+    @Mock private EmailOutboxService emailOutboxService;
+    @Mock private RefreshTokenService refreshTokenService;
+    @Mock private AuthChallengeService authChallengeService;
+    @Mock private AuthRateLimitService rateLimitService;
     private final AuthMapper authMapper = new AuthMapper();
     private final PasswordService passwordService = new PasswordService();
     private final TokenService tokenService = new TokenService(
             "test-secret-that-is-long-enough-for-hmac", 3600,
             "test-otp-secret-that-is-long-enough", 300);
     private final OtpService otpService = new OtpService();
-
-    private static final class RecordingEmailService extends EmailService {
-        private String lastEmail;
-        private String lastCode;
-        private int callCount;
-
-        private RecordingEmailService() {
-            super(null, "test@quizcit.vn");
-        }
-
-        @Override
-        public void sendOtp(String toEmail, String code) {
-            this.lastEmail = toEmail;
-            this.lastCode = code;
-            this.callCount++;
-        }
-    }
 
     @Test
     void registerShouldHashPasswordAssignDefaultRoleAndSendOtp() {
@@ -72,6 +57,10 @@ class AuthServiceImplTest {
         when(authRepository.findRoleByName(UserRole.USER)).thenReturn(Optional.of(defaultRole));
         when(authRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(authRepository.save(any(UserRoleAssignment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(authRepository.findUserByEmail(request.email())).thenAnswer(invocation -> Optional.of(
+                User.create(request.username(), "hash", request.email(), request.displayName())));
+        when(authChallengeService.issue(any(), any(), any())).thenReturn(
+                new AuthChallengeService.IssuedChallenge("challenge-id", "123456"));
 
         RegisterResponse response = service().register(request);
 
@@ -87,10 +76,8 @@ class AuthServiceImplTest {
 
         assertThat(response.email()).isEqualTo("student01@example.com");
         assertThat(response.verificationToken()).isNotBlank();
-        assertThat(response.verificationToken().split("\\.")).hasSize(3);
-        assertThat(emailService.callCount).isEqualTo(1);
-        assertThat(emailService.lastEmail).isEqualTo("student01@example.com");
-        assertThat(emailService.lastCode).hasSize(6);
+        assertThat(response.verificationToken()).isEqualTo("challenge-id");
+        verify(emailOutboxService).enqueueVerificationOtp("student01@example.com", "123456");
     }
 
     @Test
@@ -101,6 +88,8 @@ class AuthServiceImplTest {
 
         when(authRepository.findUserByUsername("student01")).thenReturn(Optional.of(user));
         when(authRepository.findRoleByUserId(user.getUserId())).thenReturn(Optional.of(role));
+        when(refreshTokenService.issue(user)).thenReturn(
+                new RefreshTokenDetails("refresh-token", java.time.ZonedDateTime.now().plusDays(30)));
 
         AuthResponse response = service().login(new LoginRequest("student01", "secret123"));
 
@@ -147,6 +136,7 @@ class AuthServiceImplTest {
     }
 
     private AuthServiceImpl service() {
-        return new AuthServiceImpl(authRepository, authMapper, passwordService, tokenService, otpService, emailService);
+        return new AuthServiceImpl(authRepository, authMapper, passwordService, tokenService, otpService,
+                emailOutboxService, refreshTokenService, authChallengeService, rateLimitService);
     }
 }

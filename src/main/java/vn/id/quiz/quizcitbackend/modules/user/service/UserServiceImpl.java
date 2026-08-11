@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.id.quiz.quizcitbackend.modules.auth.service.PasswordService;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangePasswordRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.AdminResetPasswordRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangeUserRoleRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserProfileRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserStatusRequest;
@@ -20,8 +21,10 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.regex.Pattern;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 @Service
 @RequiredArgsConstructor
@@ -29,8 +32,6 @@ public class UserServiceImpl implements UserUseCase {
     private static final int PASSWORD_MIN_LENGTH = 6;
     private static final int PASSWORD_MAX_LENGTH = 255;
     private static final int DISPLAY_NAME_MAX_LENGTH = 100;
-    private static final int EMAIL_MAX_LENGTH = 100;
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final UserRepository userRepository;
     private final UserMapper mapper;
@@ -48,6 +49,15 @@ public class UserServiceImpl implements UserUseCase {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UserResponse> getAllUsers(Pageable pageable) {
+        Page<User> users = userRepository.findAll(pageable);
+        Map<String, UserRole> roles = userRepository.findRolesByUserIds(
+                users.getContent().stream().map(User::getUserId).toList());
+        return users.map(user -> mapper.toUserResponse(user, roles.get(user.getUserId())));
+    }
+
     // Lay chi tiet user; neu khong co thi nem AppException de GlobalExceptionHandler xu ly.
     @Override
     @Transactional(readOnly = true)
@@ -62,13 +72,12 @@ public class UserServiceImpl implements UserUseCase {
     public UserResponse updateUserProfile(String userId, UpdateUserProfileRequest request) {
         request = requireRequest(request);
         String displayName = validateDisplayName(request.displayName());
-        String email = validateEmail(request.email(), userId);
+        if (request.email() != null) {
+            throw new AppException(ErrorMessages.VERIFIED_EMAIL_CHANGE_REQUIRED, HttpStatus.BAD_REQUEST);
+        }
 
         User user = getRequiredUser(userId);
         user.setDisplayName(displayName);
-        if (email != null) {
-            user.setEmail(email);
-        }
         userRepository.save(user);
         return mapper.toUserResponse(user, resolveUserRole(userId));
     }
@@ -78,20 +87,33 @@ public class UserServiceImpl implements UserUseCase {
     @Transactional
     public void changePassword(String userId, ChangePasswordRequest request) {
         request = requireRequest(request);
-        String password = validatePassword(request.password());
-
         User user = getRequiredUser(userId);
+        if (!passwordService.matches(request.currentPassword(), user.getPassword())) {
+            throw new AppException(ErrorMessages.INVALID_CURRENT_PASSWORD, HttpStatus.UNAUTHORIZED);
+        }
+        String password = validatePassword(request.newPassword());
         user.setPassword(passwordService.hash(password));
+        user.revokeSessions();
         userRepository.save(user);
     }
 
-    // Xoa user sau khi kiem tra ton tai; adapter se xoa user_roles lien quan truoc.
+    @Override
+    @Transactional
+    public void resetPasswordByAdmin(String userId, AdminResetPasswordRequest request) {
+        request = requireRequest(request);
+        User user = getRequiredUser(userId);
+        user.setPassword(passwordService.hash(validatePassword(request.newPassword())));
+        user.revokeSessions();
+        userRepository.save(user);
+    }
+
+    // Xóa mềm và ẩn danh user, giữ lại dữ liệu học tập liên quan.
     @Override
     @Transactional
     public void deleteUser(String actorUserId, String userId) {
         rejectSelfLockout(actorUserId, userId);
         if (!userRepository.existsById(userId)) {
-            throw new AppException("Khong tim thay nguoi dung duoc yeu cau", HttpStatus.NOT_FOUND);
+            throw new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
         userRepository.deleteById(userId);
     }
@@ -106,11 +128,12 @@ public class UserServiceImpl implements UserUseCase {
         requireRequest(request);
         UserStatus target = request.getStatus();
         if (target == null) {
-            throw new AppException("Trang thai tai khoan khong hop le", HttpStatus.BAD_REQUEST);
+            throw new AppException(ErrorMessages.INVALID_ACCOUNT_STATUS, HttpStatus.BAD_REQUEST);
         }
 
         User user = getRequiredUser(userId);
         user.setStatus(target);
+        user.revokeSessions();
         userRepository.save(user);
 
         return mapper.toUserResponse(user, resolveUserRole(userId));
@@ -126,13 +149,13 @@ public class UserServiceImpl implements UserUseCase {
         requireRequest(request);
         UserRole targetRole = request.getRole();
         if (targetRole == null) {
-            throw new AppException("Vai tro nguoi dung khong hop le", HttpStatus.BAD_REQUEST);
+            throw new AppException(ErrorMessages.INVALID_ROLE, HttpStatus.BAD_REQUEST);
         }
         getRequiredUser(userId); // dam bao user ton tai
 
         Role role = userRepository.findRoleByName(targetRole)
                 .orElseThrow(() -> new AppException(
-                        "Vai tro khong ton tai trong he thong",
+                        ErrorMessages.ROLE_NOT_CONFIGURED,
                         HttpStatus.INTERNAL_SERVER_ERROR));
 
         // Xoa cac lien ket cu va gan moi
@@ -140,13 +163,17 @@ public class UserServiceImpl implements UserUseCase {
         UserRoleAssignment assignment = UserRoleAssignment.assign(userId, role.getRoleId());
         userRepository.save(assignment);
 
+        User user = getRequiredUser(userId);
+        user.revokeSessions();
+        userRepository.save(user);
+
         return getUserById(userId);
     }
 
     private void rejectSelfLockout(String actorUserId, String targetUserId) {
         if (actorUserId != null && actorUserId.equals(targetUserId)) {
             throw new AppException(
-                    "Ban khong the khoa, xoa hoac thay doi vai tro tai khoan dang dang nhap",
+                    ErrorMessages.SELF_ADMIN_CHANGE_DENIED,
                     HttpStatus.BAD_REQUEST);
         }
     }
@@ -154,46 +181,28 @@ public class UserServiceImpl implements UserUseCase {
     // Dung chung cho cac nghiep vu can dam bao user ton tai truoc khi xu ly.
     private User getRequiredUser(String userId) {
         return userRepository.findUserById(userId)
-                .orElseThrow(() -> new AppException("Khong tim thay nguoi dung duoc yeu cau", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
     }
 
     private <T> T requireRequest(T request) {
         if (request == null) {
-            throw new AppException("Yeu cau khong hop le", HttpStatus.BAD_REQUEST);
+            throw new AppException(ErrorMessages.INVALID_REQUEST, HttpStatus.BAD_REQUEST);
         }
         return request;
     }
 
     private String validatePassword(String password) {
-        String value = requireNotBlank(password, "Mat khau khong duoc de trong");
+        String value = requireNotBlank(password, ErrorMessages.PASSWORD_REQUIRED);
         if (value.length() < PASSWORD_MIN_LENGTH || value.length() > PASSWORD_MAX_LENGTH) {
-            throw new AppException("Mat khau phai tu 6 den 255 ky tu", HttpStatus.BAD_REQUEST);
+            throw new AppException(ErrorMessages.PASSWORD_LENGTH, HttpStatus.BAD_REQUEST);
         }
         return value;
     }
 
     private String validateDisplayName(String displayName) {
-        String normalized = requireNotBlank(displayName, "Ten hien thi khong duoc de trong").trim();
+        String normalized = requireNotBlank(displayName, ErrorMessages.DISPLAY_NAME_REQUIRED).trim();
         if (normalized.length() > DISPLAY_NAME_MAX_LENGTH) {
-            throw new AppException("Ten hien thi khong duoc vuot qua 100 ky tu", HttpStatus.BAD_REQUEST);
-        }
-        return normalized;
-    }
-
-    private String validateEmail(String email, String userId) {
-        if (email == null) {
-            return null;
-        }
-
-        String normalized = requireNotBlank(email, "Email khong duoc de trong").trim();
-        if (normalized.length() > EMAIL_MAX_LENGTH) {
-            throw new AppException("Email khong duoc vuot qua 100 ky tu", HttpStatus.BAD_REQUEST);
-        }
-        if (!EMAIL_PATTERN.matcher(normalized).matches()) {
-            throw new AppException("Email khong hop le", HttpStatus.BAD_REQUEST);
-        }
-        if (userRepository.existsByEmailAndUserIdNot(normalized, userId)) {
-            throw new AppException("Email da duoc su dung", HttpStatus.BAD_REQUEST);
+            throw new AppException(ErrorMessages.DISPLAY_NAME_LENGTH, HttpStatus.BAD_REQUEST);
         }
         return normalized;
     }

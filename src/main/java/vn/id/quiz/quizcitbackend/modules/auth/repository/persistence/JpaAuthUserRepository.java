@@ -6,11 +6,11 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import java.util.Optional;
 
 public interface JpaAuthUserRepository extends JpaRepository<User, String> {
-    Optional<User> findByUsername(String username);
+    Optional<User> findByUsernameIgnoreCase(String username);
 
-    Optional<User> findByEmail(String email);
+    Optional<User> findByEmailIgnoreCase(String email);
 
-    boolean existsByUsername(String username);
+    boolean existsByUsernameIgnoreCase(String username);
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailIgnoreCase(String email);
 }

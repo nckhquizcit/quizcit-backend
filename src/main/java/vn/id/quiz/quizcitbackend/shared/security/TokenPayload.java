@@ -16,10 +16,12 @@ public record TokenPayload(
         String username,
         String email,
         String role,
-        String status) {
+        String status,
+        Long tokenVersion) {
 
     private static final Pattern FIELD_PATTERN = Pattern.compile(
             "\"([a-zA-Z_]+)\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern TOKEN_VERSION_PATTERN = Pattern.compile("\"ver\"\\s*:\\s*(\\d+)");
 
     public static TokenPayload from(String token) {
         String[] parts = token.split("\\.");
@@ -40,6 +42,7 @@ public record TokenPayload(
         String email = null;
         String role = null;
         String status = null;
+        Long tokenVersion = null;
 
         Matcher matcher = FIELD_PATTERN.matcher(decoded);
         while (matcher.find()) {
@@ -55,6 +58,10 @@ public record TokenPayload(
             }
         }
 
-        return new TokenPayload(userId, username, email, role, status);
+        Matcher versionMatcher = TOKEN_VERSION_PATTERN.matcher(decoded);
+        if (versionMatcher.find()) {
+            tokenVersion = Long.parseLong(versionMatcher.group(1));
+        }
+        return new TokenPayload(userId, username, email, role, status, tokenVersion);
     }
 }

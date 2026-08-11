@@ -9,6 +9,8 @@ public record AuthResponse(
         String accessToken,
         String tokenType,
         ZonedDateTime expiresAt,
+        String refreshToken,
+        ZonedDateTime refreshTokenExpiresAt,
         String userId,
         String username,
         String email,

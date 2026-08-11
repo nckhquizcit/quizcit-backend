@@ -17,10 +17,45 @@ public final class ErrorMessages {
     public static final String QUESTION_NOT_FOUND = "Không tìm thấy câu hỏi được yêu cầu";
     public static final String ATTEMPT_NOT_FOUND = "Không tìm thấy lần làm bài được yêu cầu";
     public static final String USER_NOT_FOUND = "Không tìm thấy người dùng được yêu cầu";
+    public static final String ACCOUNT_NOT_FOUND = "Không tìm thấy tài khoản";
+    public static final String COURSE_ENROLLMENT_NOT_FOUND = "Bạn chưa đăng ký môn học này";
 
     // Validation
     public static final String INVALID_ROLE = "Vai trò người dùng không hợp lệ";
     public static final String INVALID_PERMISSION = "Quyền không hợp lệ";
+    public static final String INVALID_REQUEST = "Yêu cầu không hợp lệ";
+    public static final String INVALID_ACCOUNT_STATUS = "Trạng thái tài khoản không hợp lệ";
+    public static final String INVALID_CREDENTIALS = "Thông tin đăng nhập không chính xác";
+    public static final String INVALID_CURRENT_PASSWORD = "Mật khẩu hiện tại không chính xác";
+    public static final String INVALID_OTP = "Mã xác thực không đúng";
+    public static final String INVALID_OR_EXPIRED_OTP = "Mã xác thực đã hết hạn hoặc không hợp lệ";
+    public static final String OTP_ATTEMPTS_EXCEEDED = "Mã xác thực đã bị vô hiệu do nhập sai quá 3 lần";
+    public static final String OTP_RESEND_TOO_SOON = "Vui lòng chờ trước khi yêu cầu gửi lại mã xác thực";
+    public static final String EMAIL_EXISTS = "Email đã được sử dụng";
+    public static final String USERNAME_EXISTS = "Tên đăng nhập đã tồn tại";
+    public static final String ACCOUNT_UNVERIFIED = "Tài khoản chưa xác thực email";
+    public static final String ACCOUNT_BANNED = "Tài khoản đã bị khóa";
+    public static final String ACCOUNT_VERIFIED = "Tài khoản đã được xác thực";
+    public static final String ROLE_NOT_CONFIGURED = "Vai trò chưa được cấu hình trong hệ thống";
+    public static final String SELF_ADMIN_CHANGE_DENIED =
+            "Bạn không thể khóa, xóa hoặc thay đổi vai trò của tài khoản đang đăng nhập";
+    public static final String REFRESH_TOKEN_INVALID = "Refresh token đã hết hạn hoặc không hợp lệ";
+    public static final String PASSWORD_REQUIRED = "Mật khẩu không được để trống";
+    public static final String PASSWORD_LENGTH = "Mật khẩu phải từ 6 đến 255 ký tự";
+    public static final String DISPLAY_NAME_REQUIRED = "Tên hiển thị không được để trống";
+    public static final String DISPLAY_NAME_LENGTH = "Tên hiển thị không được vượt quá 100 ký tự";
+    public static final String EMAIL_REQUIRED = "Email không được để trống";
+    public static final String EMAIL_INVALID = "Email không hợp lệ";
+    public static final String EMAIL_LENGTH = "Email không được vượt quá 100 ký tự";
+    public static final String VERIFIED_EMAIL_CHANGE_REQUIRED =
+            "Vui lòng sử dụng luồng xác thực để thay đổi email";
+    public static final String RATE_LIMIT_EXCEEDED =
+            "Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau";
+    public static final String EMAIL_SEND_FAILED = "Không thể gửi email xác thực";
+    public static final String PASSWORD_RESET_EMAIL_SEND_FAILED = "Không thể gửi email đặt lại mật khẩu";
+    public static final String COURSE_ALREADY_ENROLLED = "Bạn đã đăng ký môn học này";
+    public static final String COURSE_ENROLLMENT_REQUIRED =
+            "Bạn cần đăng ký môn học trước khi truy cập nội dung này";
 
     // Authorization
     public static final String LOGIN_REQUIRED = "Bạn cần đăng nhập để thực hiện thao tác này.";

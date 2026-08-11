@@ -48,19 +48,18 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateUserProfileShouldChangeEmailWhenProvided() {
+    void updateUserProfileShouldRequireVerifiedFlowWhenEmailProvided() {
         User user = User.create("student01", "hashed-password", "student01@example.com", "Student One");
         userRepository.user = user;
 
-        var response = service.updateUserProfile(
+        assertThatThrownBy(() -> service.updateUserProfile(
                 user.getUserId(),
                 new UpdateUserProfileRequest("Student Updated", "student.updated@example.com")
-        );
+        )).isInstanceOf(AppException.class)
+                .extracting("status").isEqualTo(HttpStatus.BAD_REQUEST.value());
 
-        assertThat(user.getDisplayName()).isEqualTo("Student Updated");
-        assertThat(user.getEmail()).isEqualTo("student.updated@example.com");
-        assertThat(response.email()).isEqualTo("student.updated@example.com");
-        assertThat(userRepository.savedUser).isSameAs(user);
+        assertThat(user.getEmail()).isEqualTo("student01@example.com");
+        assertThat(userRepository.savedUser).isNull();
     }
 
     @Test
@@ -92,10 +91,10 @@ class UserServiceImplTest {
 
     @Test
     void changePasswordShouldHashAndPersistNewPassword() {
-        User user = User.create("student01", "old-hashed-password", "student01@example.com", "Student One");
+        User user = User.create("student01", passwordService.hash("oldSecret123"), "student01@example.com", "Student One");
         userRepository.user = user;
 
-        service.changePassword(user.getUserId(), new ChangePasswordRequest("newSecret123"));
+        service.changePassword(user.getUserId(), new ChangePasswordRequest("oldSecret123", "newSecret123"));
 
         assertThat(user.getPassword()).startsWith("pbkdf2$");
         assertThat(user.getPassword()).isNotEqualTo("newSecret123");
@@ -105,11 +104,27 @@ class UserServiceImplTest {
 
     @Test
     void changePasswordShouldRejectBlankPasswordBeforeHashing() {
-        assertThatThrownBy(() -> service.changePassword("user-id", new ChangePasswordRequest(" ")))
+        User user = User.create("student01", passwordService.hash("oldSecret123"), "student01@example.com", "Student One");
+        userRepository.user = user;
+        assertThatThrownBy(() -> service.changePassword("user-id", new ChangePasswordRequest("oldSecret123", " ")))
                 .isInstanceOf(AppException.class)
                 .extracting("status")
                 .isEqualTo(HttpStatus.BAD_REQUEST.value());
 
+        assertThat(userRepository.savedUser).isNull();
+    }
+
+    @Test
+    void changePasswordShouldRejectWrongCurrentPassword() {
+        User user = User.create("student01", passwordService.hash("oldSecret123"),
+                "student01@example.com", "Student One");
+        userRepository.user = user;
+
+        assertThatThrownBy(() -> service.changePassword(user.getUserId(),
+                new ChangePasswordRequest("wrongSecret", "newSecret123")))
+                .isInstanceOf(AppException.class)
+                .extracting("status").isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        assertThat(passwordService.matches("oldSecret123", user.getPassword())).isTrue();
         assertThat(userRepository.savedUser).isNull();
     }
 

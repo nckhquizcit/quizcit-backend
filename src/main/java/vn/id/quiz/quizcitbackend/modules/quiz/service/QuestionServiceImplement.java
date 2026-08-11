@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
@@ -36,7 +36,6 @@ import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 @Service
-@RequiredArgsConstructor
 public class QuestionServiceImplement implements QuestionService {
     private static final double WEIGHT_SUM_TOLERANCE = 0.000001;
 
@@ -45,6 +44,33 @@ public class QuestionServiceImplement implements QuestionService {
     private final QuestionMapper mapper;
     private final SkillRepository skillRepository;
     private final JpaChapterSkillRepository chapterSkillRepository;
+    private final SubjectVisibilityGuard visibilityGuard;
+
+    @Autowired
+    public QuestionServiceImplement(
+            QuizRepository quizRepository,
+            ContentRepository contentRepository,
+            QuestionMapper mapper,
+            SkillRepository skillRepository,
+            JpaChapterSkillRepository chapterSkillRepository,
+            SubjectVisibilityGuard visibilityGuard) {
+        this.quizRepository = quizRepository;
+        this.contentRepository = contentRepository;
+        this.mapper = mapper;
+        this.skillRepository = skillRepository;
+        this.chapterSkillRepository = chapterSkillRepository;
+        this.visibilityGuard = visibilityGuard;
+    }
+
+    QuestionServiceImplement(
+            QuizRepository quizRepository,
+            ContentRepository contentRepository,
+            QuestionMapper mapper,
+            SkillRepository skillRepository,
+            JpaChapterSkillRepository chapterSkillRepository) {
+        this(quizRepository, contentRepository, mapper, skillRepository, chapterSkillRepository,
+                new SubjectVisibilityGuard(contentRepository, quizRepository));
+    }
 
 
     @Override
@@ -157,7 +183,7 @@ public class QuestionServiceImplement implements QuestionService {
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy câu hỏi",
                         HttpStatus.NOT_FOUND));
-        visibilityGuard().requireVisibleSubject(question.getSubjectId());
+        visibilityGuard.requireAccessibleSubject(question.getSubjectId());
         List<Option> options = quizRepository.findOptionsByQuestionId(questionId);
         List<OptionResponse> optionResponses = mapper.toOptionResponseList(options);
         optionResponses.forEach(o -> o.setContentFormat(question.getContentFormat()));
@@ -175,7 +201,7 @@ public class QuestionServiceImplement implements QuestionService {
     @Override
     public List<QuestionResponse> getQuestionsByChapter(
             String chapterId) {
-        visibilityGuard().requireVisibleChapter(chapterId);
+        visibilityGuard.requireVisibleChapter(chapterId);
         return toQuestionSummaries(quizRepository.findQuestionsByChapterId(chapterId));
     }
 
@@ -204,7 +230,7 @@ public class QuestionServiceImplement implements QuestionService {
      * để frontend làm bài trắc nghiệm.
      */
     public List<QuestionResponse> getQuestionsByQuiz(String quizId) {
-        visibilityGuard().requireVisibleQuiz(quizId);
+        visibilityGuard.requireVisibleQuiz(quizId);
         quizRepository.findQuizById(quizId).ifPresent(quiz -> {
             if (quiz.getType() == QuizType.ADAPTIVE) {
                 throw new AppException(
@@ -403,7 +429,4 @@ public class QuestionServiceImplement implements QuestionService {
         return value != null && !value.isBlank();
     }
 
-    private SubjectVisibilityGuard visibilityGuard() {
-        return new SubjectVisibilityGuard(contentRepository, quizRepository);
-    }
 }

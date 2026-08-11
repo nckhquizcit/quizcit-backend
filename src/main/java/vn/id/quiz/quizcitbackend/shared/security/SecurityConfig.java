@@ -73,11 +73,12 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/error").permitAll()
 
                         // READ endpoints - cả USER + ADMINISTRATOR
-                        .requestMatchers(HttpMethod.GET, "/api/subjects/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/chapters/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/theories/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/quizzes/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/questions/**").permitAll()
+                        // Chỉ danh mục và chi tiết môn được xem trước khi đăng ký.
+                        .requestMatchers(HttpMethod.GET, "/api/subjects", "/api/subjects/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/chapters/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/theories/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/quizzes/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/questions/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/skills/**").permitAll()
 
                         // Các endpoint còn lại (bao gồm admin) - yêu cầu ADMINISTRATOR

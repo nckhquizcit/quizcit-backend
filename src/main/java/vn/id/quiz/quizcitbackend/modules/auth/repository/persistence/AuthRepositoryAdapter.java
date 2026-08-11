@@ -34,12 +34,17 @@ public class AuthRepositoryAdapter implements AuthRepository {
 
     @Override
     public Optional<User> findUserByUsername(String username) {
-        return jpaAuthUserRepository.findByUsername(username);
+        return jpaAuthUserRepository.findByUsernameIgnoreCase(username);
     }
 
     @Override
     public Optional<User> findUserByEmail(String email) {
-        return jpaAuthUserRepository.findByEmail(email);
+        return jpaAuthUserRepository.findByEmailIgnoreCase(email);
+    }
+
+    @Override
+    public Optional<User> findUserById(String userId) {
+        return jpaAuthUserRepository.findById(userId);
     }
 
     @Override
@@ -58,11 +63,11 @@ public class AuthRepositoryAdapter implements AuthRepository {
 
     @Override
     public boolean existsByUsername(String username) {
-        return jpaAuthUserRepository.existsByUsername(username);
+        return jpaAuthUserRepository.existsByUsernameIgnoreCase(username);
     }
 
     @Override
     public boolean existsByEmail(String email) {
-        return jpaAuthUserRepository.existsByEmail(email);
+        return jpaAuthUserRepository.existsByEmailIgnoreCase(email);
     }
 }

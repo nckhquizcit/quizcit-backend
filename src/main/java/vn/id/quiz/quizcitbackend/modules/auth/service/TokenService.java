@@ -39,7 +39,7 @@ public class TokenService {
 
     public TokenService(
             @Value("${quizcit.auth.token.secret}") String secret,
-            @Value("${quizcit.auth.token.expiration-seconds:86400}") long expirationSeconds,
+            @Value("${quizcit.auth.token.expiration-seconds:900}") long expirationSeconds,
             @Value("${quizcit.auth.otp.token-secret}") String verificationSecret,
             @Value("${quizcit.auth.otp.expiration-seconds:300}") long otpExpirationSeconds
     ) {
@@ -143,7 +143,7 @@ public class TokenService {
 
     private VerificationClaims parseOtpToken(String token, String expectedPurpose, boolean requireOtpHash) {
         AppException invalid = new AppException(
-                "Ma xac thuc da het han hoac khong hop le", HttpStatus.BAD_REQUEST);
+                "Mã xác thực đã hết hạn hoặc không hợp lệ", HttpStatus.BAD_REQUEST);
 
         if (token == null || token.isBlank()) {
             throw invalid;
@@ -209,6 +209,7 @@ public class TokenService {
                 + "\"email\":" + quote(user.getEmail()) + ","
                 + "\"role\":" + quote(roleName) + ","
                 + "\"status\":" + quote(status) + ","
+                + "\"ver\":" + (user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + ","
                 + "\"iat\":" + issuedAt.getEpochSecond() + ","
                 + "\"exp\":" + expiresAt.getEpochSecond()
                 + "}";
@@ -224,7 +225,7 @@ public class TokenService {
             mac.init(new SecretKeySpec(key, HMAC_ALGORITHM));
             return mac.doFinal(content.getBytes(StandardCharsets.UTF_8));
         } catch (Exception ex) {
-            throw new IllegalStateException("Khong the ky token", ex);
+            throw new IllegalStateException("Không thể ký token", ex);
         }
     }
 

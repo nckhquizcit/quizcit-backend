@@ -23,6 +23,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.Chapte
 import vn.id.quiz.quizcitbackend.modules.chatbot.service.TheoryIndexingService;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserCourseEnrollmentRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
@@ -54,6 +55,7 @@ public class ContentServiceImplement implements ContentService {
     private final JpaUserSkillAbilityRepository userSkillAbilityRepository;
     private final SkillRepository skillRepository;
     private final TheoryIndexingService theoryIndexingService;
+    private final JpaUserCourseEnrollmentRepository courseEnrollmentRepository;
 
     // =========================================================================
     // Phase 2 (P1): Lấy danh sách đề thi thuộc về 1 môn học
@@ -61,7 +63,7 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional(readOnly = true)
     public List<QuizSummaryResponse> getQuizzesBySubject(String subjectId) {
-        visibilityGuard.requireVisibleSubject(subjectId);
+        visibilityGuard.requireAccessibleSubject(subjectId);
         if (!contentRepository.existsBySubjectId(subjectId)) {
             throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
@@ -156,6 +158,14 @@ public class ContentServiceImplement implements ContentService {
     public List<ChapterResponse> getAllAccessibleChapters() {
         List<Subject> subjects = visibilityGuard.isAdministrator()
                 ? contentRepository.findAllSubject() : contentRepository.findAllVisibleSubject();
+        if (!visibilityGuard.isAdministrator()) {
+            String userId = currentUserId();
+            Set<String> enrolledSubjectIds = userId == null ? Set.of()
+                    : new HashSet<>(courseEnrollmentRepository.findSubjectIdsByUserId(userId));
+            subjects = subjects.stream()
+                    .filter(subject -> enrolledSubjectIds.contains(subject.getSubjectId()))
+                    .toList();
+        }
         return toAccessibleChapterResponses(contentRepository.findAllChapters(
                 subjects.stream().map(Subject::getSubjectId).toList()));
     }

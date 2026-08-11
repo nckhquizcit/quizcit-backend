@@ -68,22 +68,18 @@ POST /api/auth/register
 **Response — `201 Created`:**
 ```json
 {
-  "status": 200,
-  "message": "Success",
+  "status": 201,
+  "message": "Đăng ký tài khoản thành công",
   "data": {
-    "accessToken": "string",
-    "tokenType": "string",
-    "expiresAt": "ZonedDateTime",
-    "userId": "string",
-    "username": "string",
     "email": "string",
-    "displayName": "string",
-    "role": "UserRole",
-    "status": "UserStatus",
-    "createdAt": "ZonedDateTime"
+    "verificationToken": "UUID challenge, hết hạn sau 5 phút"
   }
 }
 ```
+
+Xác thực bằng `POST /api/auth/verify` với `verificationToken` và OTP 6 chữ số.
+Challenge bị vô hiệu sau 3 lần nhập sai. `POST /api/auth/resend` và các API
+auth nhạy cảm có rate limit.
 
 ---
 
@@ -109,7 +105,9 @@ POST /api/auth/login
   "data": {
     "accessToken": "string",
     "tokenType": "string",
-    "expiresAt": "ZonedDateTime",
+    "expiresAt": "ZonedDateTime (mặc định 15 phút)",
+    "refreshToken": "opaque string",
+    "refreshTokenExpiresAt": "ZonedDateTime (mặc định 30 ngày)",
     "userId": "string",
     "username": "string",
     "email": "string",
@@ -121,14 +119,57 @@ POST /api/auth/login
 }
 ```
 
+### 1.3 Làm mới và thu hồi phiên
+
+```http
+POST /api/auth/refresh
+POST /api/auth/logout
+```
+
+```json
+{ "refreshToken": "string (required)" }
+```
+
+Refresh token được rotate sau mỗi lần dùng; replay token cũ trả `401`.
+Logout trả `204 No Content`. Đổi mật khẩu, email, trạng thái hoặc vai trò sẽ
+thu hồi toàn bộ access/refresh token cũ qua `tokenVersion`.
+
+### 1.4 Quên mật khẩu
+
+```http
+POST /api/auth/forgot-password
+POST /api/auth/verify-reset-otp
+POST /api/auth/reset-password
+```
+
+Forgot-password và resend trả phản hồi trung tính để hạn chế dò tài khoản.
+OTP reset có tối đa 3 lần thử và confirmed challenge chỉ được dùng một lần.
+
 ---
 
 ## 2. 👤 User Module (`UserController` — `/api/users`)
 
+### 2.0 Đăng ký môn học
+
+Các API dưới đây yêu cầu access token của user đang đăng nhập:
+
+```http
+POST   /api/users/me/course-enrollments/{subjectId}
+DELETE /api/users/me/course-enrollments/{subjectId}
+GET    /api/users/me/course-enrollments
+```
+
+- `POST` trả `201 Created` và thông tin môn cùng `enrolledAt`; đăng ký trùng trả `409`.
+- `DELETE` trả `204 No Content`; chưa đăng ký môn đó trả `404`.
+- `GET` trả danh sách môn đã đăng ký theo `displayOrder`.
+- User phải đăng ký môn trước khi truy cập chương, lý thuyết, câu hỏi, danh sách đề,
+  bắt đầu hoặc tiếp tục làm quiz của môn đó. Nếu chưa đăng ký, API trả `403`.
+- Administrator được bỏ qua điều kiện enrollment để thực hiện nghiệp vụ quản trị.
+
 ### 2.1 Lấy danh sách tất cả users
 
 ```
-GET /api/users
+GET /api/users?page=0&size=20&sort=createdAt,desc
 ```
 
 **Response — `200 OK`:**
@@ -136,8 +177,8 @@ GET /api/users
 {
   "status": 200,
   "message": "Success",
-  "data": [
-    {
+  "data": {
+    "content": [{
       "userId": "string",
       "username": "string",
       "email": "string",
@@ -145,10 +186,16 @@ GET /api/users
       "role": "UserRole",
       "status": "UserStatus",
       "createdAt": "ZonedDateTime"
-    }
-  ]
+    }],
+    "number": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
 }
 ```
+
+`size` tối đa là 100.
 
 ---
 
@@ -194,23 +241,24 @@ PUT /api/users/{userId}
 ```json
 {
   "status": 200,
-  "message": "Cap nhat nguoi dung thanh cong",
+  "message": "Cập nhật người dùng thành công",
   "data": null
 }
 ```
 
 ---
 
-### 2.4 Đổi mật khẩu
+### 2.4 Người dùng tự đổi mật khẩu
 
 ```
-PATCH /api/users/{userId}/password
+PATCH /api/users/me/password
 ```
 
 **Request Body:**
 ```json
 {
-  "password": "string (required, min 6, max 255)"
+  "currentPassword": "string (required)",
+  "newPassword": "string (required, min 6, max 255)"
 }
 ```
 
@@ -218,27 +266,38 @@ PATCH /api/users/{userId}/password
 ```json
 {
   "status": 200,
-  "message": "Cap nhat mat khau nguoi dung thanh cong",
+  "message": "Cập nhật mật khẩu thành công",
   "data": null
 }
 ```
 
+Admin reset mật khẩu bằng `PATCH /api/users/{userId}/password` với
+`{ "newPassword": "..." }`.
+
+### 2.5 Đổi email có xác thực hai địa chỉ
+
+```http
+POST /api/users/me/email-change
+POST /api/users/me/email-change/verify-old
+POST /api/users/me/email-change/confirm
+```
+
+1. Gọi bước đầu không cần body; hệ thống gửi OTP đến email hiện tại.
+2. Gửi `challengeId`, OTP email hiện tại và `newEmail`; hệ thống gửi OTP đến email mới.
+3. Gửi challenge mới và OTP email mới để hoàn tất. Token cũ bị thu hồi.
+
 ---
 
-### 2.5 Xóa user
+### 2.6 Xóa mềm user
 
 ```
 DELETE /api/users/{userId}
 ```
 
 **Response — `204 No Content`:**
-```json
-{
-  "status": 200,
-  "message": "Da xoa nguoi dung thanh cong",
-  "data": null
-}
-```
+
+Không có response body. Bản ghi được đánh dấu `deleted_at`, dữ liệu định danh
+được anonymize và các phiên cũ bị thu hồi; dữ liệu học tập vẫn được giữ lại.
 
 ---
 

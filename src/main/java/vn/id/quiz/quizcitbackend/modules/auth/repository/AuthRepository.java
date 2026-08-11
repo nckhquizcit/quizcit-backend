@@ -17,6 +17,7 @@ public interface AuthRepository {
     Optional<User> findUserByUsername(String username);
 
     Optional<User> findUserByEmail(String email);
+    Optional<User> findUserById(String userId);
 
     Optional<Role> findRoleByName(UserRole name);
 

@@ -12,6 +12,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted_at IS NULL")
 public class User {
     @Id
     // Khoa chinh cua bang users, tu sinh bang UUID dang String.
@@ -52,6 +54,13 @@ public class User {
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
+    @Column(name = "token_version", nullable = false)
+    @Builder.Default
+    private Long tokenVersion = 0L;
+
+    @Column(name = "deleted_at")
+    private ZonedDateTime deletedAt;
+
 
     // Factory chi tao entity theo schema users va gan gia tri mac dinh.
     // Validation va nghiep vu chinh nam o service.
@@ -66,6 +75,7 @@ public class User {
                 .displayName(normalizeDisplayName(displayName, username))
                 .status(UserStatus.UNVERIFIED)
                 .createdAt(now)
+                .tokenVersion(0L)
                 .build();
     }
 
@@ -74,5 +84,19 @@ public class User {
             return username.trim();
         }
         return displayName.trim();
+    }
+
+    public void revokeSessions() {
+        tokenVersion = (tokenVersion == null ? 0L : tokenVersion) + 1;
+    }
+
+    public void softDelete() {
+        deletedAt = ZonedDateTime.now();
+        revokeSessions();
+        username = "deleted_" + userId;
+        email = "deleted_" + userId + "@deleted.invalid";
+        displayName = "Người dùng đã xóa";
+        password = "!deleted!";
+        status = UserStatus.BANNED;
     }
 }

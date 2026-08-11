@@ -18,6 +18,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.auth.service.TokenService;
+import vn.id.quiz.quizcitbackend.modules.auth.repository.AuthRepository;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
 
 /**
  * Filter đọc JWT trên header {@code Authorization: Bearer <token>},
@@ -41,6 +43,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final TokenService tokenService;
+    private final AuthRepository authRepository;
 
     @Override
     protected void doFilterInternal(
@@ -54,6 +57,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // trúc payload đã được dựng với các trường userId/role/status.
             // Ta tự decode payload để lấy các thông tin an toàn.
             TokenPayload payload = TokenPayload.from(token.get());
+
+            var currentUser = authRepository.findUserById(payload.userId());
+            if (currentUser.isEmpty()
+                    || currentUser.get().getStatus() != UserStatus.VERIFIED
+                    || payload.tokenVersion() == null
+                    || !payload.tokenVersion().equals(currentUser.get().getTokenVersion())) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             CustomUserPrincipal principal = new CustomUserPrincipal(
                     payload.userId(),

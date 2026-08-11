@@ -63,6 +63,7 @@ public class AttemptServiceImplement
 
     private final AIService aiService;
     private final AdaptiveQuizService adaptiveQuizService;
+    private final SubjectVisibilityGuard visibilityGuard;
 
     // Giữ constructor này để tương thích các unit test/service consumer cũ.
     AttemptServiceImplement(
@@ -73,7 +74,8 @@ public class AttemptServiceImplement
             SkillRepository skillRepository,
             AIService aiService) {
         this(quizRepository, contentRepository, mapper, progressRepository,
-                skillRepository, aiService, null);
+                skillRepository, aiService, null,
+                new SubjectVisibilityGuard(contentRepository, quizRepository));
     }
 
     @Override
@@ -82,7 +84,7 @@ public class AttemptServiceImplement
             String userId,
             String quizId) {
 
-        new SubjectVisibilityGuard(contentRepository, quizRepository).requireVisibleQuiz(quizId);
+        visibilityGuard.requireVisibleQuiz(quizId);
 
         Quiz quiz = quizRepository.findQuizById(quizId)
                 .orElseThrow(() -> new AppException(
@@ -126,8 +128,7 @@ public class AttemptServiceImplement
                                 "Không tìm thấy attempt",
                                 HttpStatus.NOT_FOUND));
 
-        new SubjectVisibilityGuard(contentRepository, quizRepository)
-                .requireVisibleQuiz(attempt.getQuizId());
+        visibilityGuard.requireVisibleQuiz(attempt.getQuizId());
 
         if (request.getQuizId() != null && !request.getQuizId().isBlank()
                 && !attempt.getQuizId().equals(request.getQuizId())) {
