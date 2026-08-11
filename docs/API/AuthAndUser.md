@@ -4,6 +4,9 @@ Dưới đây là **API Spec** toàn bộ backend QuizCit, tổng hợp từ t�
 
 # 📘 QuizCit Backend — API Specification
 
+> Tài liệu chuyên biệt, được đối chiếu trực tiếp với implementation của Auth và
+> User: [docs/auth-user-api.md](docs/auth-user-api.md).
+
 ## Tổng quan
 
 | Thuộc tính | Giá trị |
@@ -96,6 +99,10 @@ POST /api/auth/login
   "password": "string (required, min 6, max 255)"
 }
 ```
+
+Trường `identifier` chấp nhận username hoặc email, không phân biệt chữ hoa/thường.
+Để tương thích client cũ, backend cũng chấp nhận tên trường `username` hoặc `email`
+thay cho `identifier`.
 
 **Response — `200 OK`:**
 ```json

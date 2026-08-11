@@ -101,6 +101,28 @@ class AuthServiceImplTest {
     }
 
     @Test
+    void loginShouldAcceptEmailIgnoringCaseAndSurroundingSpaces() {
+        Role role = Role.create(UserRole.USER);
+        User user = User.create("student01", passwordService.hash("secret123"),
+                "student01@example.com", "Student One");
+        user.setStatus(UserStatus.VERIFIED);
+
+        when(authRepository.findUserByUsername("STUDENT01@EXAMPLE.COM")).thenReturn(Optional.empty());
+        when(authRepository.findUserByEmail("STUDENT01@EXAMPLE.COM")).thenReturn(Optional.of(user));
+        when(authRepository.findRoleByUserId(user.getUserId())).thenReturn(Optional.of(role));
+        when(refreshTokenService.issue(user)).thenReturn(
+                new RefreshTokenDetails("refresh-token", java.time.ZonedDateTime.now().plusDays(30)));
+
+        AuthResponse response = service().login(
+                new LoginRequest("  STUDENT01@EXAMPLE.COM  ", "secret123"));
+
+        assertThat(response.userId()).isEqualTo(user.getUserId());
+        assertThat(response.email()).isEqualTo("student01@example.com");
+        verify(authRepository).findUserByEmail("STUDENT01@EXAMPLE.COM");
+        verify(rateLimitService).check("student01@example.com", "LOGIN", 10, 900);
+    }
+
+    @Test
     void loginShouldRejectWrongPassword() {
         User user = User.create("student01", passwordService.hash("secret123"), "student01@example.com", "Student One");
         user.setStatus(UserStatus.VERIFIED);

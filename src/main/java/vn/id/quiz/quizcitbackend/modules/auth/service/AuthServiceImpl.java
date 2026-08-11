@@ -168,8 +168,9 @@ public class AuthServiceImpl implements AuthUseCase {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        rateLimitService.check(request.identifier(), "LOGIN", 10, 900);
-        User user = findUserByIdentifier(request.identifier())
+        String identifier = normalizeLoginIdentifier(request.identifier());
+        rateLimitService.check(identifier.toLowerCase(Locale.ROOT), "LOGIN", 10, 900);
+        User user = findUserByIdentifier(identifier)
                 .orElseThrow(this::invalidCredentials);
 
         ensureUserCanAuthenticate(user);
@@ -207,6 +208,10 @@ public class AuthServiceImpl implements AuthUseCase {
         String normalizedIdentifier = identifier.trim();
         return authRepository.findUserByUsername(normalizedIdentifier)
                 .or(() -> authRepository.findUserByEmail(normalizedIdentifier));
+    }
+
+    private String normalizeLoginIdentifier(String identifier) {
+        return identifier == null ? "" : identifier.trim();
     }
 
     private void ensureUserCanAuthenticate(User user) {
