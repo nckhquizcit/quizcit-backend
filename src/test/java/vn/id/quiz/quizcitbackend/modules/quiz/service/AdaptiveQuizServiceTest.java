@@ -182,9 +182,9 @@ class AdaptiveQuizServiceTest {
     }
 
     @Test
-    void blendThetaUsesSeventyPercentNewAndThirtyPercentOld() {
+    void blendThetaUsesSeventyPercentOldAndThirtyPercentNew() {
         assertThat(AdaptiveQuizService.blendTheta(0.5, 2.5))
-                .isCloseTo(1.9, within(0.000001));
+                .isCloseTo(1.1, within(0.000001));
     }
 
     @Test
@@ -326,25 +326,25 @@ class AdaptiveQuizServiceTest {
         assertThat(assigned).hasSize(15);
         assertThat(selectionSnapshots).hasSize(5);
         assertThat(selectionSnapshots).allSatisfy(snapshot -> {
-            assertThat(snapshot.getThetaAtSelection()).isCloseTo(1.9, within(0.000001));
+            assertThat(snapshot.getThetaAtSelection()).isCloseTo(1.1, within(0.000001));
             assertThat(snapshot.getDifficultyAtSelection()).isEqualTo(0.5);
-            assertThat(snapshot.getAbsoluteDifference()).isCloseTo(1.4, within(0.000001));
+            assertThat(snapshot.getAbsoluteDifference()).isCloseTo(0.6, within(0.000001));
             assertThat(snapshot.getBatchNumber()).isEqualTo(3);
         });
         assertThat(assigned.stream().map(QuizQuestion::getQuestionId).distinct().count()).isEqualTo(15);
         assertThat(thetaRequests).containsOnlyKeys("owned-skill");
         assertThat(thetaRequests.get("owned-skill").responses()).containsExactly(1, 1, 1, 1, 1);
-        assertThat(ability.getTheta()).isCloseTo(1.9, within(0.000001));
+        assertThat(ability.getTheta()).isCloseTo(1.1, within(0.000001));
         assertThat(histories).hasSize(1);
-        assertThat(histories.getFirst().getTheta()).isCloseTo(1.9, within(0.000001));
-        assertThat(histories.getFirst().getDelta()).isCloseTo(1.4, within(0.000001));
+        assertThat(histories.getFirst().getTheta()).isCloseTo(1.1, within(0.000001));
+        assertThat(histories.getFirst().getDelta()).isCloseTo(0.6, within(0.000001));
         verify(progressRepository, never()).findUserSkillAbility("user-1", "unowned-skill");
 
         var current = service.submitBatch("user-1", "attempt-1", answers(6, 10));
 
-        assertThat(ability.getTheta()).isCloseTo(2.32, within(0.000001));
+        assertThat(ability.getTheta()).isCloseTo(1.52, within(0.000001));
         assertThat(histories).hasSize(2);
-        assertThat(histories.get(1).getTheta()).isCloseTo(2.32, within(0.000001));
+        assertThat(histories.get(1).getTheta()).isCloseTo(1.52, within(0.000001));
         assertThat(histories.get(1).getDelta()).isCloseTo(0.42, within(0.000001));
         assertThat(assigned).hasSize(20);
 
@@ -358,7 +358,7 @@ class AdaptiveQuizServiceTest {
             current = service.submitBatch("user-1", "attempt-1", nextAnswers);
         }
 
-        double expectedFinalTheta = 2.5 + (0.5 - 2.5) * Math.pow(0.3, 8);
+        double expectedFinalTheta = 2.5 + (0.5 - 2.5) * Math.pow(0.7, 8);
         assertThat(persistedResponses).hasSize(40);
         assertThat(histories).hasSize(8);
         assertThat(ability.getTheta()).isCloseTo(expectedFinalTheta, within(0.000001));

@@ -52,8 +52,8 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 public class AttemptServiceImplement
         implements AttemptService {
 
-    private static final double NEW_THETA_WEIGHT = 0.7;
-    private static final double EXISTING_THETA_WEIGHT = 0.3;
+    private static final double NEW_THETA_WEIGHT = 0.3;
+    private static final double EXISTING_THETA_WEIGHT = 0.7;
 
     private final QuizRepository quizRepository;
     private final ContentRepository contentRepository;

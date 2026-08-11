@@ -201,7 +201,7 @@ class AttemptServiceImplementTest {
 
         QuizResultResponse result = service.submitQuiz(submitRequest());
 
-        double blendedTheta = 2.5 * 0.7 + 0.5 * 0.3;
+        double blendedTheta = 0.5 * 0.7 + 2.5 * 0.3;
         assertThat(ability.getTheta()).isCloseTo(blendedTheta, within(0.0001));
         assertThat(savedHistories).hasSize(1);
         assertThat(savedHistories.get(0).getTheta())

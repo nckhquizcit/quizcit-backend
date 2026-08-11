@@ -54,8 +54,8 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 public class AdaptiveQuizService {
     private static final int PAGE_SIZE = 5;
     private static final int INITIAL_BUFFER_SIZE = 10;
-    private static final double NEW_THETA_WEIGHT = 0.7;
-    private static final double OLD_THETA_WEIGHT = 0.3;
+    private static final double NEW_THETA_WEIGHT = 0.3;
+    private static final double OLD_THETA_WEIGHT = 0.7;
 
     private final QuizRepository quizRepository;
     private final ContentRepository contentRepository;
