@@ -1,6 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.presentation.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,10 +11,14 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.CreateQuestionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkCreateQuestionItemResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkCreateQuestionsRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkCreateQuestionsResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.UpdateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 import java.util.List;
@@ -25,6 +30,7 @@ import java.util.List;
 public class QuestionController {
 
     private final QuestionService questionService;
+    private final Validator validator;
 
     @GetMapping("/questions")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
@@ -50,6 +56,41 @@ public class QuestionController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
+    }
+
+    @PostMapping("/questions/bulk")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<BulkCreateQuestionsResponse>> createQuestionsBulk(
+            @Valid @RequestBody BulkCreateQuestionsRequest request) {
+        List<BulkCreateQuestionItemResponse> results = request.items().stream()
+                .map(item -> {
+                    try {
+                        if (item == null || item.clientId() == null || item.clientId().isBlank()) {
+                            throw new IllegalArgumentException("clientId không được để trống");
+                        }
+                        if (item.question() == null) {
+                            throw new IllegalArgumentException("Dữ liệu câu hỏi không được để trống");
+                        }
+                        var violations = validator.validate(item.question());
+                        if (!violations.isEmpty()) {
+                            throw new IllegalArgumentException(violations.iterator().next().getMessage());
+                        }
+                        QuestionResponse created = questionService.createQuestion(item.question());
+                        return new BulkCreateQuestionItemResponse(
+                                item.clientId(), true, created.getQuestionId(), null);
+                    } catch (RuntimeException exception) {
+                        String message = exception instanceof AppException || exception instanceof IllegalArgumentException
+                                ? exception.getMessage()
+                                : "Không thể lưu câu hỏi này";
+                        return new BulkCreateQuestionItemResponse(
+                                item == null ? null : item.clientId(), false, null, message);
+                    }
+                })
+                .toList();
+        int successCount = (int) results.stream().filter(BulkCreateQuestionItemResponse::success).count();
+        BulkCreateQuestionsResponse response = new BulkCreateQuestionsResponse(
+                results.size(), successCount, results.size() - successCount, results);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/questions/{questionId}")

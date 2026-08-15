@@ -13,6 +13,8 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSki
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.OptionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.CreateOptionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.CreateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionSkillMappingRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.UpdateQuestionRequest;
@@ -150,6 +152,40 @@ class QuestionServiceImplementTest {
                 .isInstanceOf(AppException.class)
                 .extracting("status")
                 .isEqualTo(HttpStatus.BAD_REQUEST.value());
+    }
+
+    @Test
+    void createQuestionShouldRejectMultipleCorrectAnswers() {
+        CreateQuestionRequest request = createRequest(true, true);
+
+        assertThatThrownBy(() -> service.createQuestion(request))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Câu hỏi phải có đúng một đáp án đúng");
+    }
+
+    @Test
+    void createQuestionShouldRejectFewerThanTwoAnswers() {
+        CreateQuestionRequest request = createRequest(true);
+
+        assertThatThrownBy(() -> service.createQuestion(request))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Câu hỏi phải có ít nhất hai đáp án");
+    }
+
+    private static CreateQuestionRequest createRequest(boolean... correctAnswers) {
+        CreateQuestionRequest request = new CreateQuestionRequest();
+        request.setSubjectId("subject-new");
+        request.setChapterId("chapter-new");
+        request.setContent("Question");
+        List<CreateOptionRequest> options = new ArrayList<>();
+        for (int index = 0; index < correctAnswers.length; index++) {
+            CreateOptionRequest option = new CreateOptionRequest();
+            option.setContent("Option " + index);
+            option.setCorrected(correctAnswers[index]);
+            options.add(option);
+        }
+        request.setOptions(options);
+        return request;
     }
 
     private static UpdateQuestionRequest updateRequest(

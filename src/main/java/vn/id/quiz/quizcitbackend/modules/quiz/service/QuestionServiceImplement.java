@@ -79,6 +79,7 @@ public class QuestionServiceImplement implements QuestionService {
             CreateQuestionRequest request) {
 
         validateQuestionPlacement(request.getSubjectId(), request.getChapterId());
+        validateOptions(request.getOptions());
         validateSkillMappings(request.getSkills(), request.getChapterId());
 
         Question question = Question.create(
@@ -290,6 +291,19 @@ public class QuestionServiceImplement implements QuestionService {
                     return response;
                 })
                 .toList();
+    }
+
+    private void validateOptions(List<CreateOptionRequest> options) {
+        if (options == null || options.stream().filter(option -> option != null && hasText(option.getContent())).count() < 2) {
+            throw new AppException("Câu hỏi phải có ít nhất hai đáp án", HttpStatus.BAD_REQUEST);
+        }
+        long correctCount = options.stream()
+                .filter(option -> option != null && hasText(option.getContent()))
+                .filter(CreateOptionRequest::isCorrected)
+                .count();
+        if (correctCount != 1) {
+            throw new AppException("Câu hỏi phải có đúng một đáp án đúng", HttpStatus.BAD_REQUEST);
+        }
     }
 
     private String extractCorrectOptionId(List<OptionResponse> options) {
