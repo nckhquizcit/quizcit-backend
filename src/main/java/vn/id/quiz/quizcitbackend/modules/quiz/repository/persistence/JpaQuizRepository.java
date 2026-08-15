@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 
 public interface JpaQuizRepository extends JpaRepository<Quiz, String>{
     //Hàm truy vấn cơ bản
@@ -20,6 +21,9 @@ public interface JpaQuizRepository extends JpaRepository<Quiz, String>{
      */
     List<Quiz> findBySubjectIdOrderByDisplayOrderAscCreatedAtAscQuizIdAsc(
             String subjectId);
+
+    List<Quiz> findBySubjectIdAndTypeNotOrderByDisplayOrderAscCreatedAtAscQuizIdAsc(
+            String subjectId, QuizType excludedType);
 
     Quiz findTopByChapterIdOrderByDisplayOrderDesc(String chapterId);
 

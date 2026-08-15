@@ -126,6 +126,12 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public List<Quiz> findNonAdaptiveQuizzesBySubjectId(String subjectId) {
+        return jpaQuizRepository.findBySubjectIdAndTypeNotOrderByDisplayOrderAscCreatedAtAscQuizIdAsc(
+                subjectId, vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType.ADAPTIVE);
+    }
+
+    @Override
     public List<Quiz> findQuizzesByIds(java.util.Collection<String> quizIds) {
         return quizIds == null || quizIds.isEmpty() ? List.of() : jpaQuizRepository.findAllById(quizIds);
     }

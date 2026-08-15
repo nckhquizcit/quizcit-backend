@@ -26,4 +26,16 @@ public interface JpaUserUnlockedChapterRepository extends JpaRepository<UserUnlo
     int insertIfAbsent(
             @Param("userId") String userId,
             @Param("chapterId") String chapterId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO user_unlocked_chapters (user_id, chapter_id)
+            SELECT :userId, chapter.chapter_id
+            FROM chapters chapter
+            WHERE chapter.chapter_id IN (:chapterIds)
+            ON CONFLICT (user_id, chapter_id) DO NOTHING
+            """, nativeQuery = true)
+    int insertAllIfAbsent(
+            @Param("userId") String userId,
+            @Param("chapterIds") Collection<String> chapterIds);
 }

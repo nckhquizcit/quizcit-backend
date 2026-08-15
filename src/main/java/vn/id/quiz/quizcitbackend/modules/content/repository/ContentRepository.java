@@ -7,6 +7,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import java.util.List;
 import java.util.Optional;
 import java.util.Collection;
+import java.util.Map;
 
 
 public interface ContentRepository {
@@ -19,6 +20,7 @@ public interface ContentRepository {
         return subjectIds == null ? List.of() : subjectIds.stream()
                 .flatMap(id -> findAllChapter(id).stream()).toList();
     }
+    default List<Chapter> findAccessibleChapters(String userId) { return List.of(); }
     List<Theory> findAllTheory(String chapterId);
     default List<Theory> findAllTheories(Collection<String> chapterIds) {
         return chapterIds == null ? List.of() : chapterIds.stream()
@@ -30,6 +32,20 @@ public interface ContentRepository {
     Subject save(Subject subject);
     Chapter save(Chapter chapter);
     Theory save(Theory theory);
+    default void updateSubjectDisplayOrders(Map<String, Integer> displayOrders) {
+        if (displayOrders == null) return;
+        displayOrders.forEach((id, order) -> findSubjectById(id).ifPresent(subject -> {
+            subject.updateDisplayOrder(order);
+            save(subject);
+        }));
+    }
+    default void updateChapterDisplayOrders(Map<String, Integer> displayOrders) {
+        if (displayOrders == null) return;
+        displayOrders.forEach((id, order) -> findChapterById(id).ifPresent(chapter -> {
+            chapter.updateDisplayOrder(order);
+            save(chapter);
+        }));
+    }
 
     Optional<Subject> findSubjectById(String id);
     default List<Subject> findSubjectsByIds(Collection<String> ids) {

@@ -23,7 +23,6 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.Chapte
 import vn.id.quiz.quizcitbackend.modules.chatbot.service.TheoryIndexingService;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
-import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserCourseEnrollmentRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
@@ -31,7 +30,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
-import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
@@ -55,7 +53,6 @@ public class ContentServiceImplement implements ContentService {
     private final JpaUserSkillAbilityRepository userSkillAbilityRepository;
     private final SkillRepository skillRepository;
     private final TheoryIndexingService theoryIndexingService;
-    private final JpaUserCourseEnrollmentRepository courseEnrollmentRepository;
 
     // =========================================================================
     // Phase 2 (P1): Lấy danh sách đề thi thuộc về 1 môn học
@@ -64,12 +61,8 @@ public class ContentServiceImplement implements ContentService {
     @Transactional(readOnly = true)
     public List<QuizSummaryResponse> getQuizzesBySubject(String subjectId) {
         visibilityGuard.requireAccessibleSubject(subjectId);
-        if (!contentRepository.existsBySubjectId(subjectId)) {
-            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
-        }
-        List<Quiz> quizzes = quizRepository.findQuizzesBySubjectId(subjectId);
+        List<Quiz> quizzes = quizRepository.findNonAdaptiveQuizzesBySubjectId(subjectId);
         return quizzes.stream()
-                .filter(quiz -> quiz.getType() != QuizType.ADAPTIVE)
                 .map(QuizSummaryResponse::from)
                 .toList();
     }
@@ -85,25 +78,19 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional(readOnly = true)
     public SubjectResponse getSubjectById(String subjectId){
-        visibilityGuard.requireVisibleSubject(subjectId);
-        Subject subject = contentRepository.findSubjectById(subjectId)
-                .orElseThrow(()-> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
+        Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
         return mapper.toSubjectResponse(subject);
     }
     @Override
     @Transactional(readOnly = true)
     public ChapterResponse getChapterById(String chapterId){
-        visibilityGuard.requireVisibleChapter(chapterId);
-        Chapter chapter = contentRepository.findChapterById(chapterId)
-                .orElseThrow(()-> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
+        Chapter chapter = visibilityGuard.requireVisibleChapterEntity(chapterId);
         return toChapterResponse(chapter);
     }
     @Override
     @Transactional(readOnly = true)
     public TheoryResponse getTheoryById(String theoryId){
-        visibilityGuard.requireVisibleTheory(theoryId);
-        Theory theory = contentRepository.findTheoryById(theoryId)
-                .orElseThrow(()-> new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu", HttpStatus.NOT_FOUND));
+        Theory theory = visibilityGuard.requireVisibleTheoryEntity(theoryId);
         return mapper.toTheoryResponse(theory);
     }
 
@@ -149,34 +136,25 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public List<ChapterResponse> getAllChapters(String subjectId){
-        visibilityGuard.requireVisibleSubject(subjectId);
+        visibilityGuard.requireAccessibleSubject(subjectId);
         return toAccessibleChapterResponses(contentRepository.findAllChapter(subjectId));
     }
 
     @Override
     @Transactional
     public List<ChapterResponse> getAllAccessibleChapters() {
-        List<Subject> subjects = visibilityGuard.isAdministrator()
-                ? contentRepository.findAllSubject() : contentRepository.findAllVisibleSubject();
-        if (!visibilityGuard.isAdministrator()) {
-            String userId = currentUserId();
-            Set<String> enrolledSubjectIds = userId == null ? Set.of()
-                    : new HashSet<>(courseEnrollmentRepository.findSubjectIdsByUserId(userId));
-            subjects = subjects.stream()
-                    .filter(subject -> enrolledSubjectIds.contains(subject.getSubjectId()))
-                    .toList();
-        }
-        return toAccessibleChapterResponses(contentRepository.findAllChapters(
-                subjects.stream().map(Subject::getSubjectId).toList()));
+        boolean administrator = visibilityGuard.isAdministrator();
+        List<Chapter> chapters = administrator
+                ? contentRepository.findAllChapters(contentRepository.findAllSubject().stream()
+                        .map(Subject::getSubjectId).toList())
+                : contentRepository.findAccessibleChapters(currentUserId());
+        return toAccessibleChapterResponses(chapters, administrator);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<TheoryResponse> getAllTheories(String chapterId){
         visibilityGuard.requireVisibleChapter(chapterId);
-        if(!contentRepository.existsByChapterId(chapterId)){
-            throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
-        }
         List<Theory> theories = contentRepository.findAllTheory(chapterId);
         return mapper.toTheoryResponseList(theories);
     }
@@ -262,12 +240,13 @@ public class ContentServiceImplement implements ContentService {
         Map<String, Subject> subjectsById = contentRepository.findSubjectsByIds(
                 request.items().stream().map(item -> item.id()).toList()).stream()
                 .collect(Collectors.toMap(Subject::getSubjectId, subject -> subject));
+        Map<String, Integer> displayOrders = new java.util.LinkedHashMap<>();
         request.items().forEach(item -> {
             Subject subject = java.util.Optional.ofNullable(subjectsById.get(item.id()))
                     .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
-            subject.updateDisplayOrder(item.displayOrder());
-            contentRepository.save(subject);
+            displayOrders.put(subject.getSubjectId(), item.displayOrder());
         });
+        contentRepository.updateSubjectDisplayOrders(displayOrders);
     }
 
     @Override
@@ -279,13 +258,14 @@ public class ContentServiceImplement implements ContentService {
         Map<String, Chapter> chaptersById = contentRepository.findChaptersByIds(
                 request.items().stream().map(item -> item.id()).toList()).stream()
                 .collect(Collectors.toMap(Chapter::getChapterId, chapter -> chapter));
+        Map<String, Integer> displayOrders = new java.util.LinkedHashMap<>();
         request.items().forEach(item -> {
             Chapter chapter = java.util.Optional.ofNullable(chaptersById.get(item.id()))
                     .filter(value -> subjectId.equals(value.getSubjectId()))
                     .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
-            chapter.updateDisplayOrder(item.displayOrder());
-            contentRepository.save(chapter);
+            displayOrders.put(chapter.getChapterId(), item.displayOrder());
         });
+        contentRepository.updateChapterDisplayOrders(displayOrders);
     }
 
     private int positiveOrDefault(Integer requested, int fallback) {
@@ -306,6 +286,10 @@ public class ContentServiceImplement implements ContentService {
     }
 
     private List<ChapterResponse> toAccessibleChapterResponses(List<Chapter> chapters) {
+        return toAccessibleChapterResponses(chapters, visibilityGuard.isAdministrator());
+    }
+
+    private List<ChapterResponse> toAccessibleChapterResponses(List<Chapter> chapters, boolean administrator) {
         if (chapters.isEmpty()) return List.of();
         List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
         Map<String, List<ChapterSkill>> requirementsByChapter = chapterSkillRepository
@@ -316,7 +300,7 @@ public class ContentServiceImplement implements ContentService {
                 .collect(Collectors.toMap(skill -> skill.getSkillId(), skill -> skill.getName()));
 
         List<Chapter> accessible = chapters;
-        if (!visibilityGuard.isAdministrator()) {
+        if (!administrator) {
             String userId = currentUserId();
             Set<String> unlocked = userId == null ? Set.of() : unlockedChapterRepository
                     .findByUserIdAndChapterIdIn(userId, chapterIds).stream()
@@ -330,8 +314,11 @@ public class ContentServiceImplement implements ContentService {
                     .allMatch(requirement -> thetaBySkill.getOrDefault(requirement.getSkillId(), 0.0)
                             >= requirement.getRequiredTheta())).toList();
             if (userId != null) {
-                accessible.stream().map(Chapter::getChapterId).filter(id -> !unlocked.contains(id))
-                        .forEach(id -> unlockedChapterRepository.insertIfAbsent(userId, id));
+                List<String> newlyUnlocked = accessible.stream().map(Chapter::getChapterId)
+                        .filter(id -> !unlocked.contains(id)).toList();
+                if (!newlyUnlocked.isEmpty()) {
+                    unlockedChapterRepository.insertAllIfAbsent(userId, newlyUnlocked);
+                }
             }
         }
         return accessible.stream().map(chapter -> toChapterResponse(
@@ -354,8 +341,11 @@ public class ContentServiceImplement implements ContentService {
             if (!Double.isFinite(request.requiredTheta())) {
                 throw new AppException("Theta yêu cầu phải là một số hợp lệ", HttpStatus.BAD_REQUEST);
             }
-            skillRepository.findById(request.skillId()).orElseThrow(() ->
-                    new AppException("Không tìm thấy kỹ năng của chương", HttpStatus.NOT_FOUND));
+        }
+        Set<String> existingSkillIds = skillRepository.findByIds(ids).stream()
+                .map(skill -> skill.getSkillId()).collect(Collectors.toSet());
+        if (existingSkillIds.size() != ids.size()) {
+            throw new AppException("Không tìm thấy kỹ năng của chương", HttpStatus.NOT_FOUND);
         }
         if (guardRemoval) {
             Set<String> removed = chapterSkillRepository.findByChapterId(chapterId).stream()

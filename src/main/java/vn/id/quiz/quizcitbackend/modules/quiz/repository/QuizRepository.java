@@ -60,6 +60,11 @@ public interface QuizRepository {
      */
     List<Quiz> findQuizzesBySubjectId(
             String subjectId);
+    default List<Quiz> findNonAdaptiveQuizzesBySubjectId(String subjectId) {
+        return findQuizzesBySubjectId(subjectId).stream()
+                .filter(quiz -> quiz.getType() != vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType.ADAPTIVE)
+                .toList();
+    }
     default List<Quiz> findQuizzesByIds(Collection<String> quizIds) {
         return quizIds == null ? List.of() : quizIds.stream().map(this::findQuizById)
                 .flatMap(Optional::stream).toList();

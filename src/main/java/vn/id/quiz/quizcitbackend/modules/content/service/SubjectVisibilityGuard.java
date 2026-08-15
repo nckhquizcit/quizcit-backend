@@ -77,12 +77,17 @@ public class SubjectVisibilityGuard {
     }
 
     public void requireVisibleSubject(String subjectId) {
+        requireVisibleSubjectEntity(subjectId);
+    }
+
+    public vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject requireVisibleSubjectEntity(String subjectId) {
         var subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
         if (!isAdministrator() && !subject.isVisible()) {
             // Return 404 so a hidden subject cannot be enumerated by ordinary users.
             throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
+        return subject;
     }
 
     /**
@@ -112,18 +117,28 @@ public class SubjectVisibilityGuard {
     }
 
     public void requireVisibleChapter(String chapterId) {
+        requireVisibleChapterEntity(chapterId);
+    }
+
+    public Chapter requireVisibleChapterEntity(String chapterId) {
         Chapter chapter = contentRepository.findChapterById(chapterId)
                 .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
         requireAccessibleSubject(chapter.getSubjectId());
         if (!isAdministrator() && !canAccessChapter(chapterId)) {
             throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
+        return chapter;
     }
 
     public void requireVisibleTheory(String theoryId) {
+        requireVisibleTheoryEntity(theoryId);
+    }
+
+    public Theory requireVisibleTheoryEntity(String theoryId) {
         Theory theory = contentRepository.findTheoryById(theoryId)
                 .orElseThrow(() -> new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu", HttpStatus.NOT_FOUND));
         requireVisibleChapter(theory.getChapterId());
+        return theory;
     }
 
     public void requireVisibleQuiz(String quizId) {

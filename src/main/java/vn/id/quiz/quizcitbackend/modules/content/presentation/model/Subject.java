@@ -3,8 +3,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -36,8 +34,6 @@ public class Subject {
 
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
-
-    @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL, orphanRemoval = true) //map với field subject trong chapter
 
     public static Subject create(String courseCode, String name, String description, int displayOrder){
         if(courseCode==null||courseCode.isBlank()){

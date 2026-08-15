@@ -2,6 +2,7 @@ package vn.id.quiz.quizcitbackend.modules.content.repository.persistence;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.jdbc.core.JdbcTemplate;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
@@ -9,6 +10,7 @@ import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -16,6 +18,7 @@ public class ContentRepositoryAdapter implements ContentRepository {
     private final JpaSubjectRepository jpaSubjectRepository;
     private final JpaChapterRepository jpaChapterRepository;
     private final JpaTheoryRepository jpaTheoryRepository;
+    private final JdbcTemplate jdbcTemplate;
 
 
     @Override
@@ -33,6 +36,11 @@ public class ContentRepositoryAdapter implements ContentRepository {
     public List<Chapter> findAllChapters(java.util.Collection<String> subjectIds) {
         return subjectIds == null || subjectIds.isEmpty() ? List.of()
                 : jpaChapterRepository.findBySubjectIdInOrderBySubjectIdAscDisplayOrderAscCreatedAtAscChapterIdAsc(subjectIds);
+    }
+
+    @Override
+    public List<Chapter> findAccessibleChapters(String userId) {
+        return userId == null || userId.isBlank() ? List.of() : jpaChapterRepository.findAccessibleByUserId(userId);
     }
 
     @Override
@@ -68,6 +76,24 @@ public class ContentRepositoryAdapter implements ContentRepository {
     @Override
     public Theory save(Theory theory) {
         return jpaTheoryRepository.save(theory);
+    }
+
+    @Override
+    public void updateSubjectDisplayOrders(Map<String, Integer> displayOrders) {
+        batchUpdateDisplayOrders("UPDATE subjects SET display_order = ? WHERE subject_id = ?", displayOrders);
+    }
+
+    @Override
+    public void updateChapterDisplayOrders(Map<String, Integer> displayOrders) {
+        batchUpdateDisplayOrders("UPDATE chapters SET display_order = ? WHERE chapter_id = ?", displayOrders);
+    }
+
+    private void batchUpdateDisplayOrders(String sql, Map<String, Integer> displayOrders) {
+        if (displayOrders == null || displayOrders.isEmpty()) return;
+        jdbcTemplate.batchUpdate(sql, displayOrders.entrySet(), 50, (statement, entry) -> {
+            statement.setInt(1, entry.getValue());
+            statement.setString(2, entry.getKey());
+        });
     }
 
     @Override
