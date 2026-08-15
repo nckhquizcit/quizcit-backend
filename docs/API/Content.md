@@ -465,7 +465,200 @@ Tạo lại chỉ mục chatbot cho toàn bộ lý thuyết thuộc môn. `data`
 
 ---
 
-## 4. 🧪 Danh sách đề theo môn học
+## 4. ❓ Question APIs
+
+### 4.1 Tạo một câu hỏi
+
+```http
+POST /api/questions
+Content-Type: application/json
+```
+
+**Quyền:** `ADMINISTRATOR`
+
+**Request Body:**
+
+```json
+{
+  "subjectId": "subject-id",
+  "chapterId": "chapter-id",
+  "content": "Nội dung plain text hoặc chuỗi BlockNote JSON",
+  "explanation": "Lời giải/general feedback",
+  "contentFormat": "plain | blocknote",
+  "difficultyB": 0.0,
+  "options": [
+    { "content": "Đáp án A", "corrected": true },
+    { "content": "Đáp án B", "corrected": false }
+  ],
+  "skills": [
+    { "skillId": "skill-id", "weight": 1.0, "primary": true }
+  ]
+}
+```
+
+Quy tắc nghiệp vụ:
+
+- `subjectId` và `chapterId` bắt buộc tồn tại; chapter phải thuộc đúng subject.
+- `content` bắt buộc, tối đa `200000` ký tự.
+- `explanation` tùy chọn, tối đa `200000` ký tự.
+- Câu hỏi phải có ít nhất hai đáp án có nội dung và **đúng một** đáp án có
+  `corrected = true`.
+- Mỗi nội dung đáp án tối đa `200000` ký tự.
+- `contentFormat` chỉ nhận diện giá trị `blocknote` (không phân biệt hoa/thường);
+  mọi giá trị khác được chuẩn hóa thành `plain`. Format của câu hỏi được dùng
+  chung cho câu hỏi, đáp án và lời giải.
+- Nếu có `skills`, các skill phải thuộc chapter, không trùng nhau, tổng `weight`
+  phải bằng `1` và có đúng một skill `primary`.
+
+**Response — `201 Created`:** `ApiResponse<QuestionResponse>`.
+
+### 4.2 Tạo nhiều câu hỏi (bulk import)
+
+```http
+POST /api/questions/bulk
+Content-Type: application/json
+```
+
+**Quyền:** `ADMINISTRATOR`
+
+API nhận tối đa **500 câu hỏi/request**. Mỗi phần tử được xử lý bằng transaction
+riêng theo cơ chế **partial success**: một câu lỗi bị rollback riêng, các câu hợp
+lệ khác vẫn được lưu.
+
+**Request Body:**
+
+```json
+{
+  "items": [
+    {
+      "clientId": "import-question-1",
+      "question": {
+        "subjectId": "subject-id",
+        "chapterId": "chapter-id",
+        "content": "[{\"id\":\"block-1\",\"type\":\"paragraph\",\"props\":{},\"content\":[{\"type\":\"text\",\"text\":\"Câu hỏi\",\"styles\":{}}],\"children\":[]}]",
+        "explanation": "Lời giải hoặc general feedback",
+        "contentFormat": "blocknote",
+        "difficultyB": 0.0,
+        "options": [
+          { "content": "Đáp án đúng", "corrected": true },
+          { "content": "Đáp án sai", "corrected": false }
+        ],
+        "skills": []
+      }
+    }
+  ]
+}
+```
+
+- `items` bắt buộc có ít nhất một phần tử và tối đa 500 phần tử.
+- `clientId` bắt buộc, dùng để frontend ghép kết quả với đúng dòng preview.
+- `question` tuân theo toàn bộ validation tại mục 4.1.
+- Nếu cần import hơn 500 câu, client chia thành nhiều request, mỗi request tối đa
+  500 câu.
+
+**Response — `200 OK`:**
+
+```json
+{
+  "status": 200,
+  "message": "Success",
+  "data": {
+    "total": 3,
+    "successCount": 2,
+    "failureCount": 1,
+    "items": [
+      {
+        "clientId": "import-question-1",
+        "success": true,
+        "questionId": "created-question-id",
+        "message": null
+      },
+      {
+        "clientId": "import-question-2",
+        "success": false,
+        "questionId": null,
+        "message": "Câu hỏi phải có đúng một đáp án đúng"
+      }
+    ]
+  }
+}
+```
+
+Lỗi nghiệp vụ của từng câu được trả trong `data.items` và không đổi HTTP status
+của toàn bộ request. Các lỗi ở cấp request, chẳng hạn `items` rỗng hoặc có hơn
+500 phần tử, trả `400 Bad Request` theo response lỗi chuẩn.
+
+### 4.3 Định dạng file import ở frontend
+
+Backend không nhận trực tiếp file Moodle/GIFT/Aiken. Frontend đọc file, chuyển
+dữ liệu sang request chuẩn ở mục 4.2, cho administrator preview rồi mới gọi API.
+
+| Định dạng | Phạm vi hỗ trợ |
+|---|---|
+| Moodle XML (`.xml`) | `multichoice` một đáp án đúng và `truefalse`; HTML được chuyển sang BlockNote |
+| GIFT (`.gift` hoặc `.txt`) | Single-choice, True/False, title, category, general feedback và nội dung `[html]` |
+| Aiken (`.aiken` hoặc `.txt`) | 2–4 lựa chọn `A.`–`D.` và một dòng `ANSWER: A-D` |
+
+Quy tắc chuyển đổi:
+
+- Subject/chapter luôn lấy từ lựa chọn trên màn import; Moodle/GIFT category chỉ
+  được hiển thị để tham khảo, không tự động map hoặc tạo chapter.
+- Moodle `generalfeedback` và GIFT general feedback được lưu vào `explanation`.
+- Câu nhiều đáp án đúng bị đánh lỗi riêng và không được gửi để lưu.
+- Code HTML trong `<pre><code>` được chuyển thành BlockNote `codeBlock`; nếu
+  không khai báo language thì mặc định là `c`.
+- Chỉ giữ ảnh có URL `http` hoặc `https`. Ảnh Moodle dạng `@@PLUGINFILE@@` hoặc
+  base64 chưa được hỗ trợ và tạo cảnh báo ở preview.
+- Feedback riêng của từng đáp án chưa có trường lưu tương ứng nên bị bỏ qua và
+  tạo cảnh báo.
+- Các loại câu hỏi không biểu diễn được bằng model lựa chọn hiện tại, như essay,
+  matching, short answer hoặc numerical, bị đánh lỗi riêng.
+
+Frontend cung cấp file mẫu tải xuống cho cả Moodle XML, GIFT và Aiken.
+
+### 4.4 Lấy câu hỏi
+
+| Endpoint | Quyền | Nội dung |
+|---|---|---|
+| `GET /api/questions` | `ADMINISTRATOR` | Toàn bộ ngân hàng câu hỏi |
+| `GET /api/chapters/{chapterId}/questions` | Đã đăng nhập và có quyền truy cập chapter | Câu hỏi thuộc chapter |
+| `GET /api/questions/{questionId}` | Đã đăng nhập | Chi tiết câu hỏi; đáp án đúng chỉ lộ cho administrator |
+
+Response dùng `QuestionResponse`, gồm các trường chính `questionId`, `subjectId`,
+`chapterId`, `content`, `explanation`, `contentFormat`, `difficultyB`, `options`,
+`correctOptionId`, `skills` và `createdAt`. Các API danh sách có thể trả
+`options` rỗng để tránh tải dữ liệu không cần thiết.
+
+### 4.5 Cập nhật câu hỏi
+
+```http
+PUT /api/questions/{questionId}
+```
+
+**Quyền:** `ADMINISTRATOR`
+
+Request có cấu trúc tương tự mục 4.1. `content` luôn bắt buộc. Nếu không gửi
+`options` hoặc `skills` (`null`), backend giữ nguyên danh sách tương ứng; nếu gửi
+danh sách, backend thay thế toàn bộ danh sách cũ.
+
+**Response — `200 OK`:** message `Cập nhật câu hỏi thành công`, `data = null`.
+
+### 4.6 Xóa câu hỏi
+
+```http
+DELETE /api/questions/{questionId}
+```
+
+**Quyền:** `ADMINISTRATOR`
+
+Backend xóa các response, liên kết quiz, skill mapping và option liên quan trước
+khi xóa câu hỏi.
+
+**Response — `204 No Content`**.
+
+---
+
+## 5. 🧪 Danh sách đề theo môn học
 
 ```http
 GET /api/subjects/{subjectId}/quizzes
@@ -500,12 +693,12 @@ sách câu hỏi.
 
 ---
 
-## 5. 🎓 Course Enrollment APIs (`/api/users/me/course-enrollments`)
+## 6. 🎓 Course Enrollment APIs (`/api/users/me/course-enrollments`)
 
 Tất cả API trong phần này yêu cầu access token của `USER` hoặc `ADMINISTRATOR`.
 `userId` luôn được lấy từ token, client không truyền trong request.
 
-### 5.1 Đăng ký môn học
+### 6.1 Đăng ký môn học
 
 ```http
 POST /api/users/me/course-enrollments/{subjectId}
@@ -534,7 +727,7 @@ Chỉ đăng ký được môn đang hiển thị đối với user thông thư�
 Đăng ký lại môn đã đăng ký trả `409 Conflict` với message
 `Bạn đã đăng ký môn học này`.
 
-### 5.2 Hủy đăng ký môn học
+### 6.2 Hủy đăng ký môn học
 
 ```http
 DELETE /api/users/me/course-enrollments/{subjectId}
@@ -545,7 +738,7 @@ DELETE /api/users/me/course-enrollments/{subjectId}
 Nếu user chưa đăng ký môn này, API trả `404 Not Found` với message
 `Bạn chưa đăng ký môn học này`.
 
-### 5.3 Lấy danh sách môn đã đăng ký
+### 6.3 Lấy danh sách môn đã đăng ký
 
 ```http
 GET /api/users/me/course-enrollments
@@ -555,15 +748,15 @@ Danh sách được sắp theo `displayOrder`. User thông thường không th�
 ẩn; administrator vẫn thấy môn ẩn trong danh sách đăng ký của mình.
 
 **Response — `200 OK`:** `ApiResponse<List<EnrolledSubjectResponse>>`, phần tử có
-cấu trúc giống mục 5.1.
+cấu trúc giống mục 6.1.
 
 ---
 
-## 6. Mã lỗi thường gặp
+## 7. Mã lỗi thường gặp
 
 | HTTP status | Trường hợp |
 |---|---|
-| `400 Bad Request` | Body sai định dạng; trường bắt buộc trống; reorder rỗng/sai thứ tự; skill trùng; `requiredTheta` không hữu hạn |
+| `400 Bad Request` | Body sai định dạng; trường bắt buộc trống; bulk rỗng hoặc quá 500 câu; câu hỏi thiếu đáp án/không có đúng một đáp án đúng; reorder rỗng/sai thứ tự; skill trùng; `requiredTheta` không hữu hạn |
 | `401 Unauthorized` | Chưa đăng nhập hoặc access token không hợp lệ |
 | `403 Forbidden` | Chưa đăng ký môn; không có quyền `ADMINISTRATOR` khi gọi API quản trị |
 | `404 Not Found` | Không tìm thấy môn/chương/lý thuyết/skill; môn bị ẩn; chương chưa mở khóa |
