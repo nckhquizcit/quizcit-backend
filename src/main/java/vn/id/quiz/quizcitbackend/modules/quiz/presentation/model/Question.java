@@ -19,10 +19,10 @@ public class Question {
     @Column(name = "question_id", length = 50)
     private String questionId;
 
-    @Column(name = "subject_id", nullable = false, length = 50)
+    @Column(name = "subject_id", length = 50)
     private String subjectId;
 
-    @Column(name = "chapter_id", nullable = false, length = 50)
+    @Column(name = "chapter_id", length = 50)
     private String chapterId;
 
     @Column(name = "content", columnDefinition = "TEXT")

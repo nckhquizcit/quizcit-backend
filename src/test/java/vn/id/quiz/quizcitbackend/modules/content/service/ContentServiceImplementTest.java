@@ -1,6 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.content.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,12 +18,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import vn.id.quiz.quizcitbackend.modules.chatbot.service.TheoryIndexingService;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 
 class ContentServiceImplementTest {
@@ -78,11 +82,75 @@ class ContentServiceImplementTest {
         when(content.findAccessibleChapters("user-1")).thenReturn(List.of(first, second));
         when(chapterSkills.findByChapterIdIn(List.of("chapter-1", "chapter-2"))).thenReturn(List.of());
         when(skills.findByIds(java.util.Set.of())).thenReturn(List.of());
-        when(unlocked.findByUserIdAndChapterIdIn("user-1", List.of("chapter-1", "chapter-2")))
-                .thenReturn(List.of());
-        when(abilities.findByUserId("user-1")).thenReturn(List.of());
-
         assertThat(service.getAllAccessibleChapters()).hasSize(2);
         verify(unlocked).insertAllIfAbsent("user-1", List.of("chapter-1", "chapter-2"));
+    }
+
+    @Test
+    void deleteSubjectShouldDetachQuestionsAndCascadeDeleteChaptersTheoriesQuizzes() {
+        String subjectId = "subject-1";
+        Chapter chapter = Chapter.builder().chapterId("chapter-1").subjectId(subjectId)
+                .name("Chương 1").displayOrder(1).build();
+        Theory theory = Theory.builder().theoryId("theory-1").chapterId("chapter-1")
+                .content("Lý thuyết").contentFormat("plain").build();
+        Quiz quiz = Quiz.builder().quizId("quiz-1").subjectId(subjectId).chapterId("chapter-1")
+                .name("Quiz 1").build();
+
+        when(content.existsBySubjectId(subjectId)).thenReturn(true);
+        when(content.findAllChapter(subjectId)).thenReturn(List.of(chapter));
+        when(content.findAllTheory("chapter-1")).thenReturn(List.of(theory));
+        when(quizzes.findQuizzesBySubjectId(subjectId)).thenReturn(List.of(quiz));
+
+        service.deleteSubject(subjectId);
+
+        verify(quizzes).detachQuestionsBySubjectId(subjectId);
+        verify(quizzes).detachQuestionsByChapterIds(List.of("chapter-1"));
+        verify(content).deleteTheoryById("theory-1");
+        verify(indexing).delete("theory-1");
+        verify(chapterSkills).deleteByChapterId("chapter-1");
+        verify(unlocked).deleteByChapterId("chapter-1");
+        verify(content).deleteChapterById("chapter-1");
+        verify(quizzes).deleteQuizQuestionsByQuizId("quiz-1");
+        verify(quizzes).deleteQuizById("quiz-1");
+        verify(content).deleteSubjectById(subjectId);
+    }
+
+    @Test
+    void deleteSubjectShouldThrowWhenSubjectNotFound() {
+        when(content.existsBySubjectId("non-existing")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.deleteSubject("non-existing"))
+                .isInstanceOf(AppException.class);
+    }
+
+    @Test
+    void deleteChapterShouldDetachQuestionsAndCascadeDeleteTheoriesQuizzes() {
+        String chapterId = "chapter-1";
+        Theory theory = Theory.builder().theoryId("theory-1").chapterId(chapterId)
+                .content("Lý thuyết").contentFormat("plain").build();
+        Quiz quiz = Quiz.builder().quizId("quiz-1").chapterId(chapterId).name("Quiz 1").build();
+
+        when(content.existsByChapterId(chapterId)).thenReturn(true);
+        when(content.findAllTheory(chapterId)).thenReturn(List.of(theory));
+        when(quizzes.findQuizzesByChapterId(chapterId)).thenReturn(List.of(quiz));
+
+        service.deleteChapter(chapterId);
+
+        verify(quizzes).detachQuestionsByChapterId(chapterId);
+        verify(content).deleteTheoryById("theory-1");
+        verify(indexing).delete("theory-1");
+        verify(chapterSkills).deleteByChapterId(chapterId);
+        verify(unlocked).deleteByChapterId(chapterId);
+        verify(quizzes).deleteQuizQuestionsByQuizId("quiz-1");
+        verify(quizzes).deleteQuizById("quiz-1");
+        verify(content).deleteChapterById(chapterId);
+    }
+
+    @Test
+    void deleteChapterShouldThrowWhenChapterNotFound() {
+        when(content.existsByChapterId("non-existing")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.deleteChapter("non-existing"))
+                .isInstanceOf(AppException.class);
     }
 }

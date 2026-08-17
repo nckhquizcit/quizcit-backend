@@ -279,4 +279,20 @@ public class QuizRepositoryAdapter implements QuizRepository {
     public void deleteQuestionSkillsByQuestionId(String questionId) {
         jpaQuestionSkillRepository.deleteByQuestionId(questionId);
     }
+
+    @Override
+    public void detachQuestionsBySubjectId(String subjectId) {
+        jpaQuestionRepository.detachQuestionsBySubjectId(subjectId);
+    }
+
+    @Override
+    public void detachQuestionsByChapterId(String chapterId) {
+        jpaQuestionRepository.detachQuestionsByChapterId(chapterId);
+    }
+
+    @Override
+    public void detachQuestionsByChapterIds(java.util.Collection<String> chapterIds) {
+        if (chapterIds == null || chapterIds.isEmpty()) return;
+        jpaQuestionRepository.detachQuestionsByChapterIds(chapterIds);
+    }
 }

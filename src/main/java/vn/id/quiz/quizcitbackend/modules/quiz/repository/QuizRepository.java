@@ -172,4 +172,10 @@ public interface QuizRepository {
     }
 
     void deleteQuestionSkillsByQuestionId(String questionId);
+
+    default void detachQuestionsBySubjectId(String subjectId) {}
+
+    default void detachQuestionsByChapterId(String chapterId) {}
+
+    default void detachQuestionsByChapterIds(Collection<String> chapterIds) {}
 }

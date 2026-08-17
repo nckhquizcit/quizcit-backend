@@ -184,7 +184,13 @@ public class QuestionServiceImplement implements QuestionService {
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy câu hỏi",
                         HttpStatus.NOT_FOUND));
-        visibilityGuard.requireAccessibleSubject(question.getSubjectId());
+        if (question.getSubjectId() != null) {
+            visibilityGuard.requireAccessibleSubject(question.getSubjectId());
+        } else if (!visibilityGuard.isAdministrator()) {
+            throw new AppException(
+                    "Không tìm thấy câu hỏi",
+                    HttpStatus.NOT_FOUND);
+        }
         List<Option> options = quizRepository.findOptionsByQuestionId(questionId);
         List<OptionResponse> optionResponses = mapper.toOptionResponseList(options);
         optionResponses.forEach(o -> o.setContentFormat(question.getContentFormat()));

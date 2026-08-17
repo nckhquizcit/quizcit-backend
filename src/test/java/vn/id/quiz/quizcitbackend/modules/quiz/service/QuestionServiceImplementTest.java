@@ -1,8 +1,12 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
@@ -26,6 +30,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
+import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -76,6 +81,11 @@ class QuestionServiceImplementTest {
         skillRepository.skills.put("skill-b", Skill.builder().skillId("skill-b").name("Skill B").build());
     }
 
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void updateQuestionShouldPersistSubjectAndChapterWhenChapterBelongsToSubject() {
         UpdateQuestionRequest request = updateRequest("subject-new", "chapter-new", List.of());
@@ -85,6 +95,84 @@ class QuestionServiceImplementTest {
         assertThat(quizRepository.savedQuestion.getSubjectId()).isEqualTo("subject-new");
         assertThat(quizRepository.savedQuestion.getChapterId()).isEqualTo("chapter-new");
         assertThat(quizRepository.savedQuestion.getContent()).isEqualTo("Updated content");
+    }
+
+    @Test
+    void updateOrphanedQuestionShouldFailWhenSubjectOrChapterNotProvided() {
+        Question orphaned = Question.builder()
+                .questionId("q-orphan")
+                .subjectId(null)
+                .chapterId(null)
+                .content("Orphan content")
+                .explanation("Orphan exp")
+                .build();
+        quizRepository.question = orphaned;
+
+        UpdateQuestionRequest request = updateRequest(null, null, List.of());
+
+        assertThatThrownBy(() -> service.updateQuestion("q-orphan", request))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Vui lòng chọn môn học và chương cho câu hỏi");
+    }
+
+    @Test
+    void updateOrphanedQuestionShouldSucceedWhenNewSubjectAndChapterProvided() {
+        Question orphaned = Question.builder()
+                .questionId("q-orphan")
+                .subjectId(null)
+                .chapterId(null)
+                .content("Orphan content")
+                .explanation("Orphan exp")
+                .build();
+        quizRepository.question = orphaned;
+
+        UpdateQuestionRequest request = updateRequest("subject-new", "chapter-new", List.of());
+
+        service.updateQuestion("q-orphan", request);
+
+        assertThat(quizRepository.savedQuestion.getSubjectId()).isEqualTo("subject-new");
+        assertThat(quizRepository.savedQuestion.getChapterId()).isEqualTo("chapter-new");
+    }
+
+    @Test
+    void getQuestionByIdShouldAllowAdminForOrphanedQuestion() {
+        Question orphaned = Question.builder()
+                .questionId("q-orphan")
+                .subjectId(null)
+                .chapterId(null)
+                .content("Orphan content")
+                .explanation("Orphan exp")
+                .build();
+        quizRepository.question = orphaned;
+
+        var principal = new CustomUserPrincipal("admin-1", "admin", "admin@example.com", "ADMINISTRATOR", "ACTIVE");
+        var auth = new TestingAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority("ROLE_ADMINISTRATOR")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        QuestionResponse response = service.getQuestionById("q-orphan", true);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getQuestionId()).isEqualTo("q-orphan");
+        assertThat(response.getSubjectId()).isNull();
+        assertThat(response.getChapterId()).isNull();
+    }
+
+    @Test
+    void getQuestionByIdShouldThrowNotFoundForNonAdminWhenQuestionIsOrphaned() {
+        Question orphaned = Question.builder()
+                .questionId("q-orphan")
+                .subjectId(null)
+                .chapterId(null)
+                .content("Orphan content")
+                .explanation("Orphan exp")
+                .build();
+        quizRepository.question = orphaned;
+
+        SecurityContextHolder.clearContext();
+
+        assertThatThrownBy(() -> service.getQuestionById("q-orphan", false))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Không tìm thấy câu hỏi");
     }
 
     @Test

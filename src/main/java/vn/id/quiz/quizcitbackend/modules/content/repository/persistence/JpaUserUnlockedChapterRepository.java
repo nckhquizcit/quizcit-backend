@@ -38,4 +38,12 @@ public interface JpaUserUnlockedChapterRepository extends JpaRepository<UserUnlo
     int insertAllIfAbsent(
             @Param("userId") String userId,
             @Param("chapterIds") Collection<String> chapterIds);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM UserUnlockedChapter u WHERE u.chapterId = :chapterId")
+    void deleteByChapterId(@Param("chapterId") String chapterId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM UserUnlockedChapter u WHERE u.chapterId IN :chapterIds")
+    void deleteByChapterIdIn(@Param("chapterIds") Collection<String> chapterIds);
 }

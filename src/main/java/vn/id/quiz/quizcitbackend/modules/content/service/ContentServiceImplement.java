@@ -219,11 +219,71 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public void deleteSubject(String subjectId){
+        if (!contentRepository.existsBySubjectId(subjectId)) {
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+
+        // 1. Detach all questions in the subject (set subject_id = null, chapter_id = null)
+        quizRepository.detachQuestionsBySubjectId(subjectId);
+
+        // 2. Find and delete all chapters in the subject
+        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        if (!chapters.isEmpty()) {
+            List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+            quizRepository.detachQuestionsByChapterIds(chapterIds);
+
+            for (String chapterId : chapterIds) {
+                List<Theory> theories = contentRepository.findAllTheory(chapterId);
+                for (Theory theory : theories) {
+                    contentRepository.deleteTheoryById(theory.getTheoryId());
+                    theoryIndexingService.delete(theory.getTheoryId());
+                }
+                chapterSkillRepository.deleteByChapterId(chapterId);
+                unlockedChapterRepository.deleteByChapterId(chapterId);
+                contentRepository.deleteChapterById(chapterId);
+            }
+        }
+
+        // 3. Delete quizzes in this subject
+        List<Quiz> quizzes = quizRepository.findQuizzesBySubjectId(subjectId);
+        for (Quiz quiz : quizzes) {
+            quizRepository.deleteQuizQuestionsByQuizId(quiz.getQuizId());
+            quizRepository.deleteQuizById(quiz.getQuizId());
+        }
+
+        // 4. Delete the subject itself
         contentRepository.deleteSubjectById(subjectId);
     }
+
     @Override
     @Transactional
     public void deleteChapter(String chapterId) {
+        if (!contentRepository.existsByChapterId(chapterId)) {
+            throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+
+        // 1. Detach all questions belonging to this chapter (set subject_id = null, chapter_id = null)
+        quizRepository.detachQuestionsByChapterId(chapterId);
+
+        // 2. Delete theories in chapter
+        List<Theory> theories = contentRepository.findAllTheory(chapterId);
+        for (Theory theory : theories) {
+            contentRepository.deleteTheoryById(theory.getTheoryId());
+            theoryIndexingService.delete(theory.getTheoryId());
+        }
+
+        // 3. Delete chapter skills and unlocked chapters
+        chapterSkillRepository.deleteByChapterId(chapterId);
+        unlockedChapterRepository.deleteByChapterId(chapterId);
+
+        // 4. Delete quizzes in this chapter
+        List<Quiz> quizzes = quizRepository.findQuizzesByChapterId(chapterId);
+        for (Quiz quiz : quizzes) {
+            quizRepository.deleteQuizQuestionsByQuizId(quiz.getQuizId());
+            quizRepository.deleteQuizById(quiz.getQuizId());
+        }
+
+        // 5. Delete chapter
         contentRepository.deleteChapterById(chapterId);
     }
 
