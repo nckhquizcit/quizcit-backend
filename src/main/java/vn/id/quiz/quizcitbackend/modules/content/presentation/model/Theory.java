@@ -2,6 +2,8 @@ package vn.id.quiz.quizcitbackend.modules.content.presentation.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
+
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
@@ -11,6 +13,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted_at IS NULL")
 public class Theory {
     @Id
     @Column(name = "theory_id", length = 50)
@@ -28,6 +31,9 @@ public class Theory {
 
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
+
+    @Column(name = "deleted_at")
+    private ZonedDateTime deletedAt;
 
     public static Theory create(String chapterId, String content) {
         return create(chapterId, content, "plain");
@@ -54,6 +60,10 @@ public class Theory {
 
     public String getContentFormat() {
         return normalizeContentFormat(contentFormat);
+    }
+
+    public void softDelete() {
+        this.deletedAt = ZonedDateTime.now();
     }
 
     private static String normalizeContentFormat(String value) {

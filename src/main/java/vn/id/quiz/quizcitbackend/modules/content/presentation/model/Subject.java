@@ -1,6 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.content.presentation.model;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;
@@ -11,12 +12,13 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted_at IS NULL")
 public class Subject {
     @Id
     @Column(name = "subject_id", length = 50) // cơ bản mặc định length của UUID là 36 nhưng để vầy đề phòng đổi bên cung cấp UUID
     private String subjectId;
 
-    @Column(name = "course_code", unique = true, nullable = false, length = 20)
+    @Column(name = "course_code", nullable = false, length = 20)
     private String courseCode;
 
     @Column(nullable = false, length = 200)
@@ -34,6 +36,9 @@ public class Subject {
 
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
+
+    @Column(name = "deleted_at")
+    private ZonedDateTime deletedAt;
 
     public static Subject create(String courseCode, String name, String description, int displayOrder){
         if(courseCode==null||courseCode.isBlank()){
@@ -64,4 +69,8 @@ public class Subject {
         this.displayOrder = displayOrder;
     }
 
+    public void softDelete() {
+        this.deletedAt = ZonedDateTime.now();
+        this.visible = false;
+    }
 }

@@ -123,16 +123,26 @@ public class ContentRepositoryAdapter implements ContentRepository {
 
     @Override
     public void deleteSubjectById(String subjectId){
-        jpaSubjectRepository.deleteById(subjectId);}
+        jpaSubjectRepository.findById(subjectId).ifPresent(subject -> {
+            subject.softDelete();
+            jpaSubjectRepository.save(subject);
+        });
+    }
 
     @Override
     public void deleteChapterById(String chapterId) {
-        jpaChapterRepository.deleteById(chapterId);
+        jpaChapterRepository.findById(chapterId).ifPresent(chapter -> {
+            chapter.softDelete();
+            jpaChapterRepository.save(chapter);
+        });
     }
 
     @Override
     public void deleteTheoryById(String theoryId) {
-        jpaTheoryRepository.deleteById(theoryId);
+        jpaTheoryRepository.findById(theoryId).ifPresent(theory -> {
+            theory.softDelete();
+            jpaTheoryRepository.save(theory);
+        });
     }
 
 

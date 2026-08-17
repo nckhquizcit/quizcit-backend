@@ -2,10 +2,9 @@ package vn.id.quiz.quizcitbackend.modules.content.presentation.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -14,6 +13,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted_at IS NULL")
 public class Chapter {
     @Id
     @Column(name = "chapter_id", length = 50)
@@ -31,6 +31,8 @@ public class Chapter {
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
+    @Column(name = "deleted_at")
+    private ZonedDateTime deletedAt;
 
     public static Chapter create(String subjectId, String name, int displayOrder){
         return Chapter.builder()
@@ -47,5 +49,9 @@ public class Chapter {
     }
     public void updateDisplayOrder(int displayOrder) {
         this.displayOrder = displayOrder;
+    }
+
+    public void softDelete() {
+        this.deletedAt = ZonedDateTime.now();
     }
 }

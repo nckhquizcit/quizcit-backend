@@ -32,7 +32,7 @@ public interface JpaUserUnlockedChapterRepository extends JpaRepository<UserUnlo
             INSERT INTO user_unlocked_chapters (user_id, chapter_id)
             SELECT :userId, chapter.chapter_id
             FROM chapters chapter
-            WHERE chapter.chapter_id IN (:chapterIds)
+            WHERE chapter.chapter_id IN (:chapterIds) AND chapter.deleted_at IS NULL
             ON CONFLICT (user_id, chapter_id) DO NOTHING
             """, nativeQuery = true)
     int insertAllIfAbsent(
