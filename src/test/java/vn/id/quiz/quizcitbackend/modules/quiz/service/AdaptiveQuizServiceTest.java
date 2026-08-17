@@ -30,6 +30,7 @@ import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserU
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
+import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
@@ -47,6 +48,9 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaAdaptiveQuestionSelectionRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.adaptive.AdaptiveEligibilityResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.UserAdaptiveQuizTracking;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaUserAdaptiveQuizTrackingRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 class AdaptiveQuizServiceTest {
@@ -394,6 +398,116 @@ class AdaptiveQuizServiceTest {
                 .questionId(id).subjectId("subject-1").chapterId("chapter-1")
                 .content("Question " + id).contentFormat("blocknote")
                 .difficultyB(difficulty).build();
+    }
+
+    @Test
+    void getEligibilityShouldReturnRemainingQuizzesWhenNotEnoughStandardQuizzes() {
+        QuizRepository quizRepository = mock(QuizRepository.class);
+        ContentRepository contentRepository = mock(ContentRepository.class);
+        JpaUserAdaptiveQuizTrackingRepository trackingRepository = mock(JpaUserAdaptiveQuizTrackingRepository.class);
+
+        when(contentRepository.findSubjectById("subject-1")).thenReturn(Optional.of(
+                Subject.builder().subjectId("subject-1").name("Subject").visible(true).build()));
+
+        UserAdaptiveQuizTracking tracking = UserAdaptiveQuizTracking.builder()
+                .userId("user-1")
+                .subjectId("subject-1")
+                .completedStandardQuizzes(1)
+                .requiredStandardQuizzes(2)
+                .build();
+        when(trackingRepository.findByUserIdAndSubjectId("user-1", "subject-1")).thenReturn(Optional.of(tracking));
+
+        AdaptiveQuizService service = new AdaptiveQuizService(
+                quizRepository, contentRepository, mock(ProgressRepository.class), mock(SkillRepository.class),
+                mock(JpaUserUnlockedChapterRepository.class), mock(QuestionMapper.class), mock(AIService.class),
+                mock(JpaChapterSkillRepository.class), mock(JpaAdaptiveQuestionSelectionRepository.class),
+                new SubjectVisibilityGuard(contentRepository, quizRepository),
+                trackingRepository);
+
+        AdaptiveEligibilityResponse eligibility = service.getEligibility("user-1", "subject-1");
+
+        assertThat(eligibility.getCompletedQuizzes()).isEqualTo(1);
+        assertThat(eligibility.getRequiredQuizzes()).isEqualTo(2);
+        assertThat(eligibility.getRemainingQuizzes()).isEqualTo(1);
+        assertThat(eligibility.isEligible()).isFalse();
+    }
+
+    @Test
+    void getEligibilityShouldReturnEligibleWhenCompletedQuizzesMeetRequirement() {
+        QuizRepository quizRepository = mock(QuizRepository.class);
+        ContentRepository contentRepository = mock(ContentRepository.class);
+        JpaUserAdaptiveQuizTrackingRepository trackingRepository = mock(JpaUserAdaptiveQuizTrackingRepository.class);
+
+        when(contentRepository.findSubjectById("subject-1")).thenReturn(Optional.of(
+                Subject.builder().subjectId("subject-1").name("Subject").visible(true).build()));
+
+        UserAdaptiveQuizTracking tracking = UserAdaptiveQuizTracking.builder()
+                .userId("user-1")
+                .subjectId("subject-1")
+                .completedStandardQuizzes(2)
+                .requiredStandardQuizzes(2)
+                .build();
+        when(trackingRepository.findByUserIdAndSubjectId("user-1", "subject-1")).thenReturn(Optional.of(tracking));
+
+        AdaptiveQuizService service = new AdaptiveQuizService(
+                quizRepository, contentRepository, mock(ProgressRepository.class), mock(SkillRepository.class),
+                mock(JpaUserUnlockedChapterRepository.class), mock(QuestionMapper.class), mock(AIService.class),
+                mock(JpaChapterSkillRepository.class), mock(JpaAdaptiveQuestionSelectionRepository.class),
+                new SubjectVisibilityGuard(contentRepository, quizRepository),
+                trackingRepository);
+
+        AdaptiveEligibilityResponse eligibility = service.getEligibility("user-1", "subject-1");
+
+        assertThat(eligibility.getCompletedQuizzes()).isEqualTo(2);
+        assertThat(eligibility.getRemainingQuizzes()).isEqualTo(0);
+        assertThat(eligibility.isEligible()).isTrue();
+    }
+
+    @Test
+    void startShouldThrowForbiddenWhenUserNotEligible() {
+        QuizRepository quizRepository = mock(QuizRepository.class);
+        ContentRepository contentRepository = mock(ContentRepository.class);
+        JpaUserAdaptiveQuizTrackingRepository trackingRepository = mock(JpaUserAdaptiveQuizTrackingRepository.class);
+
+        when(contentRepository.findSubjectById("subject-1")).thenReturn(Optional.of(
+                Subject.builder().subjectId("subject-1").name("Subject").visible(true).build()));
+
+        UserAdaptiveQuizTracking tracking = UserAdaptiveQuizTracking.builder()
+                .userId("user-1")
+                .subjectId("subject-1")
+                .completedStandardQuizzes(0)
+                .requiredStandardQuizzes(2)
+                .build();
+        when(trackingRepository.findByUserIdAndSubjectId("user-1", "subject-1")).thenReturn(Optional.of(tracking));
+
+        AdaptiveQuizService service = new AdaptiveQuizService(
+                quizRepository, contentRepository, mock(ProgressRepository.class), mock(SkillRepository.class),
+                mock(JpaUserUnlockedChapterRepository.class), mock(QuestionMapper.class), mock(AIService.class),
+                mock(JpaChapterSkillRepository.class), mock(JpaAdaptiveQuestionSelectionRepository.class),
+                new SubjectVisibilityGuard(contentRepository, quizRepository),
+                trackingRepository);
+
+        assertThatThrownBy(() -> service.start("user-1", "subject-1", 15))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("Bạn cần hoàn thành tối thiểu 2 bài kiểm tra khác");
+    }
+
+    @Test
+    void recordStandardQuizCompletedShouldInvokeTrackingRepository() {
+        JpaUserAdaptiveQuizTrackingRepository trackingRepository = mock(JpaUserAdaptiveQuizTrackingRepository.class);
+        QuizRepository quizRepository = mock(QuizRepository.class);
+        ContentRepository contentRepository = mock(ContentRepository.class);
+
+        AdaptiveQuizService service = new AdaptiveQuizService(
+                quizRepository, contentRepository, mock(ProgressRepository.class), mock(SkillRepository.class),
+                mock(JpaUserUnlockedChapterRepository.class), mock(QuestionMapper.class), mock(AIService.class),
+                mock(JpaChapterSkillRepository.class), mock(JpaAdaptiveQuestionSelectionRepository.class),
+                new SubjectVisibilityGuard(contentRepository, quizRepository),
+                trackingRepository);
+
+        service.recordStandardQuizCompleted("user-1", "subject-1");
+
+        verify(trackingRepository).incrementCompletedStandardQuizzes("user-1", "subject-1");
     }
 
     private static Option option(String questionId, String optionId, boolean correct) {

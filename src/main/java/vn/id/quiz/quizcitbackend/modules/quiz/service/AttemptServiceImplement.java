@@ -366,6 +366,13 @@ public class AttemptServiceImplement
 
         quizRepository.save(
                 attempt);
+
+        if (submittedQuiz != null && (submittedQuiz.getType() == QuizType.CHAPTER || submittedQuiz.getType() == QuizType.FINAL)) {
+            if (adaptiveQuizService != null) {
+                adaptiveQuizService.recordStandardQuizCompleted(attempt.getUserId(), submittedQuiz.getSubjectId());
+            }
+        }
+
         return getResult(attempt.getAttemptId());
     }
 

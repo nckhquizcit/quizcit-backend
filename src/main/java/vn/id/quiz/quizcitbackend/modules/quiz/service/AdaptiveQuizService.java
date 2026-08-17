@@ -31,6 +31,7 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSki
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.adaptive.AdaptiveEligibilityResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.adaptive.AdaptiveQuizResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.OptionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
@@ -44,8 +45,10 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizQuestion;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.UserAdaptiveQuizTracking;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaAdaptiveQuestionSelectionRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaUserAdaptiveQuizTrackingRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
@@ -67,6 +70,7 @@ public class AdaptiveQuizService {
     private final JpaChapterSkillRepository chapterSkillRepository;
     private final JpaAdaptiveQuestionSelectionRepository adaptiveQuestionSelectionRepository;
     private final SubjectVisibilityGuard visibilityGuard;
+    private final JpaUserAdaptiveQuizTrackingRepository adaptiveQuizTrackingRepository;
 
     /** Compatibility constructor for isolated service tests. */
     AdaptiveQuizService(
@@ -82,13 +86,76 @@ public class AdaptiveQuizService {
         this(quizRepository, contentRepository, progressRepository, skillRepository,
                 unlockedChapterRepository, questionMapper, aiService, chapterSkillRepository,
                 adaptiveQuestionSelectionRepository,
-                new SubjectVisibilityGuard(contentRepository, quizRepository));
+                new SubjectVisibilityGuard(contentRepository, quizRepository),
+                null);
+    }
+
+    public AdaptiveQuizService(
+            QuizRepository quizRepository,
+            ContentRepository contentRepository,
+            ProgressRepository progressRepository,
+            SkillRepository skillRepository,
+            JpaUserUnlockedChapterRepository unlockedChapterRepository,
+            QuestionMapper questionMapper,
+            AIService aiService,
+            JpaChapterSkillRepository chapterSkillRepository,
+            JpaAdaptiveQuestionSelectionRepository adaptiveQuestionSelectionRepository,
+            SubjectVisibilityGuard visibilityGuard) {
+        this(quizRepository, contentRepository, progressRepository, skillRepository,
+                unlockedChapterRepository, questionMapper, aiService, chapterSkillRepository,
+                adaptiveQuestionSelectionRepository,
+                visibilityGuard,
+                null);
+    }
+
+    @Transactional(readOnly = true)
+    public AdaptiveEligibilityResponse getEligibility(String userId, String subjectId) {
+        visibilityGuard.requireAccessibleSubject(subjectId);
+        int required = UserAdaptiveQuizTracking.DEFAULT_REQUIRED_STANDARD_QUIZZES;
+        int completed = 0;
+
+        if (adaptiveQuizTrackingRepository != null) {
+            var tracking = adaptiveQuizTrackingRepository.findByUserIdAndSubjectId(userId, subjectId);
+            if (tracking.isPresent()) {
+                completed = tracking.get().getCompletedStandardQuizzes();
+                required = tracking.get().getRequiredStandardQuizzes();
+            }
+        }
+
+        int remaining = Math.max(0, required - completed);
+        boolean eligible = visibilityGuard.isAdministrator()
+                || (adaptiveQuizTrackingRepository == null || completed >= required);
+
+        return AdaptiveEligibilityResponse.builder()
+                .subjectId(subjectId)
+                .requiredQuizzes(required)
+                .completedQuizzes(completed)
+                .remainingQuizzes(remaining)
+                .eligible(eligible)
+                .build();
+    }
+
+    @Transactional
+    public void recordStandardQuizCompleted(String userId, String subjectId) {
+        if (userId != null && !userId.isBlank() && subjectId != null && !subjectId.isBlank()
+                && adaptiveQuizTrackingRepository != null) {
+            adaptiveQuizTrackingRepository.incrementCompletedStandardQuizzes(userId, subjectId);
+        }
     }
 
     @Transactional
     public AdaptiveQuizResponse start(String userId, String subjectId, int totalQuestion) {
         validateTotal(totalQuestion);
         visibilityGuard.requireAccessibleSubject(subjectId);
+
+        AdaptiveEligibilityResponse eligibility = getEligibility(userId, subjectId);
+        if (!visibilityGuard.isAdministrator() && !eligibility.isEligible()) {
+            throw new AppException(
+                    "Bạn cần hoàn thành tối thiểu " + eligibility.getRequiredQuizzes()
+                            + " bài kiểm tra khác (Chương hoặc Tổng kết) trước khi làm bài thích ứng. Còn lại: "
+                            + eligibility.getRemainingQuizzes() + " bài.",
+                    HttpStatus.FORBIDDEN);
+        }
 
         List<Chapter> unlocked = unlockedChapters(userId, subjectId);
         if (unlocked.isEmpty()) {
@@ -363,6 +430,11 @@ public class AdaptiveQuizService {
         attempt.attachAdvice(aiService.generateAdvice(buildSkillDeltaItemsForAttempt(attempt.getAttemptId())));
 
         quizRepository.save(attempt);
+
+        Quiz quiz = quizRepository.findQuizById(attempt.getQuizId()).orElse(null);
+        if (quiz != null && adaptiveQuizTrackingRepository != null) {
+            adaptiveQuizTrackingRepository.resetCompletedStandardQuizzes(attempt.getUserId(), quiz.getSubjectId());
+        }
     }
 
     /**

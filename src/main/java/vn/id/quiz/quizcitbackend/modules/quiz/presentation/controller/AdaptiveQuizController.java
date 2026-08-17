@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.adaptive.AdaptiveBatchRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.adaptive.AdaptiveEligibilityResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.adaptive.AdaptiveQuizResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.adaptive.StartAdaptiveQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.AdaptiveQuizService;
@@ -24,6 +25,14 @@ import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 @RequiredArgsConstructor
 public class AdaptiveQuizController {
     private final AdaptiveQuizService adaptiveQuizService;
+
+    @GetMapping(value = {"/subjects/{subjectId}/adaptive-eligibility", "/subjects/{subjectId}/adaptive-attempts/eligibility"})
+    public ResponseEntity<ApiResponse<AdaptiveEligibilityResponse>> getEligibility(
+            @PathVariable String subjectId,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success(
+                adaptiveQuizService.getEligibility(userId(principal), subjectId)));
+    }
 
     @PostMapping("/subjects/{subjectId}/adaptive-attempts")
     public ResponseEntity<ApiResponse<AdaptiveQuizResponse>> start(
