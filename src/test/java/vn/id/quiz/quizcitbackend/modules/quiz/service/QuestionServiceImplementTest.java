@@ -18,6 +18,8 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.OptionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.CreateOptionRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.AssignQuestionPlacementRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkAssignQuestionPlacementRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.CreateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionSkillMappingRequest;
@@ -176,6 +178,64 @@ class QuestionServiceImplementTest {
     }
 
     @Test
+    void assignQuestionPlacementShouldSucceedWhenValidSubjectAndChapter() {
+        Question orphaned = Question.builder()
+                .questionId("q-orphan")
+                .subjectId(null)
+                .chapterId(null)
+                .content("Orphan content")
+                .build();
+        quizRepository.question = orphaned;
+
+        AssignQuestionPlacementRequest request = AssignQuestionPlacementRequest.builder()
+                .subjectId("subject-new")
+                .chapterId("chapter-new")
+                .build();
+
+        service.assignQuestionPlacement("q-orphan", request);
+
+        assertThat(quizRepository.savedQuestion.getSubjectId()).isEqualTo("subject-new");
+        assertThat(quizRepository.savedQuestion.getChapterId()).isEqualTo("chapter-new");
+    }
+
+    @Test
+    void assignQuestionPlacementShouldFailWhenChapterMismatch() {
+        contentRepository.chapters.put(
+                "chapter-other",
+                Chapter.builder().chapterId("chapter-other").subjectId("subject-other").name("Other").build());
+
+        AssignQuestionPlacementRequest request = AssignQuestionPlacementRequest.builder()
+                .subjectId("subject-new")
+                .chapterId("chapter-other")
+                .build();
+
+        assertThatThrownBy(() -> service.assignQuestionPlacement(quizRepository.question.getQuestionId(), request))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Chương học không thuộc môn học đã chọn");
+    }
+
+    @Test
+    void bulkAssignQuestionPlacementShouldSucceedForMultipleQuestions() {
+        Question q1 = Question.builder().questionId("q-1").build();
+        Question q2 = Question.builder().questionId("q-2").build();
+        quizRepository.questionsById.put("q-1", q1);
+        quizRepository.questionsById.put("q-2", q2);
+
+        BulkAssignQuestionPlacementRequest request = BulkAssignQuestionPlacementRequest.builder()
+                .questionIds(List.of("q-1", "q-2"))
+                .subjectId("subject-new")
+                .chapterId("chapter-new")
+                .build();
+
+        service.bulkAssignQuestionPlacement(request);
+
+        assertThat(q1.getSubjectId()).isEqualTo("subject-new");
+        assertThat(q1.getChapterId()).isEqualTo("chapter-new");
+        assertThat(q2.getSubjectId()).isEqualTo("subject-new");
+        assertThat(q2.getChapterId()).isEqualTo("chapter-new");
+    }
+
+    @Test
     void updateQuestionShouldRejectChapterThatDoesNotBelongToSubject() {
         contentRepository.chapters.put(
                 "chapter-other",
@@ -301,6 +361,7 @@ class QuestionServiceImplementTest {
     private static class FakeQuizRepository implements QuizRepository {
         private Question question;
         private Question savedQuestion;
+        private final Map<String, Question> questionsById = new HashMap<>();
         private final List<QuestionSkill> savedQuestionSkills = new ArrayList<>();
 
         @Override
@@ -311,6 +372,9 @@ class QuestionServiceImplementTest {
 
         @Override
         public Optional<Question> findQuestionById(String questionId) {
+            if (questionsById.containsKey(questionId)) {
+                return Optional.ofNullable(questionsById.get(questionId));
+            }
             return Optional.ofNullable(question);
         }
 
@@ -321,7 +385,8 @@ class QuestionServiceImplementTest {
 
         @Override
         public List<Question> findQuestionsByIds(java.util.Collection<String> questionIds) {
-            return List.of();
+            if (questionIds == null || questionIds.isEmpty()) return List.of();
+            return questionIds.stream().map(questionsById::get).filter(java.util.Objects::nonNull).toList();
         }
 
         @Override

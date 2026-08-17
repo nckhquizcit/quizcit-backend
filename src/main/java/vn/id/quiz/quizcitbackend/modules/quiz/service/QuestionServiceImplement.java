@@ -28,6 +28,8 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.Question
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionSkillMappingRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionSkillResponse;
 
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.AssignQuestionPlacementRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkAssignQuestionPlacementRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.UpdateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
@@ -442,6 +444,66 @@ public class QuestionServiceImplement implements QuestionService {
             throw new AppException(
                     "Tổng trọng số kỹ năng của câu hỏi phải bằng 1",
                     HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void assignQuestionPlacement(String questionId, AssignQuestionPlacementRequest request) {
+        validateQuestionPlacement(request.getSubjectId(), request.getChapterId());
+
+        Question question = quizRepository.findQuestionById(questionId)
+                .orElseThrow(() -> new AppException(
+                        "Không tìm thấy câu hỏi",
+                        HttpStatus.NOT_FOUND));
+
+        question.setSubjectId(request.getSubjectId());
+        question.setChapterId(request.getChapterId());
+        quizRepository.save(question);
+
+        // Clean up existing skills if they don't match the new chapter's skills
+        List<QuestionSkill> currentSkills = quizRepository.findQuestionSkillsByQuestionId(questionId);
+        if (!currentSkills.isEmpty()) {
+            Set<String> chapterSkillIds = chapterSkillRepository.findByChapterId(request.getChapterId()).stream()
+                    .map(vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill::getSkillId)
+                    .collect(java.util.stream.Collectors.toSet());
+            boolean allValid = currentSkills.stream().allMatch(s -> chapterSkillIds.contains(s.getSkillId()));
+            if (!allValid) {
+                quizRepository.deleteQuestionSkillsByQuestionId(questionId);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void bulkAssignQuestionPlacement(BulkAssignQuestionPlacementRequest request) {
+        if (request.getQuestionIds() == null || request.getQuestionIds().isEmpty()) {
+            throw new AppException("Danh sách ID câu hỏi không được để trống", HttpStatus.BAD_REQUEST);
+        }
+
+        validateQuestionPlacement(request.getSubjectId(), request.getChapterId());
+
+        List<Question> questions = quizRepository.findQuestionsByIds(request.getQuestionIds());
+        if (questions.size() != request.getQuestionIds().stream().distinct().count()) {
+            throw new AppException("Một hoặc nhiều câu hỏi không tồn tại", HttpStatus.NOT_FOUND);
+        }
+
+        Set<String> chapterSkillIds = chapterSkillRepository.findByChapterId(request.getChapterId()).stream()
+                .map(vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill::getSkillId)
+                .collect(java.util.stream.Collectors.toSet());
+
+        for (Question question : questions) {
+            question.setSubjectId(request.getSubjectId());
+            question.setChapterId(request.getChapterId());
+            quizRepository.save(question);
+
+            List<QuestionSkill> currentSkills = quizRepository.findQuestionSkillsByQuestionId(question.getQuestionId());
+            if (!currentSkills.isEmpty()) {
+                boolean allValid = currentSkills.stream().allMatch(s -> chapterSkillIds.contains(s.getSkillId()));
+                if (!allValid) {
+                    quizRepository.deleteQuestionSkillsByQuestionId(question.getQuestionId());
+                }
+            }
         }
     }
 

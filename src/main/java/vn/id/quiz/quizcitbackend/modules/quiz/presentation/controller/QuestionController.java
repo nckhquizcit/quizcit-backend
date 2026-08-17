@@ -10,6 +10,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.AssignQuestionPlacementRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkAssignQuestionPlacementRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.CreateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkCreateQuestionItemResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkCreateQuestionsRequest;
@@ -129,6 +131,33 @@ public class QuestionController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success(
                         "Xóa câu hỏi thành công",
+                        null));
+    }
+
+    @PatchMapping("/questions/{questionId}/placement")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> assignQuestionPlacement(
+            @PathVariable String questionId,
+            @Valid @RequestBody AssignQuestionPlacementRequest request) {
+
+        questionService.assignQuestionPlacement(questionId, request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Gắn môn học và chương cho câu hỏi thành công",
+                        null));
+    }
+
+    @PatchMapping("/questions/placement")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> bulkAssignQuestionPlacement(
+            @Valid @RequestBody BulkAssignQuestionPlacementRequest request) {
+
+        questionService.bulkAssignQuestionPlacement(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Gắn môn học và chương cho danh sách câu hỏi thành công",
                         null));
     }
 }

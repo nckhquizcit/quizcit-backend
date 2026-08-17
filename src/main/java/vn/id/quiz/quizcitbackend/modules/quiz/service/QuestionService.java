@@ -2,6 +2,8 @@ package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
 import java.util.List;
 
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.AssignQuestionPlacementRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkAssignQuestionPlacementRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.CreateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.UpdateQuestionRequest;
@@ -28,4 +30,10 @@ public interface QuestionService {
 
     // Phase 2 (P0): Lấy danh sách câu hỏi trong một quiz kèm theo option
     List<QuestionResponse> getQuestionsByQuiz(String quizId);
+
+    // Gắn nhanh môn học và chương cho câu hỏi
+    void assignQuestionPlacement(String questionId, AssignQuestionPlacementRequest request);
+
+    // Gắn nhanh môn học và chương cho nhiều câu hỏi
+    void bulkAssignQuestionPlacement(BulkAssignQuestionPlacementRequest request);
 }

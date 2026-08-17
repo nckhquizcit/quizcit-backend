@@ -196,10 +196,12 @@ DELETE /api/subjects/{subjectId}
 
 **Quyền:** `ADMINISTRATOR`
 
-**Response — `204 No Content`**.
+**Cơ chế thực thi:**
+- **Xóa toàn bộ chương:** Xóa tất cả chương thuộc môn cùng lý thuyết (tự động unindex khỏi chatbot vector search), cấu hình kỹ năng chương, trạng thái mở khóa của học viên và đề thi (quizzes) thuộc môn.
+- **Bảo toàn câu hỏi trong CSDL:** Tất cả câu hỏi thuộc môn học (và thuộc các chương của môn) **không bị xóa**, mà được tách ra thành câu hỏi độc lập (set `subject_id = null, chapter_id = null`) trong ngân hàng câu hỏi. Quản trị viên có thể gán môn và chương mới để tái sử dụng.
+- Xóa môn học khỏi hệ thống.
 
-Controller tạo `ApiResponse` với message `Đã xóa thành công học phần`, nhưng theo
-chuẩn HTTP body của response `204` có thể bị loại bỏ ở tầng server/client.
+**Response — `204 No Content`**.
 
 ---
 
@@ -339,6 +341,11 @@ DELETE /api/chapters/{chapterId}
 ```
 
 **Quyền:** `ADMINISTRATOR`
+
+**Cơ chế thực thi:**
+- **Bảo toàn câu hỏi:** Tất cả câu hỏi thuộc chương **không bị xóa**, mà được tách ra thành câu hỏi độc lập (set `subject_id = null, chapter_id = null`) trong ngân hàng câu hỏi.
+- Xóa lý thuyết của chương (tự động xóa vector chunks khỏi chatbot), cấu hình kỹ năng chương, trạng thái mở khóa của học viên và đề thi (quizzes) thuộc chương.
+- Xóa bản ghi chương khỏi hệ thống.
 
 **Response — `204 No Content`**.
 
@@ -620,9 +627,9 @@ Frontend cung cấp file mẫu tải xuống cho cả Moodle XML, GIFT và Aiken
 
 | Endpoint | Quyền | Nội dung |
 |---|---|---|
-| `GET /api/questions` | `ADMINISTRATOR` | Toàn bộ ngân hàng câu hỏi |
+| `GET /api/questions` | `ADMINISTRATOR` | Toàn bộ ngân hàng câu hỏi (kể cả câu hỏi chưa gán môn/chương `subjectId = null, chapterId = null`) |
 | `GET /api/chapters/{chapterId}/questions` | Đã đăng nhập và có quyền truy cập chapter | Câu hỏi thuộc chapter |
-| `GET /api/questions/{questionId}` | Đã đăng nhập | Chi tiết câu hỏi; đáp án đúng chỉ lộ cho administrator |
+| `GET /api/questions/{questionId}` | Đã đăng nhập | Chi tiết câu hỏi; đáp án đúng chỉ lộ cho administrator. Đối với câu hỏi mồ côi (`subjectId = null`), chỉ administrator xem được, user thông thường sẽ nhận `404 Not Found`. |
 
 Response dùng `QuestionResponse`, gồm các trường chính `questionId`, `subjectId`,
 `chapterId`, `content`, `explanation`, `contentFormat`, `difficultyB`, `options`,
@@ -641,6 +648,10 @@ Request có cấu trúc tương tự mục 4.1. `content` luôn bắt buộc. N�
 `options` hoặc `skills` (`null`), backend giữ nguyên danh sách tương ứng; nếu gửi
 danh sách, backend thay thế toàn bộ danh sách cũ.
 
+**Gán lại môn và chương:**
+- Có thể dùng endpoint này để gán môn học và chương mới cho câu hỏi mồ côi bằng cách truyền `subjectId` và `chapterId` hợp lệ.
+- Nếu câu hỏi đang ở trạng thái mồ côi (`subjectId = null, chapterId = null`) mà request cập nhật không truyền đầy đủ `subjectId` và `chapterId`, hệ thống sẽ trả lỗi `400 Bad Request` (`"Vui lòng chọn môn học và chương cho câu hỏi"`).
+
 **Response — `200 OK`:** message `Cập nhật câu hỏi thành công`, `data = null`.
 
 ### 4.6 Xóa câu hỏi
@@ -655,6 +666,75 @@ Backend xóa các response, liên kết quiz, skill mapping và option liên qua
 khi xóa câu hỏi.
 
 **Response — `204 No Content`**.
+
+### 4.7 Gắn nhanh môn học và chương cho câu hỏi
+
+```http
+PATCH /api/questions/{questionId}/placement
+Content-Type: application/json
+```
+
+**Quyền:** `ADMINISTRATOR`
+
+Dùng để gắn nhanh hoặc di chuyển câu hỏi (đặc biệt là câu hỏi mồ côi) sang môn học và chương mới mà không cần gửi lại nội dung câu hỏi hay options.
+
+**Request Body:**
+
+```json
+{
+  "subjectId": "string (required)",
+  "chapterId": "string (required)"
+}
+```
+
+- `subjectId` và `chapterId` bắt buộc không được để trống và phải tồn tại trong cơ sở dữ liệu.
+- `chapterId` phải thuộc về `subjectId` tương ứng.
+- Nếu câu hỏi có kỹ năng không tương thích với chương mới, các kỹ năng đó sẽ tự động được làm sạch.
+
+**Response — `200 OK`:**
+
+```json
+{
+  "status": 200,
+  "message": "Gắn môn học và chương cho câu hỏi thành công",
+  "data": null
+}
+```
+
+### 4.8 Gắn nhanh môn học và chương hàng loạt
+
+```http
+PATCH /api/questions/placement
+Content-Type: application/json
+```
+
+**Quyền:** `ADMINISTRATOR`
+
+Gán hàng loạt nhiều câu hỏi sang môn học và chương mới cùng lúc.
+
+**Request Body:**
+
+```json
+{
+  "questionIds": ["question-id-1", "question-id-2"],
+  "subjectId": "string (required)",
+  "chapterId": "string (required)"
+}
+```
+
+- `questionIds` không được rỗng.
+- Tất cả ID câu hỏi trong danh sách phải tồn tại.
+- `chapterId` phải thuộc về `subjectId`.
+
+**Response — `200 OK`:**
+
+```json
+{
+  "status": 200,
+  "message": "Gắn môn học và chương cho danh sách câu hỏi thành công",
+  "data": null
+}
+```
 
 ---
 
