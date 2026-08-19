@@ -9,7 +9,8 @@ public record SubjectResponse(
         String description,
         boolean visible,
         ZonedDateTime createdAt,
-        int displayOrder
+        int displayOrder,
+        String imageUrl
 ) {
     public SubjectResponse{
         if(createdAt==null){

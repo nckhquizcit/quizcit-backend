@@ -12,6 +12,8 @@ public record CreateSubjectRequest(
         @Size(max = 200, message = "Tên học phần không được vượt quá 200 ký tự")
         String name,
         String description,
-        Integer displayOrder
+        Integer displayOrder,
+        @Size(max = 500, message = "URL hình ảnh không được vượt quá 500 ký tự")
+        String imageUrl
 ) {
 }

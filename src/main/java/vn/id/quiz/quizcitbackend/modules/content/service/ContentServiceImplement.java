@@ -118,7 +118,7 @@ public class ContentServiceImplement implements ContentService {
             throw new AppException("Mã học phần đã tồn tại.", HttpStatus.CONFLICT);
         }
         int displayOrder = positiveOrDefault(request.displayOrder(), contentRepository.nextSubjectDisplayOrder());
-        Subject subject = Subject.create(request.courseCode(), request.name(), request.description(), displayOrder);
+        Subject subject = Subject.create(request.courseCode(), request.name(), request.description(), displayOrder, request.imageUrl());
         return mapper.toSubjectResponse(contentRepository.save(subject));
     }
 
@@ -228,7 +228,7 @@ public class ContentServiceImplement implements ContentService {
             throw new AppException("Không thể đổi tên hoặc mã thành Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
         }
         int displayOrder = positiveOrDefault(request.displayOrder(), subject.getDisplayOrder());
-        subject.updateSubject(request.courseCode(), request.name(), request.description(), request.visible(), displayOrder);
+        subject.updateSubject(request.courseCode(), request.name(), request.description(), request.visible(), displayOrder, request.imageUrl());
         contentRepository.save(subject);
     }
     @Transactional

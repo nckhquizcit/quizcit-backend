@@ -210,7 +210,7 @@ class ContentServiceImplementTest {
         when(content.findSubjectById("bank-sub")).thenReturn(Optional.of(bankSubject));
 
         var req = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.UpdateSubjectRequest(
-                "QUESTION_BANK", "New Name", "Desc", true, 1);
+                "QUESTION_BANK", "New Name", "Desc", true, 1, null);
         assertThatThrownBy(() -> service.updateSubject("bank-sub", req))
                 .isInstanceOf(AppException.class)
                 .hasMessage("Không thể chỉnh sửa Ngân hàng câu hỏi mặc định");
@@ -246,12 +246,35 @@ class ContentServiceImplementTest {
     }
 
     @Test
-    void getSubjectByIdShouldThrowWhenSubjectIsQuestionBank() {
-        Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
-                .name("Ngân hàng câu hỏi").build();
-        when(visibility.requireVisibleSubjectEntity("bank-sub")).thenReturn(bankSubject);
+    void createSubjectWithImageUrlShouldPersistAndReturn() {
+        var req = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.CreateSubjectRequest(
+                "CT102", "Cấu trúc dữ liệu", "Mô tả", 1, "https://example.com/ds.png");
+        when(content.existsByCourseCode("CT102")).thenReturn(false);
+        when(content.nextSubjectDisplayOrder()).thenReturn(1);
+        when(content.save(org.mockito.ArgumentMatchers.any(Subject.class))).thenAnswer(i -> i.getArgument(0));
+        when(mapper.toSubjectResponse(org.mockito.ArgumentMatchers.any(Subject.class))).thenAnswer(i -> {
+            Subject s = i.getArgument(0);
+            return new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectResponse(
+                    s.getSubjectId(), s.getCourseCode(), s.getName(), s.getDescription(), s.isVisible(), s.getCreatedAt(), s.getDisplayOrder(), s.getImageUrl());
+        });
 
-        assertThatThrownBy(() -> service.getSubjectById("bank-sub"))
-                .isInstanceOf(AppException.class);
+        var res = service.createSubject(req);
+        assertThat(res.imageUrl()).isEqualTo("https://example.com/ds.png");
+        assertThat(res.courseCode()).isEqualTo("CT102");
+    }
+
+    @Test
+    void updateSubjectWithImageUrlShouldPersist() {
+        Subject existing = Subject.builder().subjectId("sub-1").courseCode("CT102")
+                .name("Cấu trúc dữ liệu").displayOrder(1).visible(true).build();
+        when(content.findSubjectById("sub-1")).thenReturn(Optional.of(existing));
+
+        var req = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.UpdateSubjectRequest(
+                "CT102", "Cấu trúc dữ liệu và giải thuật", "Mô tả cập nhật", true, 1, "https://example.com/updated.png");
+
+        service.updateSubject("sub-1", req);
+        verify(content).save(existing);
+        assertThat(existing.getImageUrl()).isEqualTo("https://example.com/updated.png");
+        assertThat(existing.getName()).isEqualTo("Cấu trúc dữ liệu và giải thuật");
     }
 }

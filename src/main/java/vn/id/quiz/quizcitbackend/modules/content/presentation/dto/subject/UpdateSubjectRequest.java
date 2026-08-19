@@ -12,6 +12,8 @@ public record UpdateSubjectRequest (
         String name,
         String description,
         boolean visible,
-        Integer displayOrder
+        Integer displayOrder,
+        @Size(max = 500, message = "URL hình ảnh không được vượt quá 500 ký tự")
+        String imageUrl
 ) {
 }

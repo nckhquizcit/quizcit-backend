@@ -27,6 +27,9 @@ public class Subject {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "is_visible", nullable = false)
     @Builder.Default
     private boolean visible = true;
@@ -40,7 +43,7 @@ public class Subject {
     @Column(name = "deleted_at")
     private ZonedDateTime deletedAt;
 
-    public static Subject create(String courseCode, String name, String description, int displayOrder){
+    public static Subject create(String courseCode, String name, String description, int displayOrder, String imageUrl){
         if(courseCode==null||courseCode.isBlank()){
             throw new IllegalArgumentException("Mã học phần không được để trống");
         }
@@ -52,17 +55,28 @@ public class Subject {
                 .courseCode(courseCode)
                 .name(name)
                 .description(description)
+                .imageUrl(imageUrl)
                 .visible(true)
                 .createdAt(ZonedDateTime.now())
                 .displayOrder(displayOrder)
                 .build();
     }
-    public void updateSubject(String courseCode, String name, String description, boolean visible, int displayOrder){
+
+    public static Subject create(String courseCode, String name, String description, int displayOrder){
+        return create(courseCode, name, description, displayOrder, null);
+    }
+
+    public void updateSubject(String courseCode, String name, String description, boolean visible, int displayOrder, String imageUrl){
         this.courseCode = courseCode;
         this.name = name;
         this.description = description;
         this.visible = visible;
         this.displayOrder = displayOrder;
+        this.imageUrl = imageUrl;
+    }
+
+    public void updateSubject(String courseCode, String name, String description, boolean visible, int displayOrder){
+        updateSubject(courseCode, name, description, visible, displayOrder, this.imageUrl);
     }
 
     public void updateDisplayOrder(int displayOrder) {

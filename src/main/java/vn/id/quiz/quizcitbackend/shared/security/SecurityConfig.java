@@ -74,6 +74,7 @@ public class SecurityConfig {
 
                         // READ endpoints - cả USER + ADMINISTRATOR
                         // Chỉ danh mục và chi tiết môn được xem trước khi đăng ký.
+                        .requestMatchers(HttpMethod.GET, "/api/uploads/**", "/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/subjects", "/api/subjects/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/chapters/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/theories/**").authenticated()
