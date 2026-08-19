@@ -29,6 +29,10 @@ public class CourseEnrollmentService {
         visibilityGuard.requireVisibleSubject(subjectId);
         Subject subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subject.getName())) {
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
 
         if (enrollmentRepository.insertIfAbsent(userId, subjectId) == 0) {
             throw new AppException(ErrorMessages.COURSE_ALREADY_ENROLLED, HttpStatus.CONFLICT);

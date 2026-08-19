@@ -49,12 +49,14 @@ class ContentServiceImplementTest {
 
     @Test
     void chapterListingRequiresCourseAccess() {
+        Subject subject = Subject.builder().subjectId("subject-1").courseCode("CT101")
+                .name("Lập trình").visible(true).displayOrder(1).build();
+        when(visibility.requireVisibleSubjectEntity("subject-1")).thenReturn(subject);
         when(content.findAllChapter("subject-1")).thenReturn(List.of());
 
         assertThat(service.getAllChapters("subject-1")).isEmpty();
 
         verify(visibility).requireAccessibleSubject("subject-1");
-        verify(visibility, never()).requireVisibleSubject("subject-1");
     }
 
     @Test
@@ -198,6 +200,58 @@ class ContentServiceImplementTest {
         when(content.findChapterById("non-existing")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.deleteChapter("non-existing"))
+                .isInstanceOf(AppException.class);
+    }
+
+    @Test
+    void updateSubjectShouldThrowWhenAttemptingToUpdateDefaultQuestionBank() {
+        Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
+                .name("Ngân hàng câu hỏi").build();
+        when(content.findSubjectById("bank-sub")).thenReturn(Optional.of(bankSubject));
+
+        var req = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.UpdateSubjectRequest(
+                "QUESTION_BANK", "New Name", "Desc", true, 1);
+        assertThatThrownBy(() -> service.updateSubject("bank-sub", req))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Không thể chỉnh sửa Ngân hàng câu hỏi mặc định");
+    }
+
+    @Test
+    void updateChapterShouldThrowWhenAttemptingToUpdateDefaultQuestionBankChapter() {
+        Chapter bankChapter = Chapter.builder().chapterId("bank-chap").subjectId("bank-sub")
+                .name("Ngân hàng câu hỏi").build();
+        Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
+                .name("Ngân hàng câu hỏi").build();
+        when(content.findChapterById("bank-chap")).thenReturn(Optional.of(bankChapter));
+        when(content.findSubjectById("bank-sub")).thenReturn(Optional.of(bankSubject));
+
+        var req = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest(
+                "New Chapter Name", 1, List.of());
+        assertThatThrownBy(() -> service.updateChapter("bank-chap", req))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Không thể chỉnh sửa Ngân hàng câu hỏi mặc định");
+    }
+
+    @Test
+    void addChapterShouldThrowWhenAttemptingToAddToQuestionBank() {
+        Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
+                .name("Ngân hàng câu hỏi").build();
+        when(content.findSubjectById("bank-sub")).thenReturn(Optional.of(bankSubject));
+
+        var req = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.CreateChapterRequest(
+                "New Chapter", 1, List.of());
+        assertThatThrownBy(() -> service.addChapter("bank-sub", req))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Không thể thêm chương vào Ngân hàng câu hỏi mặc định");
+    }
+
+    @Test
+    void getSubjectByIdShouldThrowWhenSubjectIsQuestionBank() {
+        Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
+                .name("Ngân hàng câu hỏi").build();
+        when(visibility.requireVisibleSubjectEntity("bank-sub")).thenReturn(bankSubject);
+
+        assertThatThrownBy(() -> service.getSubjectById("bank-sub"))
                 .isInstanceOf(AppException.class);
     }
 }

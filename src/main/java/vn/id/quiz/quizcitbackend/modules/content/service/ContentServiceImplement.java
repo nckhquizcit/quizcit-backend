@@ -73,18 +73,31 @@ public class ContentServiceImplement implements ContentService {
         List<Subject> subjects = visibilityGuard.isAdministrator()
                 ? contentRepository.findAllSubject()
                 : contentRepository.findAllVisibleSubject();
-        return mapper.toSubjectResponseList(subjects);
+        return mapper.toSubjectResponseList(subjects.stream()
+                .filter(s -> !ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(s.getCourseCode())
+                        && !ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(s.getName()))
+                .toList());
     }
     @Override
     @Transactional(readOnly = true)
     public SubjectResponse getSubjectById(String subjectId){
         Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subject.getName())) {
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
         return mapper.toSubjectResponse(subject);
     }
     @Override
     @Transactional(readOnly = true)
     public ChapterResponse getChapterById(String chapterId){
         Chapter chapter = visibilityGuard.requireVisibleChapterEntity(chapterId);
+        contentRepository.findSubjectById(chapter.getSubjectId()).ifPresent(parentSubject -> {
+            if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(parentSubject.getCourseCode())
+                    || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(parentSubject.getName())) {
+                throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
+            }
+        });
         return toChapterResponse(chapter);
     }
     @Override
@@ -97,7 +110,10 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public SubjectResponse createSubject(CreateSubjectRequest request){
-
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(request.courseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(request.name())) {
+            throw new AppException("Không thể tạo môn học trùng tên hoặc mã với Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
+        }
         if(contentRepository.existsByCourseCode(request.courseCode())){
             throw new AppException("Mã học phần đã tồn tại.", HttpStatus.CONFLICT);
         }
@@ -109,8 +125,11 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public ChapterResponse addChapter(String subjectId, CreateChapterRequest request){
-        if(!contentRepository.existsBySubjectId(subjectId)){
-            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        Subject subject = contentRepository.findSubjectById(subjectId)
+                .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subject.getName())) {
+            throw new AppException("Không thể thêm chương vào Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
         }
         int displayOrder = positiveOrDefault(request.displayOrder(), contentRepository.nextChapterDisplayOrder(subjectId));
         Chapter response = Chapter.create(subjectId, request.name(), displayOrder);
@@ -121,9 +140,14 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public TheoryResponse addTheory(String chapterId, CreateTheoryRequest request){
-        if(!contentRepository.existsByChapterId(chapterId)){
-            throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
-        }
+        Chapter chapter = contentRepository.findChapterById(chapterId)
+                .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
+        contentRepository.findSubjectById(chapter.getSubjectId()).ifPresent(parentSubject -> {
+            if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(parentSubject.getCourseCode())
+                    || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(parentSubject.getName())) {
+                throw new AppException("Không thể thêm lý thuyết vào Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
+            }
+        });
 
         Theory response = Theory.create(chapterId, request.content(), request.contentFormat());
         contentRepository.save(response);
@@ -136,6 +160,11 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public List<ChapterResponse> getAllChapters(String subjectId){
+        Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subject.getName())) {
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
         visibilityGuard.requireAccessibleSubject(subjectId);
         return toAccessibleChapterResponses(contentRepository.findAllChapter(subjectId));
     }
@@ -146,6 +175,8 @@ public class ContentServiceImplement implements ContentService {
         boolean administrator = visibilityGuard.isAdministrator();
         List<Chapter> chapters = administrator
                 ? contentRepository.findAllChapters(contentRepository.findAllSubject().stream()
+                        .filter(s -> !ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(s.getCourseCode())
+                                && !ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(s.getName()))
                         .map(Subject::getSubjectId).toList())
                 : contentRepository.findAccessibleChapters(currentUserId());
         return toAccessibleChapterResponses(chapters, administrator);
@@ -188,6 +219,14 @@ public class ContentServiceImplement implements ContentService {
     public void updateSubject(String subjectId, UpdateSubjectRequest request){
         Subject subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(()-> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subject.getName())) {
+            throw new AppException("Không thể chỉnh sửa Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
+        }
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(request.courseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(request.name())) {
+            throw new AppException("Không thể đổi tên hoặc mã thành Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
+        }
         int displayOrder = positiveOrDefault(request.displayOrder(), subject.getDisplayOrder());
         subject.updateSubject(request.courseCode(), request.name(), request.description(), request.visible(), displayOrder);
         contentRepository.save(subject);
@@ -197,6 +236,12 @@ public class ContentServiceImplement implements ContentService {
     public void updateChapter(String chapterId, UpdateChapterRequest request){
         Chapter chapter = contentRepository.findChapterById(chapterId)
                         .orElseThrow(()->new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
+        contentRepository.findSubjectById(chapter.getSubjectId()).ifPresent(parentSubject -> {
+            if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(parentSubject.getCourseCode())
+                    || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(parentSubject.getName())) {
+                throw new AppException("Không thể chỉnh sửa Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
+            }
+        });
 
         int displayOrder = positiveOrDefault(request.displayOrder(), chapter.getDisplayOrder());
         chapter.updateChapter(request.name(), displayOrder);
@@ -210,6 +255,14 @@ public class ContentServiceImplement implements ContentService {
     public void updateTheory(String theoryId, UpdateTheoryRequest request){
         Theory theory = contentRepository.findTheoryById(theoryId)
                 .orElseThrow(()-> new AppException("Không tìm thấy nội dung lý thuyết được yêu cầu", HttpStatus.NOT_FOUND));
+        contentRepository.findChapterById(theory.getChapterId()).ifPresent(chapter -> {
+            contentRepository.findSubjectById(chapter.getSubjectId()).ifPresent(parentSubject -> {
+                if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(parentSubject.getCourseCode())
+                        || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(parentSubject.getName())) {
+                    throw new AppException("Không thể chỉnh sửa lý thuyết của Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
+                }
+            });
+        });
         theory.updateTheory(request.content(), request.contentFormat());
         contentRepository.save(theory);
         theoryIndexingService.reindex(

@@ -45,7 +45,8 @@ Riêng `DELETE /api/users/me/course-enrollments/{subjectId}` trả response rỗ
 
 ### Cơ chế Xóa mềm (Soft Delete) & Bảo toàn dữ liệu
 - **Soft Delete cho Content:** Các thực thể `Subject`, `Chapter`, `Theory` sử dụng cơ chế xóa mềm thông qua cột `deleted_at`. Khi bị xóa, dữ liệu vẫn được lưu trữ trong CSDL và tự động bị loại bỏ khỏi toàn bộ truy vấn của hệ thống.
-- **Bảo toàn câu hỏi & Ngân hàng câu hỏi mặc định:** Khi xóa môn học hoặc chương, hệ thống **không xóa** các câu hỏi thuộc môn/chương đó mà tự động gán chúng vào Subject và Chapter mặc định mang tên **Ngân hàng câu hỏi** (`course_code = QUESTION_BANK`, `name = Ngân hàng câu hỏi`). Quản trị viên có thể sử dụng các API placement (`PATCH /api/questions/{questionId}/placement` hoặc `PATCH /api/questions/placement`) để di chuyển hoặc tái sử dụng câu hỏi cho các môn/chương khác. Subject và Chapter Ngân hàng câu hỏi mặc định được bảo vệ và không thể bị xóa.
+- **Bảo toàn câu hỏi & Ngân hàng câu hỏi mặc định:** Khi xóa môn học hoặc chương, hệ thống **không xóa** các câu hỏi thuộc môn/chương đó mà tự động gán chúng vào Subject và Chapter mặc định mang tên **Ngân hàng câu hỏi** (`course_code = QUESTION_BANK`, `name = Ngân hàng câu hỏi`). Quản trị viên có thể sử dụng các API placement (`PATCH /api/questions/{questionId}/placement` hoặc `PATCH /api/questions/placement`) để di chuyển hoặc tái sử dụng câu hỏi cho các môn/chương khác.
+- **Tính chất Readonly & Ẩn của Ngân hàng câu hỏi:** Subject và Chapter Ngân hàng câu hỏi là thực thể hệ thống nội bộ, không hiển thị trong danh sách môn học/chương của cả User lẫn Administrator (`GET /api/subjects`, `GET /api/chapters`). Hệ thống chặn mọi thao tác chỉnh sửa (sửa thông tin môn/chương, thêm chương/lý thuyết, sửa lý thuyết) và xóa đối với Ngân hàng câu hỏi mặc định (`400 Bad Request`). Học viên cũng không thể đăng ký khóa học này (`404 Not Found`).
 
 ### Quyền truy cập
 
