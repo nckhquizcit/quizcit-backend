@@ -1,8 +1,9 @@
 package vn.id.quiz.quizcitbackend.modules.progress.repository;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 
@@ -18,4 +19,23 @@ public interface SkillRepository {
     }
     Skill save(Skill skill);
     void deleteById(String skillId);
+
+    default Map<String, String> findSkillNamesByIds(Collection<String> skillIds) {
+        if (skillIds == null || skillIds.isEmpty()) {
+            return Map.of();
+        }
+        return findByIds(skillIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        Skill::getSkillId,
+                        Skill::getName,
+                        (first, second) -> first));
+    }
+
+    default Optional<String> findSkillNameById(String skillId) {
+        if (skillId == null || skillId.isBlank()) {
+            return Optional.empty();
+        }
+        return findById(skillId).map(Skill::getName);
+    }
 }
+

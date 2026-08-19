@@ -1,6 +1,9 @@
 package vn.id.quiz.quizcitbackend.modules.progress.repository.persistence;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
@@ -26,7 +29,7 @@ public class SkillRepositoryAdapter implements SkillRepository {
     }
 
     @Override
-    public List<Skill> findByIds(java.util.Collection<String> skillIds) {
+    public List<Skill> findByIds(Collection<String> skillIds) {
         return skillIds == null || skillIds.isEmpty() ? List.of() : jpa.findAllById(skillIds);
     }
 
@@ -37,6 +40,32 @@ public class SkillRepositoryAdapter implements SkillRepository {
 
     @Override
     public void deleteById(String skillId) {
-        jpa.deleteById(skillId);
+        jpa.findById(skillId).ifPresent(skill -> {
+            skill.softDelete();
+            jpa.save(skill);
+        });
+    }
+
+    @Override
+    public Map<String, String> findSkillNamesByIds(Collection<String> skillIds) {
+        if (skillIds == null || skillIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = jpa.findSkillNamesByIdsNative(skillIds);
+        Map<String, String> result = new HashMap<>();
+        for (Object[] row : rows) {
+            if (row != null && row.length >= 2 && row[0] != null && row[1] != null) {
+                result.put((String) row[0], (String) row[1]);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public Optional<String> findSkillNameById(String skillId) {
+        if (skillId == null || skillId.isBlank()) {
+            return Optional.empty();
+        }
+        return jpa.findSkillNameByIdNative(skillId);
     }
 }

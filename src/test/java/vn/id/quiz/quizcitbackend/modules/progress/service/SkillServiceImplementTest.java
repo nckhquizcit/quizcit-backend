@@ -1,85 +1,111 @@
 package vn.id.quiz.quizcitbackend.modules.progress.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillRequest;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillResponse;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
-import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaAbilityHistoryRepository;
-import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaQuestionSkillRepository;
-import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 class SkillServiceImplementTest {
     private SkillRepository skillRepository;
-    private JpaChapterSkillRepository chapterSkillRepository;
-    private JpaQuestionSkillRepository questionSkillRepository;
-    private JpaUserSkillAbilityRepository userSkillAbilityRepository;
-    private JpaAbilityHistoryRepository abilityHistoryRepository;
     private SkillServiceImplement service;
 
     @BeforeEach
     void setUp() {
         skillRepository = mock(SkillRepository.class);
-        chapterSkillRepository = mock(JpaChapterSkillRepository.class);
-        questionSkillRepository = mock(JpaQuestionSkillRepository.class);
-        userSkillAbilityRepository = mock(JpaUserSkillAbilityRepository.class);
-        abilityHistoryRepository = mock(JpaAbilityHistoryRepository.class);
-        service = new SkillServiceImplement(skillRepository, chapterSkillRepository,
-                questionSkillRepository, userSkillAbilityRepository, abilityHistoryRepository);
-        when(skillRepository.findById("skill-1"))
-                .thenReturn(Optional.of(Skill.builder().skillId("skill-1").name("Vòng lặp").build()));
+        service = new SkillServiceImplement(skillRepository);
     }
 
     @Test
-    void deleteSkillRejectsSkillUsedByQuestion() {
-        when(questionSkillRepository.existsBySkillId("skill-1")).thenReturn(true);
+    void deleteSkillSoftDeletesSkill() {
+        Skill skill = Skill.builder().skillId("skill-1").name("Vòng lặp").build();
+        when(skillRepository.findById("skill-1")).thenReturn(Optional.of(skill));
 
-        assertDeletionRejected();
-    }
-
-    @Test
-    void deleteSkillRejectsSkillUsedByChapter() {
-        when(chapterSkillRepository.existsBySkillId("skill-1")).thenReturn(true);
-
-        assertDeletionRejected();
-    }
-
-    @Test
-    void deleteSkillRejectsSkillUsedByAbility() {
-        when(userSkillAbilityRepository.existsBySkillId("skill-1")).thenReturn(true);
-
-        assertDeletionRejected();
-    }
-
-    @Test
-    void deleteSkillRejectsSkillUsedByHistory() {
-        when(abilityHistoryRepository.existsBySkillId("skill-1")).thenReturn(true);
-
-        assertDeletionRejected();
-    }
-
-    private void assertDeletionRejected() {
-
-        assertThatThrownBy(() -> service.deleteSkill("skill-1"))
-                .isInstanceOf(AppException.class)
-                .hasMessageContaining("đang được sử dụng");
-        verify(skillRepository, never()).deleteById("skill-1");
-    }
-
-    @Test
-    void deleteSkillDeletesUnusedSkill() {
         service.deleteSkill("skill-1");
 
-        verify(skillRepository).deleteById("skill-1");
+        assertThat(skill.isDeleted()).isTrue();
+        assertThat(skill.getDeletedAt()).isNotNull();
+        verify(skillRepository).save(skill);
+    }
+
+    @Test
+    void deleteSkillThrowsNotFoundWhenSkillMissing() {
+        when(skillRepository.findById("missing-skill")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deleteSkill("missing-skill"))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("Không tìm thấy kỹ năng");
+    }
+
+    @Test
+    void getAllSkillsReturnsMappedList() {
+        Skill skill1 = Skill.builder().skillId("s1").name("Skill 1").description("Desc 1").build();
+        Skill skill2 = Skill.builder().skillId("s2").name("Skill 2").description("Desc 2").build();
+        when(skillRepository.findAll()).thenReturn(List.of(skill1, skill2));
+
+        List<SkillResponse> responses = service.getAllSkills();
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses.get(0).getSkillId()).isEqualTo("s1");
+        assertThat(responses.get(1).getName()).isEqualTo("Skill 2");
+    }
+
+    @Test
+    void getSkillByIdReturnsSkill() {
+        Skill skill = Skill.builder().skillId("s1").name("Skill 1").description("Desc 1").build();
+        when(skillRepository.findById("s1")).thenReturn(Optional.of(skill));
+
+        SkillResponse response = service.getSkillById("s1");
+
+        assertThat(response.getSkillId()).isEqualTo("s1");
+        assertThat(response.getName()).isEqualTo("Skill 1");
+    }
+
+    @Test
+    void createSkillSavesAndReturnsSkill() {
+        when(skillRepository.save(any(Skill.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        SkillRequest request = SkillRequest.builder()
+                .name("New Skill")
+                .description("New Desc")
+                .build();
+
+        SkillResponse response = service.createSkill(request);
+
+        assertThat(response.getName()).isEqualTo("New Skill");
+        assertThat(response.getDescription()).isEqualTo("New Desc");
+        assertThat(response.getSkillId()).isNotBlank();
+    }
+
+    @Test
+    void updateSkillUpdatesAndSaves() {
+        Skill skill = Skill.builder().skillId("s1").name("Old Name").description("Old Desc").build();
+        when(skillRepository.findById("s1")).thenReturn(Optional.of(skill));
+        when(skillRepository.save(any(Skill.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SkillRequest request = SkillRequest.builder()
+                .name("Updated Name")
+                .description("Updated Desc")
+                .build();
+
+        SkillResponse response = service.updateSkill("s1", request);
+
+        assertThat(response.getName()).isEqualTo("Updated Name");
+        assertThat(response.getDescription()).isEqualTo("Updated Desc");
+        assertThat(skill.getName()).isEqualTo("Updated Name");
     }
 }

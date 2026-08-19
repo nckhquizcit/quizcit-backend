@@ -455,13 +455,17 @@ public class AdaptiveQuizService {
                         (first, second) -> first.getCreatedAt().isAfter(second.getCreatedAt()) ? first : second,
                         LinkedHashMap::new));
 
-        List<Skill> skills = skillRepository.findByIds(latestBySkill.keySet());
-        Map<String, String> skillNames = (skills == null ? List.<Skill>of() : skills).stream()
-                .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+        Map<String, String> skillNames = skillRepository.findSkillNamesByIds(latestBySkill.keySet());
+        if (skillNames == null || skillNames.isEmpty()) {
+            List<Skill> skills = skillRepository.findByIds(latestBySkill.keySet());
+            skillNames = (skills == null ? List.<Skill>of() : skills).stream()
+                    .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+        }
+        Map<String, String> finalSkillNames = skillNames;
 
         return latestBySkill.values().stream()
                 .map(history -> new SkillDeltaItem(
-                        skillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
+                        finalSkillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
                         history.getTheta() - history.getDelta(),
                         history.getTheta(),
                         history.getDelta()))

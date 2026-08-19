@@ -388,17 +388,21 @@ public class AttemptServiceImplement
         }
         Set<String> skillIds = historiesToSave.stream()
                 .map(AbilityHistory::getSkillId).collect(Collectors.toSet());
-        List<Skill> skills = skillRepository.findByIds(skillIds);
-        if (skills == null) {
-            skills = skillIds.stream().map(skillRepository::findById)
-                    .flatMap(Optional::stream).toList();
+        Map<String, String> skillNames = skillRepository.findSkillNamesByIds(skillIds);
+        if (skillNames == null || skillNames.isEmpty()) {
+            List<Skill> skills = skillRepository.findByIds(skillIds);
+            if (skills == null) {
+                skills = skillIds.stream().map(skillRepository::findById)
+                        .flatMap(Optional::stream).toList();
+            }
+            skillNames = skills.stream()
+                    .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
         }
-        Map<String, String> skillNames = skills.stream()
-                .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
 
+        Map<String, String> finalSkillNames = skillNames;
         return historiesToSave.stream()
                 .map(history -> new SkillDeltaItem(
-                        skillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
+                        finalSkillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
                         history.getTheta() - history.getDelta(),
                         history.getTheta(),
                         history.getDelta()))
@@ -434,15 +438,19 @@ public class AttemptServiceImplement
                                 : second,
                         LinkedHashMap::new));
 
-        List<Skill> loadedSkills = skillRepository.findByIds(latestHistoryBySkill.keySet());
-        if (loadedSkills == null) loadedSkills = latestHistoryBySkill.keySet().stream()
-                .map(skillRepository::findById).flatMap(Optional::stream).toList();
-        Map<String, String> skillNames = loadedSkills.stream()
-                .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+        Map<String, String> skillNames = skillRepository.findSkillNamesByIds(latestHistoryBySkill.keySet());
+        if (skillNames == null || skillNames.isEmpty()) {
+            List<Skill> loadedSkills = skillRepository.findByIds(latestHistoryBySkill.keySet());
+            if (loadedSkills == null) loadedSkills = latestHistoryBySkill.keySet().stream()
+                    .map(skillRepository::findById).flatMap(Optional::stream).toList();
+            skillNames = loadedSkills.stream()
+                    .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+        }
+        Map<String, String> finalSkillNames = skillNames;
         List<SkillResultResponse> skillResults = latestHistoryBySkill.values().stream()
                 .map(history -> SkillResultResponse.builder()
                         .skillId(history.getSkillId())
-                        .skillName(skillNames.get(history.getSkillId()))
+                        .skillName(finalSkillNames.get(history.getSkillId()))
                         .theta(history.getTheta())
                         .delta(history.getDelta())
                         .build())

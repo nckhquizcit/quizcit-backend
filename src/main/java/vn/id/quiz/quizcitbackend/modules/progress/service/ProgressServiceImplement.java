@@ -1,6 +1,10 @@
 package vn.id.quiz.quizcitbackend.modules.progress.service;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -9,8 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.AbilityHistoryResponse;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.UserSkillAbilityResponse;
-import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
@@ -34,7 +38,8 @@ public class ProgressServiceImplement implements ProgressService {
                         "Không tìm thấy dữ liệu năng lực của người dùng",
                         HttpStatus.NOT_FOUND));
 
-        return toAbilityResponse(ability);
+        String skillName = getSkillName(skillId);
+        return toAbilityResponse(ability, skillName);
     }
 
     @Override
@@ -42,8 +47,18 @@ public class ProgressServiceImplement implements ProgressService {
     public List<UserSkillAbilityResponse> getUserSkillAbilities(
             String userId) {
 
-        return progressRepository.findUserSkillAbilities(userId).stream()
-                .map(this::toAbilityResponse)
+        List<UserSkillAbility> abilities = progressRepository.findUserSkillAbilities(userId);
+        if (abilities.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> skillIds = abilities.stream()
+                .map(UserSkillAbility::getSkillId)
+                .collect(Collectors.toSet());
+        Map<String, String> skillNames = loadSkillNames(skillIds);
+
+        return abilities.stream()
+                .map(ability -> toAbilityResponse(ability, skillNames.get(ability.getSkillId())))
                 .toList();
     }
 
@@ -52,8 +67,18 @@ public class ProgressServiceImplement implements ProgressService {
     public List<AbilityHistoryResponse> getAbilityHistories(
             String userId) {
 
-        return progressRepository.findAbilityHistoriesByUserId(userId).stream()
-                .map(this::toHistoryResponse)
+        List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByUserId(userId);
+        if (histories.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> skillIds = histories.stream()
+                .map(AbilityHistory::getSkillId)
+                .collect(Collectors.toSet());
+        Map<String, String> skillNames = loadSkillNames(skillIds);
+
+        return histories.stream()
+                .map(history -> toHistoryResponse(history, skillNames.get(history.getSkillId())))
                 .toList();
     }
 
@@ -63,8 +88,15 @@ public class ProgressServiceImplement implements ProgressService {
             String userId,
             String skillId) {
 
-        return progressRepository.findAbilityHistoriesByUserIdAndSkillId(userId, skillId).stream()
-                .map(this::toHistoryResponse)
+        List<AbilityHistory> histories = progressRepository
+                .findAbilityHistoriesByUserIdAndSkillId(userId, skillId);
+        if (histories.isEmpty()) {
+            return List.of();
+        }
+
+        String skillName = getSkillName(skillId);
+        return histories.stream()
+                .map(history -> toHistoryResponse(history, skillName))
                 .toList();
     }
 
@@ -77,22 +109,26 @@ public class ProgressServiceImplement implements ProgressService {
                 .getAverageAbility(userId);
     }
 
+    private Map<String, String> loadSkillNames(Collection<String> skillIds) {
+        return skillRepository.findSkillNamesByIds(skillIds);
+    }
+
     private String getSkillName(String skillId) {
-        return skillRepository.findById(skillId)
-                .map(skill -> skill.getName())
+        return skillRepository.findSkillNameById(skillId)
+                .or(() -> skillRepository.findById(skillId).map(vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill::getName))
                 .orElse(null);
     }
 
-    private UserSkillAbilityResponse toAbilityResponse(UserSkillAbility ability) {
+    private UserSkillAbilityResponse toAbilityResponse(UserSkillAbility ability, String skillName) {
         return new UserSkillAbilityResponse(
                 ability.getId(), ability.getUserId(), ability.getSkillId(),
-                getSkillName(ability.getSkillId()), ability.getTheta(), ability.getUpdatedAt());
+                skillName, ability.getTheta(), ability.getUpdatedAt());
     }
 
-    private AbilityHistoryResponse toHistoryResponse(AbilityHistory history) {
+    private AbilityHistoryResponse toHistoryResponse(AbilityHistory history, String skillName) {
         return new AbilityHistoryResponse(
                 history.getHistoryId(), history.getUserId(), history.getSkillId(),
-                getSkillName(history.getSkillId()), history.getTheta(), history.getDelta(),
+                skillName, history.getTheta(), history.getDelta(),
                 history.getAttemptId(), history.getCreatedAt());
     }
 }
