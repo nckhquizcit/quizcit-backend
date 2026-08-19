@@ -64,6 +64,40 @@ public interface ContentRepository {
     boolean existsByChapterId(String chapterId);
     boolean existsByTheoryId(String theoryId);
 
+    default Optional<Subject> findSubjectByCourseCode(String courseCode) {
+        return Optional.empty();
+    }
+
+    default Optional<Chapter> findChapterBySubjectIdAndName(String subjectId, String name) {
+        return Optional.empty();
+    }
+
+    default Subject getOrCreateQuestionBankSubject() {
+        return findSubjectByCourseCode(vn.id.quiz.quizcitbackend.modules.content.service.ContentConstants.QUESTION_BANK_COURSE_CODE)
+                .orElseGet(() -> {
+                    int displayOrder = nextSubjectDisplayOrder();
+                    Subject bankSubject = Subject.create(
+                            vn.id.quiz.quizcitbackend.modules.content.service.ContentConstants.QUESTION_BANK_COURSE_CODE,
+                            vn.id.quiz.quizcitbackend.modules.content.service.ContentConstants.QUESTION_BANK_NAME,
+                            vn.id.quiz.quizcitbackend.modules.content.service.ContentConstants.QUESTION_BANK_DESCRIPTION,
+                            displayOrder
+                    );
+                    return save(bankSubject);
+                });
+    }
+
+    default Chapter getOrCreateQuestionBankChapter(String subjectId) {
+        return findChapterBySubjectIdAndName(subjectId, vn.id.quiz.quizcitbackend.modules.content.service.ContentConstants.QUESTION_BANK_CHAPTER_NAME)
+                .orElseGet(() -> {
+                    int displayOrder = nextChapterDisplayOrder(subjectId);
+                    Chapter bankChapter = Chapter.create(
+                            subjectId,
+                            vn.id.quiz.quizcitbackend.modules.content.service.ContentConstants.QUESTION_BANK_CHAPTER_NAME,
+                            displayOrder
+                    );
+                    return save(bankChapter);
+                });
+    }
 
     void deleteSubjectById(String subjectId);
     void deleteChapterById(String chapterId);

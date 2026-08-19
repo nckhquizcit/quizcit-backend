@@ -281,6 +281,22 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public void reassignQuestionsBySubjectId(String subjectId, String targetSubjectId, String targetChapterId) {
+        jpaQuestionRepository.reassignQuestionsBySubjectId(subjectId, targetSubjectId, targetChapterId);
+    }
+
+    @Override
+    public void reassignQuestionsByChapterId(String chapterId, String targetSubjectId, String targetChapterId) {
+        jpaQuestionRepository.reassignQuestionsByChapterId(chapterId, targetSubjectId, targetChapterId);
+    }
+
+    @Override
+    public void reassignQuestionsByChapterIds(java.util.Collection<String> chapterIds, String targetSubjectId, String targetChapterId) {
+        if (chapterIds == null || chapterIds.isEmpty()) return;
+        jpaQuestionRepository.reassignQuestionsByChapterIds(chapterIds, targetSubjectId, targetChapterId);
+    }
+
+    @Override
     public void detachQuestionsBySubjectId(String subjectId) {
         jpaQuestionRepository.detachQuestionsBySubjectId(subjectId);
     }

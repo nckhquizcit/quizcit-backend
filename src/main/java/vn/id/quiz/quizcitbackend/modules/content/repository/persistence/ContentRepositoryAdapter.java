@@ -106,6 +106,16 @@ public class ContentRepositoryAdapter implements ContentRepository {
 
 
     @Override
+    public Optional<Subject> findSubjectByCourseCode(String courseCode) {
+        return jpaSubjectRepository.findByCourseCode(courseCode);
+    }
+
+    @Override
+    public Optional<Chapter> findChapterBySubjectIdAndName(String subjectId, String name) {
+        return jpaChapterRepository.findBySubjectIdAndName(subjectId, name);
+    }
+
+    @Override
     public boolean existsByCourseCode(String courseCode) {return jpaSubjectRepository.existsByCourseCode(courseCode);}
 
     @Override

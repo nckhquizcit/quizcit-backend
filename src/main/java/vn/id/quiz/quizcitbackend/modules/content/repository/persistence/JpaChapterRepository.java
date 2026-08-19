@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Collection;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 public interface JpaChapterRepository extends JpaRepository<Chapter, String> {
     List<Chapter> findBySubjectIdOrderByDisplayOrderAscCreatedAtAscChapterIdAsc(String subjectId);
     List<Chapter> findBySubjectIdInOrderBySubjectIdAscDisplayOrderAscCreatedAtAscChapterIdAsc(Collection<String> subjectIds);
+    Optional<Chapter> findBySubjectIdAndName(String subjectId, String name);
     Chapter findTopBySubjectIdOrderByDisplayOrderDesc(String subjectId);
 
     @Query("""

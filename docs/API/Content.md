@@ -45,7 +45,7 @@ Riêng `DELETE /api/users/me/course-enrollments/{subjectId}` trả response rỗ
 
 ### Cơ chế Xóa mềm (Soft Delete) & Bảo toàn dữ liệu
 - **Soft Delete cho Content:** Các thực thể `Subject`, `Chapter`, `Theory` sử dụng cơ chế xóa mềm thông qua cột `deleted_at`. Khi bị xóa, dữ liệu vẫn được lưu trữ trong CSDL và tự động bị loại bỏ khỏi toàn bộ truy vấn của hệ thống.
-- **Bảo toàn câu hỏi:** Khi xóa môn học hoặc chương, hệ thống **không xóa** các câu hỏi thuộc môn/chương đó mà tự động gỡ liên kết (`subject_id = null, chapter_id = null`) để lưu trong ngân hàng câu hỏi. Quản trị viên có thể sử dụng các API placement (`PATCH /api/questions/{questionId}/placement` hoặc `PATCH /api/questions/placement`) để di chuyển hoặc tái sử dụng câu hỏi cho các môn/chương khác.
+- **Bảo toàn câu hỏi & Ngân hàng câu hỏi mặc định:** Khi xóa môn học hoặc chương, hệ thống **không xóa** các câu hỏi thuộc môn/chương đó mà tự động gán chúng vào Subject và Chapter mặc định mang tên **Ngân hàng câu hỏi** (`course_code = QUESTION_BANK`, `name = Ngân hàng câu hỏi`). Quản trị viên có thể sử dụng các API placement (`PATCH /api/questions/{questionId}/placement` hoặc `PATCH /api/questions/placement`) để di chuyển hoặc tái sử dụng câu hỏi cho các môn/chương khác. Subject và Chapter Ngân hàng câu hỏi mặc định được bảo vệ và không thể bị xóa.
 
 ### Quyền truy cập
 
@@ -203,7 +203,8 @@ DELETE /api/subjects/{subjectId}
 **Cơ chế thực thi (Soft Delete):**
 - **Xóa mềm môn học:** Đánh dấu `deleted_at = timestamp` và `is_visible = false`. Môn học bị ẩn hoàn toàn khỏi tất cả truy vấn người dùng.
 - **Xóa toàn bộ chương (Soft Delete):** Đánh dấu xóa mềm tất cả chương thuộc môn và lý thuyết của các chương (đồng thời gỡ chỉ mục khỏi chatbot vector search), cấu hình kỹ năng chương, trạng thái mở khóa của học viên và đề thi (quizzes) thuộc môn.
-- **Bảo toàn câu hỏi trong CSDL:** Tất cả câu hỏi thuộc môn học (và thuộc các chương của môn) **không bị xóa**, mà được tách ra thành câu hỏi độc lập (set `subject_id = null, chapter_id = null`) trong ngân hàng câu hỏi để quản trị viên có thể di chuyển / gán môn và chương mới.
+- **Bảo toàn câu hỏi trong CSDL:** Tất cả câu hỏi thuộc môn học (và thuộc các chương của môn) **không bị xóa**, mà được tự động chuyển gán sang môn học và chương **Ngân hàng câu hỏi** mặc định để quản trị viên có thể xem lại, phân loại hoặc gán môn và chương mới.
+- **Bảo vệ Ngân hàng câu hỏi:** Không thể xóa môn học Ngân hàng câu hỏi mặc định (`400 Bad Request`).
 
 **Response — `204 No Content`**.
 
@@ -347,8 +348,9 @@ DELETE /api/chapters/{chapterId}
 **Quyền:** `ADMINISTRATOR`
 
 **Cơ chế thực thi (Soft Delete):**
-- **Bảo toàn câu hỏi:** Tất cả câu hỏi thuộc chương **không bị xóa**, mà được tách ra thành câu hỏi độc lập (set `subject_id = null, chapter_id = null`) trong ngân hàng câu hỏi.
+- **Bảo toàn câu hỏi:** Tất cả câu hỏi thuộc chương **không bị xóa**, mà được tự động chuyển gán sang môn học và chương **Ngân hàng câu hỏi** mặc định.
 - **Xóa mềm chương và lý thuyết:** Đánh dấu `deleted_at = timestamp` trên chương và các bài lý thuyết (đồng thời gỡ vector chunks khỏi chatbot), cấu hình kỹ năng chương, trạng thái mở khóa của học viên và đề thi (quizzes) thuộc chương.
+- **Bảo vệ Ngân hàng câu hỏi:** Không thể xóa chương Ngân hàng câu hỏi mặc định (`400 Bad Request`).
 
 **Response — `204 No Content`**.
 

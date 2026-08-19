@@ -219,18 +219,27 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public void deleteSubject(String subjectId){
-        if (!contentRepository.existsBySubjectId(subjectId)) {
-            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        Subject subject = contentRepository.findSubjectById(subjectId)
+                .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
+
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subject.getName())) {
+            throw new AppException("Không thể xóa Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
         }
 
-        // 1. Detach all questions in the subject (set subject_id = null, chapter_id = null)
-        quizRepository.detachQuestionsBySubjectId(subjectId);
+        Subject bankSubject = contentRepository.getOrCreateQuestionBankSubject();
+        Chapter bankChapter = contentRepository.getOrCreateQuestionBankChapter(bankSubject.getSubjectId());
+
+        // 1. Reassign all questions in the subject to Question Bank (subject_id = bankSubjectId, chapter_id = bankChapterId)
+        quizRepository.reassignQuestionsBySubjectId(
+                subjectId, bankSubject.getSubjectId(), bankChapter.getChapterId());
 
         // 2. Find and delete all chapters in the subject
         List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
         if (!chapters.isEmpty()) {
             List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
-            quizRepository.detachQuestionsByChapterIds(chapterIds);
+            quizRepository.reassignQuestionsByChapterIds(
+                    chapterIds, bankSubject.getSubjectId(), bankChapter.getChapterId());
 
             for (String chapterId : chapterIds) {
                 List<Theory> theories = contentRepository.findAllTheory(chapterId);
@@ -258,12 +267,23 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public void deleteChapter(String chapterId) {
-        if (!contentRepository.existsByChapterId(chapterId)) {
-            throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
-        }
+        Chapter chapter = contentRepository.findChapterById(chapterId)
+                .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
 
-        // 1. Detach all questions belonging to this chapter (set subject_id = null, chapter_id = null)
-        quizRepository.detachQuestionsByChapterId(chapterId);
+        contentRepository.findSubjectById(chapter.getSubjectId()).ifPresent(parentSubject -> {
+            if ((ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(parentSubject.getCourseCode())
+                    || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(parentSubject.getName()))
+                    && ContentConstants.QUESTION_BANK_CHAPTER_NAME.equalsIgnoreCase(chapter.getName())) {
+                throw new AppException("Không thể xóa Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
+            }
+        });
+
+        Subject bankSubject = contentRepository.getOrCreateQuestionBankSubject();
+        Chapter bankChapter = contentRepository.getOrCreateQuestionBankChapter(bankSubject.getSubjectId());
+
+        // 1. Reassign all questions belonging to this chapter to Question Bank
+        quizRepository.reassignQuestionsByChapterId(
+                chapterId, bankSubject.getSubjectId(), bankChapter.getChapterId());
 
         // 2. Delete theories in chapter
         List<Theory> theories = contentRepository.findAllTheory(chapterId);

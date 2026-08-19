@@ -6,11 +6,14 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface JpaSubjectRepository extends JpaRepository<Subject, String> {
     List<Subject> findAllByOrderByDisplayOrderAscCreatedAtAscSubjectIdAsc();
     List<Subject> findByVisibleTrueOrderByDisplayOrderAscCreatedAtAscSubjectIdAsc();
     boolean existsByCourseCode(String courseCode);
+    Optional<Subject> findByCourseCode(String courseCode);
+    Optional<Subject> findByName(String name);
 
     Subject findTopByOrderByDisplayOrderDesc();
 }

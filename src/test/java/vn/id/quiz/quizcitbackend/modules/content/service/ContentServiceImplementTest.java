@@ -87,8 +87,10 @@ class ContentServiceImplementTest {
     }
 
     @Test
-    void deleteSubjectShouldDetachQuestionsAndCascadeDeleteChaptersTheoriesQuizzes() {
+    void deleteSubjectShouldReassignQuestionsAndCascadeDeleteChaptersTheoriesQuizzes() {
         String subjectId = "subject-1";
+        Subject subject = Subject.builder().subjectId(subjectId).courseCode("CT101")
+                .name("Lập trình").displayOrder(1).build();
         Chapter chapter = Chapter.builder().chapterId("chapter-1").subjectId(subjectId)
                 .name("Chương 1").displayOrder(1).build();
         Theory theory = Theory.builder().theoryId("theory-1").chapterId("chapter-1")
@@ -96,15 +98,22 @@ class ContentServiceImplementTest {
         Quiz quiz = Quiz.builder().quizId("quiz-1").subjectId(subjectId).chapterId("chapter-1")
                 .name("Quiz 1").build();
 
-        when(content.existsBySubjectId(subjectId)).thenReturn(true);
+        Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
+                .name("Ngân hàng câu hỏi").displayOrder(99).build();
+        Chapter bankChapter = Chapter.builder().chapterId("bank-chap").subjectId("bank-sub")
+                .name("Ngân hàng câu hỏi").displayOrder(1).build();
+
+        when(content.findSubjectById(subjectId)).thenReturn(Optional.of(subject));
+        when(content.getOrCreateQuestionBankSubject()).thenReturn(bankSubject);
+        when(content.getOrCreateQuestionBankChapter("bank-sub")).thenReturn(bankChapter);
         when(content.findAllChapter(subjectId)).thenReturn(List.of(chapter));
         when(content.findAllTheory("chapter-1")).thenReturn(List.of(theory));
         when(quizzes.findQuizzesBySubjectId(subjectId)).thenReturn(List.of(quiz));
 
         service.deleteSubject(subjectId);
 
-        verify(quizzes).detachQuestionsBySubjectId(subjectId);
-        verify(quizzes).detachQuestionsByChapterIds(List.of("chapter-1"));
+        verify(quizzes).reassignQuestionsBySubjectId(subjectId, "bank-sub", "bank-chap");
+        verify(quizzes).reassignQuestionsByChapterIds(List.of("chapter-1"), "bank-sub", "bank-chap");
         verify(content).deleteTheoryById("theory-1");
         verify(indexing).delete("theory-1");
         verify(chapterSkills).deleteByChapterId("chapter-1");
@@ -116,27 +125,50 @@ class ContentServiceImplementTest {
     }
 
     @Test
+    void deleteSubjectShouldThrowWhenAttemptingToDeleteDefaultQuestionBank() {
+        Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
+                .name("Ngân hàng câu hỏi").displayOrder(99).build();
+        when(content.findSubjectById("bank-sub")).thenReturn(Optional.of(bankSubject));
+
+        assertThatThrownBy(() -> service.deleteSubject("bank-sub"))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Không thể xóa Ngân hàng câu hỏi mặc định");
+    }
+
+    @Test
     void deleteSubjectShouldThrowWhenSubjectNotFound() {
-        when(content.existsBySubjectId("non-existing")).thenReturn(false);
+        when(content.findSubjectById("non-existing")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.deleteSubject("non-existing"))
                 .isInstanceOf(AppException.class);
     }
 
     @Test
-    void deleteChapterShouldDetachQuestionsAndCascadeDeleteTheoriesQuizzes() {
+    void deleteChapterShouldReassignQuestionsAndCascadeDeleteTheoriesQuizzes() {
         String chapterId = "chapter-1";
+        Chapter chapter = Chapter.builder().chapterId(chapterId).subjectId("subject-1")
+                .name("Chương 1").build();
+        Subject subject = Subject.builder().subjectId("subject-1").courseCode("CT101")
+                .name("Lập trình").build();
         Theory theory = Theory.builder().theoryId("theory-1").chapterId(chapterId)
                 .content("Lý thuyết").contentFormat("plain").build();
         Quiz quiz = Quiz.builder().quizId("quiz-1").chapterId(chapterId).name("Quiz 1").build();
 
-        when(content.existsByChapterId(chapterId)).thenReturn(true);
+        Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
+                .name("Ngân hàng câu hỏi").displayOrder(99).build();
+        Chapter bankChapter = Chapter.builder().chapterId("bank-chap").subjectId("bank-sub")
+                .name("Ngân hàng câu hỏi").displayOrder(1).build();
+
+        when(content.findChapterById(chapterId)).thenReturn(Optional.of(chapter));
+        when(content.findSubjectById("subject-1")).thenReturn(Optional.of(subject));
+        when(content.getOrCreateQuestionBankSubject()).thenReturn(bankSubject);
+        when(content.getOrCreateQuestionBankChapter("bank-sub")).thenReturn(bankChapter);
         when(content.findAllTheory(chapterId)).thenReturn(List.of(theory));
         when(quizzes.findQuizzesByChapterId(chapterId)).thenReturn(List.of(quiz));
 
         service.deleteChapter(chapterId);
 
-        verify(quizzes).detachQuestionsByChapterId(chapterId);
+        verify(quizzes).reassignQuestionsByChapterId(chapterId, "bank-sub", "bank-chap");
         verify(content).deleteTheoryById("theory-1");
         verify(indexing).delete("theory-1");
         verify(chapterSkills).deleteByChapterId(chapterId);
@@ -147,8 +179,23 @@ class ContentServiceImplementTest {
     }
 
     @Test
+    void deleteChapterShouldThrowWhenAttemptingToDeleteDefaultQuestionBankChapter() {
+        Chapter bankChapter = Chapter.builder().chapterId("bank-chap").subjectId("bank-sub")
+                .name("Ngân hàng câu hỏi").build();
+        Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
+                .name("Ngân hàng câu hỏi").build();
+
+        when(content.findChapterById("bank-chap")).thenReturn(Optional.of(bankChapter));
+        when(content.findSubjectById("bank-sub")).thenReturn(Optional.of(bankSubject));
+
+        assertThatThrownBy(() -> service.deleteChapter("bank-chap"))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Không thể xóa Ngân hàng câu hỏi mặc định");
+    }
+
+    @Test
     void deleteChapterShouldThrowWhenChapterNotFound() {
-        when(content.existsByChapterId("non-existing")).thenReturn(false);
+        when(content.findChapterById("non-existing")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.deleteChapter("non-existing"))
                 .isInstanceOf(AppException.class);

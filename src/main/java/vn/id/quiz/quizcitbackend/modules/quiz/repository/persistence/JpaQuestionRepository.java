@@ -33,6 +33,27 @@ public interface JpaQuestionRepository extends JpaRepository<Question, String> {
             String questionId);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Question q SET q.subjectId = :targetSubjectId, q.chapterId = :targetChapterId WHERE q.subjectId = :subjectId")
+    void reassignQuestionsBySubjectId(
+            @Param("subjectId") String subjectId,
+            @Param("targetSubjectId") String targetSubjectId,
+            @Param("targetChapterId") String targetChapterId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Question q SET q.subjectId = :targetSubjectId, q.chapterId = :targetChapterId WHERE q.chapterId = :chapterId")
+    void reassignQuestionsByChapterId(
+            @Param("chapterId") String chapterId,
+            @Param("targetSubjectId") String targetSubjectId,
+            @Param("targetChapterId") String targetChapterId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Question q SET q.subjectId = :targetSubjectId, q.chapterId = :targetChapterId WHERE q.chapterId IN :chapterIds")
+    void reassignQuestionsByChapterIds(
+            @Param("chapterIds") Collection<String> chapterIds,
+            @Param("targetSubjectId") String targetSubjectId,
+            @Param("targetChapterId") String targetChapterId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Question q SET q.subjectId = NULL, q.chapterId = NULL WHERE q.subjectId = :subjectId")
     void detachQuestionsBySubjectId(@Param("subjectId") String subjectId);
 

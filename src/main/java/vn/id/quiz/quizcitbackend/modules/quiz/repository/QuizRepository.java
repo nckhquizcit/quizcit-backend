@@ -173,6 +173,12 @@ public interface QuizRepository {
 
     void deleteQuestionSkillsByQuestionId(String questionId);
 
+    default void reassignQuestionsBySubjectId(String subjectId, String targetSubjectId, String targetChapterId) {}
+
+    default void reassignQuestionsByChapterId(String chapterId, String targetSubjectId, String targetChapterId) {}
+
+    default void reassignQuestionsByChapterIds(Collection<String> chapterIds, String targetSubjectId, String targetChapterId) {}
+
     default void detachQuestionsBySubjectId(String subjectId) {}
 
     default void detachQuestionsByChapterId(String chapterId) {}
