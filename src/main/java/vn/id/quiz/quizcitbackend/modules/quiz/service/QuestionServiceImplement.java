@@ -192,11 +192,16 @@ public class QuestionServiceImplement implements QuestionService {
     @Override
     @Transactional
     public void deleteQuestion(String questionId) {
-        quizRepository.deleteResponsesByQuestionId(questionId);
-        quizRepository.deleteQuizQuestionsByQuestionId(questionId);
-        quizRepository.deleteQuestionSkillsByQuestionId(questionId);
-        quizRepository.deleteOptionsByQuestionId(questionId);
-        quizRepository.deleteQuestionById(questionId);
+        Question question = quizRepository.findQuestionById(questionId)
+                .orElseThrow(() -> new AppException("Không tìm thấy câu hỏi", HttpStatus.NOT_FOUND));
+        question.softDelete();
+        quizRepository.save(question);
+    }
+
+    @Override
+    @Transactional
+    public void hardDeleteQuestion(String questionId) {
+        quizRepository.hardDeleteQuestionById(questionId);
     }
 
     @Override

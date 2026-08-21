@@ -19,6 +19,9 @@ public interface SkillRepository {
     }
     Skill save(Skill skill);
     void deleteById(String skillId);
+    default void hardDeleteById(String skillId) {
+        deleteById(skillId);
+    }
 
     default Map<String, String> findSkillNamesByIds(Collection<String> skillIds) {
         if (skillIds == null || skillIds.isEmpty()) {

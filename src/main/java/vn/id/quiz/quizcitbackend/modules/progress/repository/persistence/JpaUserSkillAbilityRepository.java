@@ -31,5 +31,8 @@ public interface JpaUserSkillAbilityRepository
             WHERE u.skillId = s.skillId AND u.userId = :userId
             """)
     Double getAverageAbility(@Param("userId") String userId);
+
+    void deleteBySkillId(String skillId);
+    void deleteByUserId(String userId);
 }
 

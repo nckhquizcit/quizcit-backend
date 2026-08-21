@@ -21,4 +21,5 @@ public interface JpaQuestionSkillRepository
     boolean existsBySkillId(String skillId);
 
     void deleteByQuestionId(String questionId);
+    void deleteBySkillId(String skillId);
 }

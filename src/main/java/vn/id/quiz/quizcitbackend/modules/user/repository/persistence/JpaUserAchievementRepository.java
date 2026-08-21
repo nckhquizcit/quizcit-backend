@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface JpaUserAchievementRepository extends JpaRepository<UserAchievement, UserAchievementId> {
     List<UserAchievement> findByUserId(String userId);
+    void deleteByUserId(String userId);
 }

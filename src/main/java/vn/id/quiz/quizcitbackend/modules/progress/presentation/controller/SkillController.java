@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -112,8 +113,14 @@ public class SkillController {
 
     @DeleteMapping("/{skillId}")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
-    public ResponseEntity<ApiResponse<Void>> deleteSkill(@PathVariable String skillId) {
-        skillService.deleteSkill(skillId);
+    public ResponseEntity<ApiResponse<Void>> deleteSkill(
+            @PathVariable String skillId,
+            @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
+        if (hard) {
+            skillService.hardDeleteSkill(skillId);
+        } else {
+            skillService.deleteSkill(skillId);
+        }
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Đã xóa kỹ năng thành công", null));
     }

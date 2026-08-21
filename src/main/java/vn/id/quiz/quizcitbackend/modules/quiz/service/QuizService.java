@@ -14,8 +14,11 @@ public interface QuizService {
     void updateQuiz(
             String quizId,
             UpdateQuizRequest request);
-    //Xóa đề
+    //Xóa mềm đề
     void deleteQuiz(
+            String quizId);
+    //Xóa cứng đề
+    void hardDeleteQuiz(
             String quizId);
     //Lấy đề
     QuizResponse getQuizById(

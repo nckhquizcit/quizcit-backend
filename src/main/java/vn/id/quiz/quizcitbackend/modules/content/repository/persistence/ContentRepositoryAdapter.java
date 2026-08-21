@@ -140,6 +140,11 @@ public class ContentRepositoryAdapter implements ContentRepository {
     }
 
     @Override
+    public void hardDeleteSubjectById(String subjectId) {
+        jpaSubjectRepository.deleteById(subjectId);
+    }
+
+    @Override
     public void deleteChapterById(String chapterId) {
         jpaChapterRepository.findById(chapterId).ifPresent(chapter -> {
             chapter.softDelete();
@@ -148,11 +153,21 @@ public class ContentRepositoryAdapter implements ContentRepository {
     }
 
     @Override
+    public void hardDeleteChapterById(String chapterId) {
+        jpaChapterRepository.deleteById(chapterId);
+    }
+
+    @Override
     public void deleteTheoryById(String theoryId) {
         jpaTheoryRepository.findById(theoryId).ifPresent(theory -> {
             theory.softDelete();
             jpaTheoryRepository.save(theory);
         });
+    }
+
+    @Override
+    public void hardDeleteTheoryById(String theoryId) {
+        jpaTheoryRepository.deleteById(theoryId);
     }
 
 

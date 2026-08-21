@@ -176,9 +176,28 @@ public class QuizServiceImplement implements QuizService {
     @Override
     @Transactional
     public void deleteQuiz(String quizId) {
+        Quiz quiz = quizRepository.findQuizById(quizId)
+                .orElseThrow(() -> new AppException(
+                        ErrorMessages.QUIZ_NOT_FOUND,
+                        HttpStatus.NOT_FOUND));
+        quiz.softDelete();
+        quizRepository.save(quiz);
+    }
 
-        quizRepository.deleteQuizById(quizId);
-        quizRepository.deleteQuizQuestionsByQuizId(quizId);
+    @Override
+    @Transactional
+    public void hardDeleteQuiz(String quizId) {
+        if (quizRepository.findQuizById(quizId).isEmpty()) {
+            throw new AppException(
+                    ErrorMessages.QUIZ_NOT_FOUND,
+                    HttpStatus.NOT_FOUND);
+        }
+        if (quizRepository.existsAttemptByQuizId(quizId)) {
+            throw new AppException(
+                    "Đề thi đã có lượt làm bài, không thể xóa vĩnh viễn. Vui lòng sử dụng tính năng xóa mềm (ẩn đề thi).",
+                    HttpStatus.BAD_REQUEST);
+        }
+        quizRepository.hardDeleteQuizById(quizId);
     }
 
     @Override

@@ -35,6 +35,14 @@ public interface JpaUserCourseEnrollmentRepository
             """)
     int deleteEnrollment(@Param("userId") String userId, @Param("subjectId") String subjectId);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM UserCourseEnrollment enrollment WHERE enrollment.subjectId = :subjectId")
+    void deleteBySubjectId(@Param("subjectId") String subjectId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM UserCourseEnrollment enrollment WHERE enrollment.userId = :userId")
+    void deleteByUserId(@Param("userId") String userId);
+
     @Query("""
             SELECT enrollment FROM UserCourseEnrollment enrollment
             JOIN FETCH enrollment.subject subject

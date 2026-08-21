@@ -2,6 +2,18 @@ package vn.id.quiz.quizcitbackend.modules.user.repository.persistence;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import vn.id.quiz.quizcitbackend.modules.auth.repository.persistence.JpaAuthChallengeRepository;
+import vn.id.quiz.quizcitbackend.modules.auth.repository.persistence.JpaRefreshTokenRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserCourseEnrollmentRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaAbilityHistoryRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaAdaptiveQuestionSelectionRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaAttemptRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaResponseRepository;
+import vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.JpaUserAdaptiveQuizTrackingRepository;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Permission;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
@@ -19,10 +31,22 @@ import org.springframework.data.domain.Pageable;
 @Component
 @RequiredArgsConstructor
 public class UserRepositoryAdapter implements UserRepository {
-    // Adapter gom cac JpaRepository cua module user de service khong phu thuoc truc tiep JPA.
     private final JpaUserRepository jpaUserRepository;
     private final JpaRoleRepository jpaRoleRepository;
     private final JpaUserRoleRepository jpaUserRoleRepository;
+    private final JpaPermissionRepository jpaPermissionRepository;
+    private final JpaRolePermissionRepository jpaRolePermissionRepository;
+    private final JpaUserCourseEnrollmentRepository jpaUserCourseEnrollmentRepository;
+    private final JpaUserUnlockedChapterRepository jpaUserUnlockedChapterRepository;
+    private final JpaRefreshTokenRepository jpaRefreshTokenRepository;
+    private final JpaAuthChallengeRepository jpaAuthChallengeRepository;
+    private final JpaUserSkillAbilityRepository jpaUserSkillAbilityRepository;
+    private final JpaAbilityHistoryRepository jpaAbilityHistoryRepository;
+    private final JpaUserAchievementRepository jpaUserAchievementRepository;
+    private final JpaUserAdaptiveQuizTrackingRepository jpaUserAdaptiveQuizTrackingRepository;
+    private final JpaAdaptiveQuestionSelectionRepository jpaAdaptiveQuestionSelectionRepository;
+    private final JpaAttemptRepository jpaAttemptRepository;
+    private final JpaResponseRepository jpaResponseRepository;
 
     @Override
     public List<User> findAll() {
@@ -60,8 +84,17 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public Optional<Role> findRoleById(String roleId) {
+        return jpaRoleRepository.findById(roleId);
+    }
+
+    @Override
+    public List<Role> findAllRoles() {
+        return jpaRoleRepository.findAll();
+    }
+
+    @Override
     public Optional<Role> findRoleByUserId(String userId) {
-        // user_roles la bang noi nen can lay role_id truoc roi moi doc bang roles.
         return jpaUserRoleRepository.findByUserId(userId)
                 .stream()
                 .findFirst()
@@ -117,5 +150,72 @@ public class UserRepositoryAdapter implements UserRepository {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
         user.softDelete();
         jpaUserRepository.save(user);
+    }
+
+    @Override
+    public void hardDeleteById(String userId) {
+        jpaUserRoleRepository.deleteByUserId(userId);
+        jpaUserCourseEnrollmentRepository.deleteByUserId(userId);
+        jpaUserUnlockedChapterRepository.deleteByUserId(userId);
+        jpaRefreshTokenRepository.deleteByUserId(userId);
+        jpaAuthChallengeRepository.deleteByUserId(userId);
+        jpaUserSkillAbilityRepository.deleteByUserId(userId);
+        jpaAbilityHistoryRepository.deleteByUserId(userId);
+        jpaUserAchievementRepository.deleteByUserId(userId);
+        jpaUserAdaptiveQuizTrackingRepository.deleteByUserId(userId);
+        jpaAdaptiveQuestionSelectionRepository.deleteByUserId(userId);
+
+        List<Attempt> attempts = jpaAttemptRepository.findByUserId(userId);
+        if (!attempts.isEmpty()) {
+            List<String> attemptIds = attempts.stream().map(Attempt::getAttemptId).toList();
+            jpaResponseRepository.deleteByAttemptIdIn(attemptIds);
+            jpaAttemptRepository.deleteByUserId(userId);
+        }
+
+        jpaUserRepository.deleteById(userId);
+    }
+
+    @Override
+    public void deleteRoleById(String roleId) {
+        jpaRoleRepository.findById(roleId).ifPresent(role -> {
+            role.softDelete();
+            jpaRoleRepository.save(role);
+        });
+    }
+
+    @Override
+    public void hardDeleteRoleById(String roleId) {
+        jpaRolePermissionRepository.deleteByRoleId(roleId);
+        jpaUserRoleRepository.deleteByRoleId(roleId);
+        jpaRoleRepository.deleteById(roleId);
+    }
+
+    @Override
+    public Optional<Permission> findPermissionById(String permissionId) {
+        return jpaPermissionRepository.findById(permissionId);
+    }
+
+    @Override
+    public List<Permission> findAllPermissions() {
+        return jpaPermissionRepository.findAll();
+    }
+
+    @Override
+    public Permission savePermission(Permission permission) {
+        return jpaPermissionRepository.save(permission);
+    }
+
+    @Override
+    public void deletePermissionById(String permissionId) {
+        jpaPermissionRepository.findById(permissionId).ifPresent(permission -> {
+            permission.softDelete();
+            jpaPermissionRepository.save(permission);
+        });
+    }
+
+    @Override
+    public void hardDeletePermissionById(String permissionId) {
+        jpaRolePermissionRepository.deleteByPermissionId(permissionId);
+        jpaPermissionRepository.deleteById(permissionId);
     }
 }

@@ -79,8 +79,14 @@ public class ContentController {
 
     @DeleteMapping("/subjects/{subjectId}")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
-    public ResponseEntity<ApiResponse<Void>> deleteSubject(@PathVariable String subjectId) {
-        subjectUseCase.deleteSubject(subjectId);
+    public ResponseEntity<ApiResponse<Void>> deleteSubject(
+            @PathVariable String subjectId,
+            @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
+        if (hard) {
+            subjectUseCase.hardDeleteSubject(subjectId);
+        } else {
+            subjectUseCase.deleteSubject(subjectId);
+        }
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Đã xóa thành công học phần", null));
     }
@@ -137,8 +143,14 @@ public class ContentController {
     // Flat Route: Xóa chương
     @DeleteMapping("/chapters/{chapterId}")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
-    public ResponseEntity<ApiResponse<Void>> deleteChapter(@PathVariable String chapterId) {
-        subjectUseCase.deleteChapter(chapterId);
+    public ResponseEntity<ApiResponse<Void>> deleteChapter(
+            @PathVariable String chapterId,
+            @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
+        if (hard) {
+            subjectUseCase.hardDeleteChapter(chapterId);
+        } else {
+            subjectUseCase.deleteChapter(chapterId);
+        }
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Đã xóa chương thành công", null));
     }
@@ -199,8 +211,14 @@ public class ContentController {
     // Flat Route: Xóa lý thuyết
     @DeleteMapping("/theories/{theoryId}")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
-    public ResponseEntity<ApiResponse<Void>> deleteTheory(@PathVariable String theoryId) {
-        subjectUseCase.deleteTheory(theoryId);
+    public ResponseEntity<ApiResponse<Void>> deleteTheory(
+            @PathVariable String theoryId,
+            @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
+        if (hard) {
+            subjectUseCase.hardDeleteTheory(theoryId);
+        } else {
+            subjectUseCase.deleteTheory(theoryId);
+        }
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Đã xóa nội dung lý thuyết thành công", null));
     }

@@ -96,9 +96,14 @@ public class QuizController {
     @DeleteMapping("/quizzes/{quizId}")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteQuiz(
-            @PathVariable String quizId) {
+            @PathVariable String quizId,
+            @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
 
-        quizService.deleteQuiz(quizId);
+        if (hard) {
+            quizService.hardDeleteQuiz(quizId);
+        } else {
+            quizService.deleteQuiz(quizId);
+        }
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success(

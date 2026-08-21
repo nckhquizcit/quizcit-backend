@@ -103,5 +103,15 @@ public interface ContentRepository {
     void deleteChapterById(String chapterId);
     void deleteTheoryById(String theoryId);
 
+    default void hardDeleteSubjectById(String subjectId) {
+        deleteSubjectById(subjectId);
+    }
+    default void hardDeleteChapterById(String chapterId) {
+        deleteChapterById(chapterId);
+    }
+    default void hardDeleteTheoryById(String theoryId) {
+        deleteTheoryById(theoryId);
+    }
+
 
 }

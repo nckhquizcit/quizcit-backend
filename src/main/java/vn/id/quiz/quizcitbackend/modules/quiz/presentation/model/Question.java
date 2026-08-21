@@ -5,7 +5,7 @@ import lombok.*;
 
 import java.time.ZonedDateTime;
 import java.util.UUID;
-
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "questions")
@@ -14,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted_at IS NULL")
 public class Question {
     @Id
     @Column(name = "question_id", length = 50)
@@ -41,6 +42,9 @@ public class Question {
     @Column(name = "created_at")
     private ZonedDateTime createdAt;
 
+    @Column(name = "deleted_at")
+    private ZonedDateTime deletedAt;
+
     public static Question create(
             String subjectId,
             String chapterId,
@@ -57,5 +61,13 @@ public class Question {
                 .difficultyB(difficultyB)
                 .createdAt(ZonedDateTime.now())
                 .build();
+    }
+
+    public void softDelete() {
+        this.deletedAt = ZonedDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }

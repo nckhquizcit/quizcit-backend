@@ -12,6 +12,8 @@ import java.util.Collection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Permission;
+
 public interface UserRepository {
     List<User> findAll();
     default Page<User> findAll(Pageable pageable) {
@@ -30,6 +32,10 @@ public interface UserRepository {
     Optional<User> findUserById(String userId);
 
     Optional<Role> findRoleByName(UserRole name);
+
+    default Optional<Role> findRoleById(String roleId) { return Optional.empty(); }
+
+    default List<Role> findAllRoles() { return List.of(); }
 
     Optional<Role> findRoleByUserId(String userId);
     default Map<String, UserRole> findRolesByUserIds(Collection<String> userIds) {
@@ -53,4 +59,22 @@ public interface UserRepository {
     void deleteRolesByUserId(String userId);
 
     void deleteById(String userId);
+
+    default void hardDeleteById(String userId) {
+        deleteById(userId);
+    }
+
+    default void deleteRoleById(String roleId) {}
+
+    default void hardDeleteRoleById(String roleId) {}
+
+    default Optional<Permission> findPermissionById(String permissionId) { return Optional.empty(); }
+
+    default List<Permission> findAllPermissions() { return List.of(); }
+
+    default Permission savePermission(Permission permission) { return permission; }
+
+    default void deletePermissionById(String permissionId) {}
+
+    default void hardDeletePermissionById(String permissionId) {}
 }

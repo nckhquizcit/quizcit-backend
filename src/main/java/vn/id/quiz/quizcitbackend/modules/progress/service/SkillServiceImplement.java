@@ -13,11 +13,20 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaAbilityHistoryRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaQuestionSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
+
 @Service
 @RequiredArgsConstructor
 public class SkillServiceImplement implements SkillService {
 
     private final SkillRepository skillRepository;
+    private final JpaQuestionSkillRepository questionSkillRepository;
+    private final JpaChapterSkillRepository chapterSkillRepository;
+    private final JpaUserSkillAbilityRepository userSkillAbilityRepository;
+    private final JpaAbilityHistoryRepository abilityHistoryRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -60,6 +69,19 @@ public class SkillServiceImplement implements SkillService {
                 .orElseThrow(() -> new AppException("Không tìm thấy kỹ năng", HttpStatus.NOT_FOUND));
         skill.softDelete();
         skillRepository.save(skill);
+    }
+
+    @Override
+    @Transactional
+    public void hardDeleteSkill(String skillId) {
+        if (skillRepository.findById(skillId).isEmpty()) {
+            throw new AppException("Không tìm thấy kỹ năng", HttpStatus.NOT_FOUND);
+        }
+        questionSkillRepository.deleteBySkillId(skillId);
+        chapterSkillRepository.deleteBySkillId(skillId);
+        userSkillAbilityRepository.deleteBySkillId(skillId);
+        abilityHistoryRepository.deleteBySkillId(skillId);
+        skillRepository.hardDeleteById(skillId);
     }
 }
 

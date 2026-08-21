@@ -118,6 +118,17 @@ public class UserServiceImpl implements UserUseCase {
         userRepository.deleteById(userId);
     }
 
+    // Xóa cứng vĩnh viễn user và toàn bộ dữ liệu phụ thuộc.
+    @Override
+    @Transactional
+    public void hardDeleteUser(String actorUserId, String userId) {
+        rejectSelfLockout(actorUserId, userId);
+        if (!userRepository.existsById(userId)) {
+            throw new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+        userRepository.hardDeleteById(userId);
+    }
+
     // =========================================================================
     // Phase 2 (P1): Admin khoa / mo khoa tai khoan.
     // =========================================================================
@@ -220,5 +231,49 @@ public class UserServiceImpl implements UserUseCase {
         return userRepository.findRoleByUserId(userId)
                 .map(Role::getName)
                 .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Role> getAllRoles() {
+        return userRepository.findAllRoles();
+    }
+
+    @Override
+    @Transactional
+    public void deleteRole(String roleId) {
+        userRepository.findRoleById(roleId)
+                .orElseThrow(() -> new AppException("Không tìm thấy vai trò", HttpStatus.NOT_FOUND));
+        userRepository.deleteRoleById(roleId);
+    }
+
+    @Override
+    @Transactional
+    public void hardDeleteRole(String roleId) {
+        userRepository.findRoleById(roleId)
+                .orElseThrow(() -> new AppException("Không tìm thấy vai trò", HttpStatus.NOT_FOUND));
+        userRepository.hardDeleteRoleById(roleId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Permission> getAllPermissions() {
+        return userRepository.findAllPermissions();
+    }
+
+    @Override
+    @Transactional
+    public void deletePermission(String permissionId) {
+        userRepository.findPermissionById(permissionId)
+                .orElseThrow(() -> new AppException("Không tìm thấy quyền", HttpStatus.NOT_FOUND));
+        userRepository.deletePermissionById(permissionId);
+    }
+
+    @Override
+    @Transactional
+    public void hardDeletePermission(String permissionId) {
+        userRepository.findPermissionById(permissionId)
+                .orElseThrow(() -> new AppException("Không tìm thấy quyền", HttpStatus.NOT_FOUND));
+        userRepository.hardDeletePermissionById(permissionId);
     }
 }

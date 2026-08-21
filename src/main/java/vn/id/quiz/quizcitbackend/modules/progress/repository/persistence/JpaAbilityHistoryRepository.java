@@ -21,4 +21,7 @@ public interface JpaAbilityHistoryRepository
 
     List<AbilityHistory> findByAttemptIdOrderByCreatedAtAsc(
             String attemptId);
+
+    void deleteBySkillId(String skillId);
+    void deleteByUserId(String userId);
 }

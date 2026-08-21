@@ -16,8 +16,11 @@ public interface QuestionService {
     void updateQuestion(
             String questionId,
             UpdateQuestionRequest request);
-    //Xóa câu hỏi
+    //Xóa mềm câu hỏi (bảo tồn lịch sử thi)
     void deleteQuestion(
+            String questionId);
+    //Xóa cứng câu hỏi
+    void hardDeleteQuestion(
             String questionId);
     //Lấy câu hỏi = id
     QuestionResponse getQuestionById(

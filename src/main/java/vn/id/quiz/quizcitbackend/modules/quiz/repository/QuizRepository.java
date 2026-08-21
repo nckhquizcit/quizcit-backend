@@ -41,6 +41,14 @@ public interface QuizRepository {
     void deleteQuestionById(
             String questionId);
 
+    default void softDeleteQuestionById(String questionId) {
+        deleteQuestionById(questionId);
+    }
+
+    default void hardDeleteQuestionById(String questionId) {
+        deleteQuestionById(questionId);
+    }
+
     // =========================================================================
     // Quiz
     // =========================================================================
@@ -72,6 +80,18 @@ public interface QuizRepository {
 
     void deleteQuizById(
             String quizId);
+
+    default void softDeleteQuizById(String quizId) {
+        deleteQuizById(quizId);
+    }
+
+    default void hardDeleteQuizById(String quizId) {
+        deleteQuizById(quizId);
+    }
+
+    default boolean existsAttemptByQuizId(String quizId) {
+        return false;
+    }
 
     // =========================================================================
     // Quiz Question

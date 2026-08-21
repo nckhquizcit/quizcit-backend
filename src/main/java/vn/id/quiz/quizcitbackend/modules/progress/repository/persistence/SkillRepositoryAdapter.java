@@ -47,6 +47,11 @@ public class SkillRepositoryAdapter implements SkillRepository {
     }
 
     @Override
+    public void hardDeleteById(String skillId) {
+        jpa.deleteById(skillId);
+    }
+
+    @Override
     public Map<String, String> findSkillNamesByIds(Collection<String> skillIds) {
         if (skillIds == null || skillIds.isEmpty()) {
             return Map.of();

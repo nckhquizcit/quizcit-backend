@@ -20,4 +20,8 @@ public interface JpaAttemptRepository extends JpaRepository<Attempt, String> {
 
     List<Attempt> findByUserId(
             String userId);
+
+    boolean existsByQuizId(String quizId);
+
+    void deleteByUserId(String userId);
 }

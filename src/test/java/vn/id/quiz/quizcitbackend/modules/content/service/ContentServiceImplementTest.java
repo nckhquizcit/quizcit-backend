@@ -29,6 +29,8 @@ import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserCourseEnrollmentRepository;
+
 class ContentServiceImplementTest {
     private final ContentRepository content = mock(ContentRepository.class);
     private final ContentMapper mapper = mock(ContentMapper.class);
@@ -37,10 +39,11 @@ class ContentServiceImplementTest {
     private final JpaChapterSkillRepository chapterSkills = mock(JpaChapterSkillRepository.class);
     private final JpaUserUnlockedChapterRepository unlocked = mock(JpaUserUnlockedChapterRepository.class);
     private final JpaUserSkillAbilityRepository abilities = mock(JpaUserSkillAbilityRepository.class);
+    private final JpaUserCourseEnrollmentRepository enrollments = mock(JpaUserCourseEnrollmentRepository.class);
     private final SkillRepository skills = mock(SkillRepository.class);
     private final TheoryIndexingService indexing = mock(TheoryIndexingService.class);
     private final ContentServiceImplement service = new ContentServiceImplement(
-            content, mapper, quizzes, visibility, chapterSkills, unlocked, abilities, skills, indexing);
+            content, mapper, quizzes, visibility, chapterSkills, unlocked, abilities, enrollments, skills, indexing);
 
     @AfterEach
     void clearSecurityContext() {

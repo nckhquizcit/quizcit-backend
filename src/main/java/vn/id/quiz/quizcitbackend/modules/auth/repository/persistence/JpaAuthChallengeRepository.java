@@ -17,4 +17,6 @@ public interface JpaAuthChallengeRepository extends JpaRepository<AuthChallenge,
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from AuthChallenge c where c.challengeId = :id")
     Optional<AuthChallenge> findByIdForUpdate(@Param("id") String id);
+
+    void deleteByUserId(String userId);
 }

@@ -34,4 +34,8 @@ public interface JpaUserAdaptiveQuizTrackingRepository
                 updated_at = CURRENT_TIMESTAMP
             """, nativeQuery = true)
     void resetCompletedStandardQuizzes(@Param("userId") String userId, @Param("subjectId") String subjectId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM UserAdaptiveQuizTracking t WHERE t.userId = :userId")
+    void deleteByUserId(@Param("userId") String userId);
 }

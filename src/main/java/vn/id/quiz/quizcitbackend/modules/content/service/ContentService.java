@@ -24,6 +24,7 @@ public interface ContentService {
     ChapterResponse addChapter(String subjectId, CreateChapterRequest request);
     TheoryResponse addTheory(String chapterId, CreateTheoryRequest request);
     void deleteSubject(String subjectId);
+    void hardDeleteSubject(String subjectId);
     List<TheoryResponse> getAllTheories(String chapterId);
     List<TheoryResponse> getAllTheoriesBySubject(String subjectId);
     int reindexTheoriesBySubject(String subjectId);
@@ -39,7 +40,9 @@ public interface ContentService {
     void updateChapter(String chapterId, UpdateChapterRequest request);
     void updateTheory(String theoryId, UpdateTheoryRequest request);
     void deleteChapter(String chapterId);
+    void hardDeleteChapter(String chapterId);
     void deleteTheory(String theoryId);
+    void hardDeleteTheory(String theoryId);
     void reorderSubjects(ReorderRequest request);
     void reorderChapters(String subjectId, ReorderRequest request);
 }

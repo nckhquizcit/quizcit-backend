@@ -71,9 +71,24 @@ public class QuizRepositoryAdapter implements QuizRepository {
     @Override
     public void deleteQuestionById(
             String questionId) {
+        softDeleteQuestionById(questionId);
+    }
 
-        jpaQuestionRepository
-                .deleteByQuestionId(questionId);
+    @Override
+    public void softDeleteQuestionById(String questionId) {
+        jpaQuestionRepository.findByQuestionId(questionId).ifPresent(q -> {
+            q.softDelete();
+            jpaQuestionRepository.save(q);
+        });
+    }
+
+    @Override
+    public void hardDeleteQuestionById(String questionId) {
+        deleteResponsesByQuestionId(questionId);
+        deleteQuizQuestionsByQuestionId(questionId);
+        deleteQuestionSkillsByQuestionId(questionId);
+        deleteOptionsByQuestionId(questionId);
+        jpaQuestionRepository.deleteByQuestionId(questionId);
     }
 
     // Quiz
@@ -139,9 +154,26 @@ public class QuizRepositoryAdapter implements QuizRepository {
     @Override
     public void deleteQuizById(
             String quizId) {
+        softDeleteQuizById(quizId);
+    }
 
-        jpaQuizRepository
-                .deleteByQuizId(quizId);
+    @Override
+    public void softDeleteQuizById(String quizId) {
+        jpaQuizRepository.findByQuizId(quizId).ifPresent(quiz -> {
+            quiz.softDelete();
+            jpaQuizRepository.save(quiz);
+        });
+    }
+
+    @Override
+    public void hardDeleteQuizById(String quizId) {
+        deleteQuizQuestionsByQuizId(quizId);
+        jpaQuizRepository.deleteByQuizId(quizId);
+    }
+
+    @Override
+    public boolean existsAttemptByQuizId(String quizId) {
+        return jpaAttemptRepository.existsByQuizId(quizId);
     }
 
     // Option

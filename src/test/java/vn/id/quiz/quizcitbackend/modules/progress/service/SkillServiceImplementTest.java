@@ -19,14 +19,32 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaAbilityHistoryRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaQuestionSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
+
 class SkillServiceImplementTest {
     private SkillRepository skillRepository;
+    private JpaQuestionSkillRepository questionSkillRepository;
+    private JpaChapterSkillRepository chapterSkillRepository;
+    private JpaUserSkillAbilityRepository userSkillAbilityRepository;
+    private JpaAbilityHistoryRepository abilityHistoryRepository;
     private SkillServiceImplement service;
 
     @BeforeEach
     void setUp() {
         skillRepository = mock(SkillRepository.class);
-        service = new SkillServiceImplement(skillRepository);
+        questionSkillRepository = mock(JpaQuestionSkillRepository.class);
+        chapterSkillRepository = mock(JpaChapterSkillRepository.class);
+        userSkillAbilityRepository = mock(JpaUserSkillAbilityRepository.class);
+        abilityHistoryRepository = mock(JpaAbilityHistoryRepository.class);
+        service = new SkillServiceImplement(
+                skillRepository,
+                questionSkillRepository,
+                chapterSkillRepository,
+                userSkillAbilityRepository,
+                abilityHistoryRepository);
     }
 
     @Test
@@ -39,6 +57,20 @@ class SkillServiceImplementTest {
         assertThat(skill.isDeleted()).isTrue();
         assertThat(skill.getDeletedAt()).isNotNull();
         verify(skillRepository).save(skill);
+    }
+
+    @Test
+    void hardDeleteSkillCleansUpDependenciesAndDeletes() {
+        Skill skill = Skill.builder().skillId("skill-1").name("Vòng lặp").build();
+        when(skillRepository.findById("skill-1")).thenReturn(Optional.of(skill));
+
+        service.hardDeleteSkill("skill-1");
+
+        verify(questionSkillRepository).deleteBySkillId("skill-1");
+        verify(chapterSkillRepository).deleteBySkillId("skill-1");
+        verify(userSkillAbilityRepository).deleteBySkillId("skill-1");
+        verify(abilityHistoryRepository).deleteBySkillId("skill-1");
+        verify(skillRepository).hardDeleteById("skill-1");
     }
 
     @Test

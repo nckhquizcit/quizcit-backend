@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "quizzes")
@@ -12,6 +13,7 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted_at IS NULL")
 public class Quiz {
 
     @Id
@@ -42,6 +44,9 @@ public class Quiz {
     @Column(name = "created_at", nullable = false)
     private ZonedDateTime createdAt;
 
+    @Column(name = "deleted_at")
+    private ZonedDateTime deletedAt;
+
     public static Quiz create(
             String subjectId,
             String chapterId,
@@ -66,5 +71,13 @@ public class Quiz {
 
     public void updateDisplayOrder(int displayOrder) {
         this.displayOrder = displayOrder;
+    }
+
+    public void softDelete() {
+        this.deletedAt = ZonedDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }

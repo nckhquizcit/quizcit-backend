@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangePasswordRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.AdminResetPasswordRequest;
@@ -156,8 +158,13 @@ public class UserController {
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteUser(
             @AuthenticationPrincipal CustomUserPrincipal principal,
-            @PathVariable String userId) {
-        userUseCase.deleteUser(principal.getUserId(), userId);
+            @PathVariable String userId,
+            @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
+        if (hard) {
+            userUseCase.hardDeleteUser(principal.getUserId(), userId);
+        } else {
+            userUseCase.deleteUser(principal.getUserId(), userId);
+        }
         return ResponseEntity.noContent().build();
     }
 
@@ -189,5 +196,47 @@ public class UserController {
         UserResponse response = userUseCase.changeUserRole(principal.getUserId(), userId, request);
         return ResponseEntity.ok(ApiResponse.success(
                 "Cập nhật vai trò người dùng thành công", response));
+    }
+
+    // =========================================================================
+    // Role & Permission Management (Admin Only)
+    // =========================================================================
+
+    @GetMapping("/roles")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role>>> getAllRoles() {
+        return ResponseEntity.ok(ApiResponse.success(userUseCase.getAllRoles()));
+    }
+
+    @DeleteMapping("/roles/{roleId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> deleteRole(
+            @PathVariable String roleId,
+            @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
+        if (hard) {
+            userUseCase.hardDeleteRole(roleId);
+        } else {
+            userUseCase.deleteRole(roleId);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/permissions")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Permission>>> getAllPermissions() {
+        return ResponseEntity.ok(ApiResponse.success(userUseCase.getAllPermissions()));
+    }
+
+    @DeleteMapping("/permissions/{permissionId}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<Void>> deletePermission(
+            @PathVariable String permissionId,
+            @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
+        if (hard) {
+            userUseCase.hardDeletePermission(permissionId);
+        } else {
+            userUseCase.deletePermission(permissionId);
+        }
+        return ResponseEntity.noContent().build();
     }
 }

@@ -13,7 +13,9 @@ import org.springframework.http.HttpStatus;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
+import java.time.ZonedDateTime;
 import java.util.UUID;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "permissions")
@@ -21,6 +23,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted_at IS NULL")
 public class Permission {
     @Id
     @Column(name = "permission_id", length = 50)
@@ -28,6 +31,9 @@ public class Permission {
 
     @Column(nullable = false, length = 100)
     private String name;
+
+    @Column(name = "deleted_at")
+    private ZonedDateTime deletedAt;
 
     public static Permission create(String name) {
         if (name == null || name.isBlank()) {
@@ -38,5 +44,13 @@ public class Permission {
                 .permissionId(UUID.randomUUID().toString())
                 .name(name.trim())
                 .build();
+    }
+
+    public void softDelete() {
+        this.deletedAt = ZonedDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }

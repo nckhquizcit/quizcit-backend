@@ -23,10 +23,20 @@ public interface UserUseCase {
     void resetPasswordByAdmin(String userId, AdminResetPasswordRequest request);
 
     void deleteUser(String actorUserId, String userId);
+    void hardDeleteUser(String actorUserId, String userId);
 
     // ===== Phase 2 (P1): Admin endpoints =====
 
     UserResponse updateUserStatus(String actorUserId, String userId, UpdateUserStatusRequest request);
 
     UserResponse changeUserRole(String actorUserId, String userId, ChangeUserRoleRequest request);
+
+    // ===== Role & Permission Management =====
+    List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role> getAllRoles();
+    void deleteRole(String roleId);
+    void hardDeleteRole(String roleId);
+
+    List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Permission> getAllPermissions();
+    void deletePermission(String permissionId);
+    void hardDeletePermission(String permissionId);
 }

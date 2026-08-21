@@ -13,6 +13,7 @@ public interface JpaChapterSkillRepository extends JpaRepository<ChapterSkill, C
     List<ChapterSkill> findByChapterIdIn(Collection<String> chapterIds);
     void deleteByChapterId(String chapterId);
     void deleteByChapterIdIn(Collection<String> chapterIds);
+    void deleteBySkillId(String skillId);
 
     @Query(value = """
         SELECT EXISTS (

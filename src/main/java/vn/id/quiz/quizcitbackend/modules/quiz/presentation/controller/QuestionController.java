@@ -124,9 +124,14 @@ public class QuestionController {
     @DeleteMapping("/questions/{questionId}")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteQuestion(
-            @PathVariable String questionId) {
+            @PathVariable String questionId,
+            @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
 
-        questionService.deleteQuestion(questionId);
+        if (hard) {
+            questionService.hardDeleteQuestion(questionId);
+        } else {
+            questionService.deleteQuestion(questionId);
+        }
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success(

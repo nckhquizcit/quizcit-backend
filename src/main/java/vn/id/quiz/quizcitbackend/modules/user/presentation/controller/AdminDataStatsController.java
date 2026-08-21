@@ -22,10 +22,10 @@ public class AdminDataStatsController {
     public ApiResponse<AdminDataStatsResponse> getDataStats() {
         Object[] row = (Object[]) entityManager.createNativeQuery("""
                 SELECT
-                  (SELECT COUNT(*) FROM users),
-                  (SELECT COUNT(*) FROM subjects),
-                  (SELECT COUNT(*) FROM questions),
-                  (SELECT COUNT(*) FROM quizzes WHERE type <> 'ADAPTIVE'),
+                  (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL),
+                  (SELECT COUNT(*) FROM subjects WHERE deleted_at IS NULL),
+                  (SELECT COUNT(*) FROM questions WHERE deleted_at IS NULL),
+                  (SELECT COUNT(*) FROM quizzes WHERE type <> 'ADAPTIVE' AND deleted_at IS NULL),
                   (SELECT COUNT(*) FROM attempts a
                      WHERE EXISTS (SELECT 1 FROM responses r WHERE r.attempt_id = a.attempt_id)
                        AND (NOT EXISTS (SELECT 1 FROM quizzes q

@@ -14,4 +14,5 @@ public interface SkillService {
     SkillResponse createSkill(SkillRequest request);
     SkillResponse updateSkill(String skillId, SkillRequest request);
     void deleteSkill(String skillId);
+    void hardDeleteSkill(String skillId);
 }

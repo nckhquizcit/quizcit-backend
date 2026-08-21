@@ -6,4 +6,5 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.AdaptiveQuestio
 
 public interface JpaAdaptiveQuestionSelectionRepository
         extends JpaRepository<AdaptiveQuestionSelection, String> {
+    void deleteByUserId(String userId);
 }
