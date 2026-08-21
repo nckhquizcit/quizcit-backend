@@ -14,8 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
+import vn.id.quiz.quizcitbackend.modules.content.service.ContentConstants;
 import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
@@ -80,13 +82,24 @@ public class QuestionServiceImplement implements QuestionService {
     public QuestionResponse createQuestion(
             CreateQuestionRequest request) {
 
-        validateQuestionPlacement(request.getSubjectId(), request.getChapterId());
+        String subjectId = request.getSubjectId();
+        String chapterId = request.getChapterId();
+
+        if (isQuestionBankPlacement(subjectId, chapterId)) {
+            Subject bankSubject = contentRepository.getOrCreateQuestionBankSubject();
+            Chapter bankChapter = contentRepository.getOrCreateQuestionBankChapter(bankSubject.getSubjectId());
+            subjectId = bankSubject.getSubjectId();
+            chapterId = bankChapter.getChapterId();
+        } else {
+            validateQuestionPlacement(subjectId, chapterId);
+        }
+
         validateOptions(request.getOptions());
-        validateSkillMappings(request.getSkills(), request.getChapterId());
+        validateSkillMappings(request.getSkills(), chapterId);
 
         Question question = Question.create(
-                request.getSubjectId(),
-                request.getChapterId(),
+                subjectId,
+                chapterId,
                 request.getContent(),
                 request.getExplanation(),
                 request.getDifficultyB());
@@ -137,7 +150,15 @@ public class QuestionServiceImplement implements QuestionService {
                 ? request.getChapterId()
                 : question.getChapterId();
 
-        validateQuestionPlacement(nextSubjectId, nextChapterId);
+        if (isQuestionBankPlacement(nextSubjectId, nextChapterId)) {
+            Subject bankSubject = contentRepository.getOrCreateQuestionBankSubject();
+            Chapter bankChapter = contentRepository.getOrCreateQuestionBankChapter(bankSubject.getSubjectId());
+            nextSubjectId = bankSubject.getSubjectId();
+            nextChapterId = bankChapter.getChapterId();
+        } else {
+            validateQuestionPlacement(nextSubjectId, nextChapterId);
+        }
+
         validateSkillMappings(request.getSkills(), nextChapterId);
 
         question.setSubjectId(nextSubjectId);
@@ -359,6 +380,13 @@ public class QuestionServiceImplement implements QuestionService {
                             .build();
                 })
                 .toList();
+    }
+
+    private boolean isQuestionBankPlacement(String subjectId, String chapterId) {
+        return (hasText(subjectId) && (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subjectId)
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subjectId)))
+                || (hasText(chapterId) && (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(chapterId)
+                || ContentConstants.QUESTION_BANK_CHAPTER_NAME.equalsIgnoreCase(chapterId)));
     }
 
     private void validateQuestionPlacement(String subjectId, String chapterId) {
