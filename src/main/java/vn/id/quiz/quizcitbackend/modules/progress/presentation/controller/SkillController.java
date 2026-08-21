@@ -15,10 +15,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.BulkCreateSkillItemResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.BulkCreateSkillsRequest;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.BulkCreateSkillsResponse;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillRequest;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillResponse;
 import vn.id.quiz.quizcitbackend.modules.progress.service.SkillService;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 /**
@@ -36,6 +41,7 @@ import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 public class SkillController {
 
     private final SkillService skillService;
+    private final Validator validator;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<SkillResponse>>> getAllSkills() {
@@ -54,6 +60,45 @@ public class SkillController {
             @Valid @RequestBody SkillRequest request) {
         SkillResponse created = skillService.createSkill(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(created));
+    }
+
+    @PostMapping("/bulk")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<BulkCreateSkillsResponse>> createSkillsBulk(
+            @Valid @RequestBody BulkCreateSkillsRequest request) {
+        List<BulkCreateSkillItemResponse> results = request.items().stream()
+                .map(item -> {
+                    try {
+                        if (item == null || item.clientId() == null || item.clientId().isBlank()) {
+                            throw new IllegalArgumentException("clientId không được để trống");
+                        }
+                        if (item.skill() == null) {
+                            throw new IllegalArgumentException("Dữ liệu kỹ năng không được để trống");
+                        }
+                        var violations = validator.validate(item.skill());
+                        if (!violations.isEmpty()) {
+                            throw new IllegalArgumentException(violations.iterator().next().getMessage());
+                        }
+                        SkillResponse created = skillService.createSkill(item.skill());
+                        return new BulkCreateSkillItemResponse(
+                                item.clientId(), true, created, null);
+                    } catch (RuntimeException exception) {
+                        String message = exception instanceof AppException || exception instanceof IllegalArgumentException
+                                ? exception.getMessage()
+                                : "Không thể tạo kỹ năng";
+                        return new BulkCreateSkillItemResponse(
+                                item != null ? item.clientId() : null, false, null, message);
+                    }
+                })
+                .toList();
+
+        int successCount = (int) results.stream().filter(BulkCreateSkillItemResponse::success).count();
+        int failureCount = results.size() - successCount;
+
+        BulkCreateSkillsResponse response = new BulkCreateSkillsResponse(
+                results.size(), successCount, failureCount, results);
+
+        return ResponseEntity.ok(ApiResponse.success("Đã xử lý import kỹ năng hàng loạt", response));
     }
 
     @PutMapping("/{skillId}")
