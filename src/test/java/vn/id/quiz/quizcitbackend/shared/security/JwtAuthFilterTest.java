@@ -33,7 +33,9 @@ class JwtAuthFilterTest {
     @Test
     void matchingTokenVersionShouldAuthenticate() throws Exception {
         User user = verifiedUser();
-        when(repository.findUserById(user.getUserId())).thenReturn(Optional.of(user));
+        when(repository.findUserAuthState(user.getUserId()))
+                .thenReturn(Optional.of(new vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthUserState(
+                        user.getUserId(), user.getStatus(), user.getTokenVersion())));
         String token = tokens.generate(user, UserRole.USER).accessToken();
 
         filter.doFilter(request(token), new MockHttpServletResponse(), new MockFilterChain());
@@ -46,7 +48,9 @@ class JwtAuthFilterTest {
         User user = verifiedUser();
         String token = tokens.generate(user, UserRole.USER).accessToken();
         user.revokeSessions();
-        when(repository.findUserById(user.getUserId())).thenReturn(Optional.of(user));
+        when(repository.findUserAuthState(user.getUserId()))
+                .thenReturn(Optional.of(new vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthUserState(
+                        user.getUserId(), user.getStatus(), user.getTokenVersion())));
 
         filter.doFilter(request(token), new MockHttpServletResponse(), new MockFilterChain());
 

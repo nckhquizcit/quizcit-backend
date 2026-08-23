@@ -19,6 +19,12 @@ public interface AuthRepository {
     Optional<User> findUserByEmail(String email);
     Optional<User> findUserById(String userId);
 
+    default Optional<vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthUserState> findUserAuthState(String userId) {
+        return findUserById(userId)
+                .map(user -> new vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthUserState(
+                        user.getUserId(), user.getStatus(), user.getTokenVersion()));
+    }
+
     Optional<Role> findRoleByName(UserRole name);
 
     Optional<Role> findRoleByUserId(String userId);

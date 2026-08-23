@@ -18,6 +18,10 @@ import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaAbil
 import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaQuestionSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import vn.id.quiz.quizcitbackend.shared.config.CacheConfig;
+
 @Service
 @RequiredArgsConstructor
 public class SkillServiceImplement implements SkillService {
@@ -30,6 +34,7 @@ public class SkillServiceImplement implements SkillService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_SKILLS, key = "'all'")
     public List<SkillResponse> getAllSkills() {
         return skillRepository.findAll().stream()
                 .map(SkillResponse::from)
@@ -38,6 +43,7 @@ public class SkillServiceImplement implements SkillService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_SKILL_DETAIL, key = "#skillId")
     public SkillResponse getSkillById(String skillId) {
         return skillRepository.findById(skillId)
                 .map(SkillResponse::from)
@@ -47,6 +53,7 @@ public class SkillServiceImplement implements SkillService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SKILLS, CacheConfig.CACHE_SKILL_DETAIL}, allEntries = true)
     public SkillResponse createSkill(SkillRequest request) {
         Skill skill = Skill.create(request.getName(), request.getDescription());
         return SkillResponse.from(skillRepository.save(skill));
@@ -54,6 +61,7 @@ public class SkillServiceImplement implements SkillService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SKILLS, CacheConfig.CACHE_SKILL_DETAIL}, allEntries = true)
     public SkillResponse updateSkill(String skillId, SkillRequest request) {
         Skill skill = skillRepository.findById(skillId)
                 .orElseThrow(() -> new AppException(
@@ -64,6 +72,7 @@ public class SkillServiceImplement implements SkillService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SKILLS, CacheConfig.CACHE_SKILL_DETAIL}, allEntries = true)
     public void deleteSkill(String skillId) {
         Skill skill = skillRepository.findById(skillId)
                 .orElseThrow(() -> new AppException("Không tìm thấy kỹ năng", HttpStatus.NOT_FOUND));
@@ -73,6 +82,7 @@ public class SkillServiceImplement implements SkillService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SKILLS, CacheConfig.CACHE_SKILL_DETAIL}, allEntries = true)
     public void hardDeleteSkill(String skillId) {
         if (skillRepository.findById(skillId).isEmpty()) {
             throw new AppException("Không tìm thấy kỹ năng", HttpStatus.NOT_FOUND);

@@ -10,6 +10,11 @@ import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRoleAssignm
 
 import java.util.Optional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthUserState;
+import vn.id.quiz.quizcitbackend.shared.config.CacheConfig;
+
 @Component
 @RequiredArgsConstructor
 public class AuthRepositoryAdapter implements AuthRepository {
@@ -18,6 +23,7 @@ public class AuthRepositoryAdapter implements AuthRepository {
     private final JpaAuthUserRoleRepository jpaAuthUserRoleRepository;
 
     @Override
+    @CacheEvict(value = CacheConfig.CACHE_AUTH_USER_STATE, key = "#user.userId")
     public User save(User user) {
         return jpaAuthUserRepository.save(user);
     }
@@ -45,6 +51,13 @@ public class AuthRepositoryAdapter implements AuthRepository {
     @Override
     public Optional<User> findUserById(String userId) {
         return jpaAuthUserRepository.findById(userId);
+    }
+
+    @Override
+    @Cacheable(value = CacheConfig.CACHE_AUTH_USER_STATE, key = "#userId", unless = "#result == null || !#result.isPresent()")
+    public Optional<AuthUserState> findUserAuthState(String userId) {
+        return jpaAuthUserRepository.findById(userId)
+                .map(user -> new AuthUserState(user.getUserId(), user.getStatus(), user.getTokenVersion()));
     }
 
     @Override

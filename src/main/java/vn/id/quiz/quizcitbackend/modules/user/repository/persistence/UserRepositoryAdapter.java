@@ -28,6 +28,9 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import org.springframework.cache.annotation.CacheEvict;
+import vn.id.quiz.quizcitbackend.shared.config.CacheConfig;
+
 @Component
 @RequiredArgsConstructor
 public class UserRepositoryAdapter implements UserRepository {
@@ -59,6 +62,7 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    @CacheEvict(value = CacheConfig.CACHE_AUTH_USER_STATE, key = "#user.userId")
     public User save(User user) {
         return jpaUserRepository.save(user);
     }
@@ -145,6 +149,7 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    @CacheEvict(value = CacheConfig.CACHE_AUTH_USER_STATE, key = "#userId")
     public void deleteById(String userId) {
         User user = jpaUserRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
@@ -153,6 +158,7 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    @CacheEvict(value = CacheConfig.CACHE_AUTH_USER_STATE, key = "#userId")
     public void hardDeleteById(String userId) {
         jpaUserRoleRepository.deleteByUserId(userId);
         jpaUserCourseEnrollmentRepository.deleteByUserId(userId);

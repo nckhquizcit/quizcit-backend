@@ -420,8 +420,7 @@ public class AttemptServiceImplement
                         "Không tìm thấy kết quả bài thi",
                         HttpStatus.NOT_FOUND));
 
-        new SubjectVisibilityGuard(contentRepository, quizRepository)
-                .requireVisibleQuiz(attempt.getQuizId());
+        visibilityGuard.requireVisibleQuiz(attempt.getQuizId());
 
         List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByAttemptId(
                 attemptId);

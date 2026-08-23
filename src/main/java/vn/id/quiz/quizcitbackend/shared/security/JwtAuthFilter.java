@@ -58,11 +58,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // Ta tự decode payload để lấy các thông tin an toàn.
             TokenPayload payload = TokenPayload.from(token.get());
 
-            var currentUser = authRepository.findUserById(payload.userId());
-            if (currentUser.isEmpty()
-                    || currentUser.get().getStatus() != UserStatus.VERIFIED
+            var authState = authRepository.findUserAuthState(payload.userId());
+            if (authState.isEmpty()
+                    || authState.get().status() != UserStatus.VERIFIED
                     || payload.tokenVersion() == null
-                    || !payload.tokenVersion().equals(currentUser.get().getTokenVersion())) {
+                    || !payload.tokenVersion().equals(authState.get().tokenVersion())) {
                 filterChain.doFilter(request, response);
                 return;
             }

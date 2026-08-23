@@ -40,6 +40,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import vn.id.quiz.quizcitbackend.shared.config.CacheConfig;
 import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
 
 @Service
@@ -71,6 +74,7 @@ public class ContentServiceImplement implements ContentService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_SUBJECTS, key = "@subjectVisibilityGuard.isAdministrator() ? 'admin' : 'user'")
     public List<SubjectResponse> getAllSubject(){
         List<Subject> subjects = visibilityGuard.isAdministrator()
                 ? contentRepository.findAllSubject()
@@ -82,6 +86,7 @@ public class ContentServiceImplement implements ContentService {
     }
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_SUBJECT_DETAIL, key = "#subjectId")
     public SubjectResponse getSubjectById(String subjectId){
         Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
         if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
@@ -111,6 +116,7 @@ public class ContentServiceImplement implements ContentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SUBJECTS, CacheConfig.CACHE_SUBJECT_DETAIL}, allEntries = true)
     public SubjectResponse createSubject(CreateSubjectRequest request){
         if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(request.courseCode())
                 || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(request.name())) {
@@ -126,6 +132,7 @@ public class ContentServiceImplement implements ContentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = CacheConfig.CACHE_SUBJECT_DETAIL, allEntries = true)
     public ChapterResponse addChapter(String subjectId, CreateChapterRequest request){
         Subject subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
@@ -218,6 +225,7 @@ public class ContentServiceImplement implements ContentService {
     }
     @Transactional
     @Override
+    @CacheEvict(value = {CacheConfig.CACHE_SUBJECTS, CacheConfig.CACHE_SUBJECT_DETAIL}, allEntries = true)
     public void updateSubject(String subjectId, UpdateSubjectRequest request){
         Subject subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(()-> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
@@ -235,6 +243,7 @@ public class ContentServiceImplement implements ContentService {
     }
     @Transactional
     @Override
+    @CacheEvict(value = CacheConfig.CACHE_SUBJECT_DETAIL, allEntries = true)
     public void updateChapter(String chapterId, UpdateChapterRequest request){
         Chapter chapter = contentRepository.findChapterById(chapterId)
                         .orElseThrow(()->new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
@@ -273,6 +282,7 @@ public class ContentServiceImplement implements ContentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SUBJECTS, CacheConfig.CACHE_SUBJECT_DETAIL, CacheConfig.CACHE_QUIZZES_BY_SUBJECT}, allEntries = true)
     public void deleteSubject(String subjectId){
         Subject subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
@@ -321,6 +331,7 @@ public class ContentServiceImplement implements ContentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SUBJECTS, CacheConfig.CACHE_SUBJECT_DETAIL, CacheConfig.CACHE_QUIZZES_BY_SUBJECT}, allEntries = true)
     public void hardDeleteSubject(String subjectId) {
         Subject subject = contentRepository.findSubjectById(subjectId)
                 .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
@@ -377,6 +388,7 @@ public class ContentServiceImplement implements ContentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SUBJECT_DETAIL, CacheConfig.CACHE_QUIZZES_BY_SUBJECT}, allEntries = true)
     public void deleteChapter(String chapterId) {
         Chapter chapter = contentRepository.findChapterById(chapterId)
                 .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
@@ -420,6 +432,7 @@ public class ContentServiceImplement implements ContentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SUBJECT_DETAIL, CacheConfig.CACHE_QUIZZES_BY_SUBJECT}, allEntries = true)
     public void hardDeleteChapter(String chapterId) {
         Chapter chapter = contentRepository.findChapterById(chapterId)
                 .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
@@ -477,6 +490,7 @@ public class ContentServiceImplement implements ContentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {CacheConfig.CACHE_SUBJECTS, CacheConfig.CACHE_SUBJECT_DETAIL}, allEntries = true)
     public void reorderSubjects(ReorderRequest request) {
         Map<String, Subject> subjectsById = contentRepository.findSubjectsByIds(
                 request.items().stream().map(item -> item.id()).toList()).stream()
@@ -492,6 +506,7 @@ public class ContentServiceImplement implements ContentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = CacheConfig.CACHE_SUBJECT_DETAIL, allEntries = true)
     public void reorderChapters(String subjectId, ReorderRequest request) {
         if (!contentRepository.existsBySubjectId(subjectId)) {
             throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);

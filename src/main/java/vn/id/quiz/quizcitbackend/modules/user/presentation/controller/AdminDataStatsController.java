@@ -7,7 +7,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.cache.annotation.Cacheable;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.AdminDataStatsResponse;
+import vn.id.quiz.quizcitbackend.shared.config.CacheConfig;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 @RestController
@@ -19,6 +21,7 @@ public class AdminDataStatsController {
     @GetMapping("/data-stats")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_ADMIN_DATA_STATS, key = "'summary'")
     public ApiResponse<AdminDataStatsResponse> getDataStats() {
         Object[] row = (Object[]) entityManager.createNativeQuery("""
                 SELECT

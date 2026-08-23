@@ -16,5 +16,15 @@ services:
     volumes:
       - quizcit-postgres-dev-data:/var/lib/postgresql
 
+  redis-dev:
+    image: redis:7-alpine
+    container_name: quizcit-redis-dev
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - quizcit-redis-dev-data:/data
+
 volumes:
   quizcit-postgres-dev-data:
+  quizcit-redis-dev-data:
+

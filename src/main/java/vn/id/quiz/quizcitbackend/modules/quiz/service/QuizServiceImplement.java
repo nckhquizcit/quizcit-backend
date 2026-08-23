@@ -25,6 +25,9 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
 
+import org.springframework.cache.annotation.CacheEvict;
+import vn.id.quiz.quizcitbackend.shared.config.CacheConfig;
+
 @Service
 @RequiredArgsConstructor
 public class QuizServiceImplement implements QuizService {
@@ -36,6 +39,7 @@ public class QuizServiceImplement implements QuizService {
 
     @Override
     @Transactional
+    @CacheEvict(value = CacheConfig.CACHE_QUIZZES_BY_SUBJECT, allEntries = true)
     public QuizResponse createQuiz(
             CreateQuizRequest request) {
 
@@ -115,6 +119,7 @@ public class QuizServiceImplement implements QuizService {
 
     @Override
     @Transactional
+    @CacheEvict(value = CacheConfig.CACHE_QUIZZES_BY_SUBJECT, allEntries = true)
     public void updateQuiz(
             String quizId,
             UpdateQuizRequest request) {
@@ -175,6 +180,7 @@ public class QuizServiceImplement implements QuizService {
 
     @Override
     @Transactional
+    @CacheEvict(value = CacheConfig.CACHE_QUIZZES_BY_SUBJECT, allEntries = true)
     public void deleteQuiz(String quizId) {
         Quiz quiz = quizRepository.findQuizById(quizId)
                 .orElseThrow(() -> new AppException(
@@ -186,6 +192,7 @@ public class QuizServiceImplement implements QuizService {
 
     @Override
     @Transactional
+    @CacheEvict(value = CacheConfig.CACHE_QUIZZES_BY_SUBJECT, allEntries = true)
     public void hardDeleteQuiz(String quizId) {
         if (quizRepository.findQuizById(quizId).isEmpty()) {
             throw new AppException(
@@ -222,6 +229,7 @@ public class QuizServiceImplement implements QuizService {
 
     @Override
     @Transactional
+    @CacheEvict(value = CacheConfig.CACHE_QUIZZES_BY_SUBJECT, allEntries = true)
     public void reorderQuizzes(String chapterId, ReorderRequest request) {
         contentRepository.findChapterById(chapterId)
                 .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
