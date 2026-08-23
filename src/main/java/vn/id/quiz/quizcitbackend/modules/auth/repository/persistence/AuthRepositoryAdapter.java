@@ -54,7 +54,7 @@ public class AuthRepositoryAdapter implements AuthRepository {
     }
 
     @Override
-    @Cacheable(value = CacheConfig.CACHE_AUTH_USER_STATE, key = "#userId", unless = "#result == null || !#result.isPresent()")
+    @Cacheable(value = CacheConfig.CACHE_AUTH_USER_STATE, key = "#userId")
     public Optional<AuthUserState> findUserAuthState(String userId) {
         return jpaAuthUserRepository.findById(userId)
                 .map(user -> new AuthUserState(user.getUserId(), user.getStatus(), user.getTokenVersion()));
