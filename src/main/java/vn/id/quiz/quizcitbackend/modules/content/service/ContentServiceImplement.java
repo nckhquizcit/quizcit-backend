@@ -24,6 +24,7 @@ import vn.id.quiz.quizcitbackend.modules.chatbot.service.TheoryIndexingService;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserCourseEnrollmentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUserSkillAbilityRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
@@ -144,6 +145,7 @@ public class ContentServiceImplement implements ContentService {
         Chapter response = Chapter.create(subjectId, request.name(), displayOrder);
         contentRepository.save(response);
         replaceChapterSkills(response.getChapterId(), request.skills(), false);
+        recalculateUnlockedChaptersForSubject(subjectId);
         return toChapterResponse(response);
     }
     @Override
@@ -260,6 +262,7 @@ public class ContentServiceImplement implements ContentService {
         if (request.skills() != null) {
             replaceChapterSkills(chapterId, request.skills(), true);
         }
+        recalculateUnlockedChaptersForSubject(chapter.getSubjectId());
     }
     @Transactional
     @Override
@@ -404,6 +407,7 @@ public class ContentServiceImplement implements ContentService {
         Subject bankSubject = contentRepository.getOrCreateQuestionBankSubject();
         Chapter bankChapter = contentRepository.getOrCreateQuestionBankChapter(bankSubject.getSubjectId());
 
+        String subjectId = chapter.getSubjectId();
         // 1. Reassign all questions belonging to this chapter to Question Bank
         quizRepository.reassignQuestionsByChapterId(
                 chapterId, bankSubject.getSubjectId(), bankChapter.getChapterId());
@@ -428,6 +432,7 @@ public class ContentServiceImplement implements ContentService {
 
         // 5. Delete chapter
         contentRepository.deleteChapterById(chapterId);
+        recalculateUnlockedChaptersForSubject(subjectId);
     }
 
     @Override
@@ -447,6 +452,7 @@ public class ContentServiceImplement implements ContentService {
 
         Subject bankSubject = contentRepository.getOrCreateQuestionBankSubject();
         Chapter bankChapter = contentRepository.getOrCreateQuestionBankChapter(bankSubject.getSubjectId());
+        String subjectId = chapter.getSubjectId();
 
         // 1. Reassign all questions belonging to this chapter to Question Bank
         quizRepository.reassignQuestionsByChapterId(
@@ -472,6 +478,7 @@ public class ContentServiceImplement implements ContentService {
 
         // 5. Hard delete chapter
         contentRepository.hardDeleteChapterById(chapterId);
+        recalculateUnlockedChaptersForSubject(subjectId);
     }
 
     @Override
@@ -522,6 +529,7 @@ public class ContentServiceImplement implements ContentService {
             displayOrders.put(chapter.getChapterId(), item.displayOrder());
         });
         contentRepository.updateChapterDisplayOrders(displayOrders);
+        recalculateUnlockedChaptersForSubject(subjectId);
     }
 
     private int positiveOrDefault(Integer requested, int fallback) {
@@ -530,15 +538,35 @@ public class ContentServiceImplement implements ContentService {
 
     private boolean canUnlock(String userId, String chapterId) {
         if (userId != null && unlockedChapterRepository.existsByUserIdAndChapterId(userId, chapterId)) return true;
-        List<ChapterSkill> requirements = chapterSkillRepository.findByChapterId(chapterId);
+        Chapter currentChapter = contentRepository.findChapterById(chapterId).orElse(null);
+        if (currentChapter == null) return false;
+
+        List<Chapter> chapters = contentRepository.findAllChapter(currentChapter.getSubjectId());
+        if (chapters == null || chapters.isEmpty()) return false;
+
         Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository.findByUserId(userId)
-                .stream().collect(Collectors.toMap(a -> a.getSkillId(), a -> a.getTheta() == null ? 0.0 : a.getTheta()));
-        boolean eligible = requirements.stream()
-                .allMatch(requirement -> thetaBySkill.getOrDefault(requirement.getSkillId(), 0.0) >= requirement.getRequiredTheta());
-        if (eligible && userId != null) {
-            unlockedChapterRepository.insertIfAbsent(userId, chapterId);
+                .stream().collect(Collectors.toMap(UserSkillAbility::getSkillId, a -> a.getTheta() == null ? 0.0 : a.getTheta()));
+
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+        Map<String, List<ChapterSkill>> skillsByChapter = chapterSkillRepository.findByChapterIdIn(chapterIds)
+                .stream().collect(Collectors.groupingBy(ChapterSkill::getChapterId));
+
+        for (int i = 0; i < chapters.size(); i++) {
+            Chapter ch = chapters.get(i);
+            if (ch.getChapterId().equals(chapterId)) {
+                if (userId != null) {
+                    unlockedChapterRepository.insertIfAbsent(userId, chapterId);
+                }
+                return true;
+            }
+            List<ChapterSkill> reqs = skillsByChapter.getOrDefault(ch.getChapterId(), List.of());
+            boolean passed = reqs.stream().allMatch(
+                    req -> thetaBySkill.getOrDefault(req.getSkillId(), 0.0) >= req.getRequiredTheta());
+            if (!passed) {
+                return false;
+            }
         }
-        return eligible;
+        return false;
     }
 
     private List<ChapterResponse> toAccessibleChapterResponses(List<Chapter> chapters) {
@@ -563,22 +591,93 @@ public class ContentServiceImplement implements ContentService {
                     .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
             Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository
                     .findByUserId(userId).stream().collect(Collectors.toMap(
-                            ability -> ability.getSkillId(),
+                            UserSkillAbility::getSkillId,
                             ability -> ability.getTheta() == null ? 0.0 : ability.getTheta()));
-            accessible = chapters.stream().filter(chapter -> unlocked.contains(chapter.getChapterId())
-                    || requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of()).stream()
-                    .allMatch(requirement -> thetaBySkill.getOrDefault(requirement.getSkillId(), 0.0)
-                            >= requirement.getRequiredTheta())).toList();
-            if (userId != null) {
-                List<String> newlyUnlocked = accessible.stream().map(Chapter::getChapterId)
-                        .filter(id -> !unlocked.contains(id)).toList();
-                if (!newlyUnlocked.isEmpty()) {
-                    unlockedChapterRepository.insertAllIfAbsent(userId, newlyUnlocked);
+
+            Map<String, List<Chapter>> chaptersBySubject = chapters.stream()
+                    .collect(Collectors.groupingBy(Chapter::getSubjectId, java.util.LinkedHashMap::new, Collectors.toList()));
+
+            List<Chapter> accessibleList = new java.util.ArrayList<>();
+            List<String> newlyUnlocked = new java.util.ArrayList<>();
+
+            for (List<Chapter> subjectChapters : chaptersBySubject.values()) {
+                boolean chainActive = true;
+                for (int i = 0; i < subjectChapters.size(); i++) {
+                    Chapter ch = subjectChapters.get(i);
+                    String chId = ch.getChapterId();
+                    boolean isCurrentlyUnlocked = unlocked.contains(chId);
+
+                    if (i == 0) {
+                        accessibleList.add(ch);
+                        if (!isCurrentlyUnlocked) {
+                            newlyUnlocked.add(chId);
+                        }
+                        List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chId, List.of());
+                        boolean passed = reqs.stream().allMatch(
+                                req -> thetaBySkill.getOrDefault(req.getSkillId(), 0.0) >= req.getRequiredTheta());
+                        if (!passed) {
+                            chainActive = false;
+                        }
+                    } else {
+                        if (chainActive) {
+                            accessibleList.add(ch);
+                            if (!isCurrentlyUnlocked) {
+                                newlyUnlocked.add(chId);
+                            }
+                            List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chId, List.of());
+                            boolean passed = reqs.stream().allMatch(
+                                    req -> thetaBySkill.getOrDefault(req.getSkillId(), 0.0) >= req.getRequiredTheta());
+                            if (!passed) {
+                                chainActive = false;
+                            }
+                        } else if (isCurrentlyUnlocked) {
+                            accessibleList.add(ch);
+                        }
+                    }
                 }
+            }
+
+            accessible = accessibleList;
+            if (userId != null && !newlyUnlocked.isEmpty()) {
+                unlockedChapterRepository.insertAllIfAbsent(userId, newlyUnlocked);
             }
         }
         return accessible.stream().map(chapter -> toChapterResponse(
                 chapter, requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of()), skillNames)).toList();
+    }
+
+    private void recalculateUnlockedChaptersForSubject(String subjectId) {
+        if (subjectId == null || subjectId.isBlank()) return;
+        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+        if (chapterIds.isEmpty()) return;
+
+        unlockedChapterRepository.deleteByChapterIdIn(chapterIds);
+
+        List<String> enrolledUserIds = enrollmentRepository.findUserIdsBySubjectId(subjectId);
+        if (enrolledUserIds == null || enrolledUserIds.isEmpty()) return;
+
+        Map<String, List<ChapterSkill>> skillsByChapter = chapterSkillRepository.findByChapterIdIn(chapterIds)
+                .stream().collect(Collectors.groupingBy(ChapterSkill::getChapterId));
+
+        for (String userId : enrolledUserIds) {
+            Map<String, Double> thetaBySkill = userSkillAbilityRepository.findByUserId(userId).stream()
+                    .collect(Collectors.toMap(UserSkillAbility::getSkillId, a -> a.getTheta() == null ? 0.0 : a.getTheta()));
+            List<String> userUnlockedChapterIds = new java.util.ArrayList<>();
+            for (int i = 0; i < chapters.size(); i++) {
+                Chapter ch = chapters.get(i);
+                userUnlockedChapterIds.add(ch.getChapterId());
+                List<ChapterSkill> reqs = skillsByChapter.getOrDefault(ch.getChapterId(), List.of());
+                boolean passed = reqs.stream().allMatch(
+                        req -> thetaBySkill.getOrDefault(req.getSkillId(), 0.0) >= req.getRequiredTheta());
+                if (!passed) {
+                    break;
+                }
+            }
+            if (!userUnlockedChapterIds.isEmpty()) {
+                unlockedChapterRepository.insertAllIfAbsent(userId, userUnlockedChapterIds);
+            }
+        }
     }
 
     private String currentUserId() {

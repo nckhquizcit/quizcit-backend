@@ -20,6 +20,12 @@ public interface JpaUserCourseEnrollmentRepository
             """)
     List<String> findSubjectIdsByUserId(@Param("userId") String userId);
 
+    @Query("""
+            SELECT enrollment.userId FROM UserCourseEnrollment enrollment
+            WHERE enrollment.subjectId = :subjectId
+            """)
+    List<String> findUserIdsBySubjectId(@Param("subjectId") String subjectId);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
             INSERT INTO user_course_enrollments (user_id, subject_id)

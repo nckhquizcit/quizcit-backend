@@ -92,6 +92,63 @@ class ContentServiceImplementTest {
     }
 
     @Test
+    void sequentialUnlockChainBlocksChapter2WhenChapter1SkillsNotMet() {
+        Chapter first = Chapter.builder().chapterId("chapter-1").subjectId("subject-1")
+                .name("Chương 1").displayOrder(1).build();
+        Chapter second = Chapter.builder().chapterId("chapter-2").subjectId("subject-1")
+                .name("Chương 2").displayOrder(2).build();
+        var principal = new CustomUserPrincipal(
+                "user-1", "student", "student@example.com", "USER", "ACTIVE");
+        SecurityContextHolder.getContext().setAuthentication(
+                new TestingAuthenticationToken(principal, null));
+        when(visibility.isAdministrator()).thenReturn(false);
+        when(content.findAccessibleChapters("user-1")).thenReturn(List.of(first, second));
+        when(chapterSkills.findByChapterIdIn(List.of("chapter-1", "chapter-2"))).thenReturn(List.of(
+                vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill.create("chapter-1", "skill-1", 1.0)
+        ));
+        when(skills.findByIds(java.util.Set.of("skill-1"))).thenReturn(List.of(
+                vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill.builder()
+                        .skillId("skill-1").name("Skill 1").description("Desc").build()
+        ));
+        // User has no theta or theta < 1.0
+        when(abilities.findByUserId("user-1")).thenReturn(List.of());
+        when(unlocked.findByUserIdAndChapterIdIn("user-1", List.of("chapter-1", "chapter-2"))).thenReturn(List.of());
+
+        var result = service.getAllAccessibleChapters();
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).chapterId()).isEqualTo("chapter-1");
+        verify(unlocked).insertAllIfAbsent("user-1", List.of("chapter-1"));
+    }
+
+    @Test
+    void reorderChaptersRecalculatesUnlockedChaptersForEnrolledUsers() {
+        String subjectId = "subject-1";
+        Chapter first = Chapter.builder().chapterId("chapter-1").subjectId(subjectId)
+                .name("Chương 1").displayOrder(1).build();
+        Chapter second = Chapter.builder().chapterId("chapter-2").subjectId(subjectId)
+                .name("Chương 2").displayOrder(2).build();
+
+        when(content.existsBySubjectId(subjectId)).thenReturn(true);
+        when(content.findChaptersByIds(List.of("chapter-2", "chapter-1"))).thenReturn(List.of(first, second));
+        when(content.findAllChapter(subjectId)).thenReturn(List.of(second, first));
+        when(enrollments.findUserIdsBySubjectId(subjectId)).thenReturn(List.of("user-1"));
+        when(chapterSkills.findByChapterIdIn(List.of("chapter-2", "chapter-1"))).thenReturn(List.of());
+        when(abilities.findByUserId("user-1")).thenReturn(List.of());
+
+        vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest req = new vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest(
+                List.of(
+                        new vn.id.quiz.quizcitbackend.shared.dto.ReorderItemRequest("chapter-2", 1),
+                        new vn.id.quiz.quizcitbackend.shared.dto.ReorderItemRequest("chapter-1", 2)
+                )
+        );
+
+        service.reorderChapters(subjectId, req);
+
+        verify(unlocked).deleteByChapterIdIn(List.of("chapter-2", "chapter-1"));
+        verify(unlocked).insertAllIfAbsent("user-1", List.of("chapter-2", "chapter-1"));
+    }
+
+    @Test
     void deleteSubjectShouldReassignQuestionsAndCascadeDeleteChaptersTheoriesQuizzes() {
         String subjectId = "subject-1";
         Subject subject = Subject.builder().subjectId(subjectId).courseCode("CT101")

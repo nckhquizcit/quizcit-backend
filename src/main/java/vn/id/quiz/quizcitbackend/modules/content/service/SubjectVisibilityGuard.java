@@ -7,7 +7,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import java.util.List;
+import java.util.Map;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
@@ -155,11 +158,43 @@ public class SubjectVisibilityGuard {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication != null && authentication.getPrincipal() instanceof CustomUserPrincipal principal
                 ? principal.getUserId() : null;
-        if (userId != null && unlockedChapterRepository.existsByUserIdAndChapterId(userId, chapterId)) return true;
-        var theta = userId == null ? java.util.Map.<String, Double>of() : userSkillAbilityRepository.findByUserId(userId)
-                .stream().collect(java.util.stream.Collectors.toMap(a -> a.getSkillId(), a -> a.getTheta() == null ? 0.0 : a.getTheta()));
-        boolean eligible = chapterSkillRepository.findByChapterId(chapterId).stream()
-                .allMatch(required -> theta.getOrDefault(required.getSkillId(), 0.0) >= required.getRequiredTheta());
-        return eligible;
+        if (userId != null && unlockedChapterRepository != null
+                && unlockedChapterRepository.existsByUserIdAndChapterId(userId, chapterId)) {
+            return true;
+        }
+
+        Chapter currentChapter = contentRepository.findChapterById(chapterId).orElse(null);
+        if (currentChapter == null) return false;
+
+        List<Chapter> chapters = contentRepository.findAllChapter(currentChapter.getSubjectId());
+        if (chapters == null || chapters.isEmpty()) return false;
+
+        var theta = userId == null || userSkillAbilityRepository == null
+                ? java.util.Map.<String, Double>of()
+                : userSkillAbilityRepository.findByUserId(userId).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                a -> a.getSkillId(),
+                                a -> a.getTheta() == null ? 0.0 : a.getTheta()));
+
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+        Map<String, List<ChapterSkill>> skillsByChapter = chapterSkillRepository.findByChapterIdIn(chapterIds).stream()
+                .collect(java.util.stream.Collectors.groupingBy(ChapterSkill::getChapterId));
+
+        for (int i = 0; i < chapters.size(); i++) {
+            Chapter ch = chapters.get(i);
+            if (ch.getChapterId().equals(chapterId)) {
+                if (userId != null && unlockedChapterRepository != null) {
+                    unlockedChapterRepository.insertIfAbsent(userId, chapterId);
+                }
+                return true;
+            }
+            List<ChapterSkill> reqs = skillsByChapter.getOrDefault(ch.getChapterId(), List.of());
+            boolean passed = reqs.stream().allMatch(
+                    r -> theta.getOrDefault(r.getSkillId(), 0.0) >= r.getRequiredTheta());
+            if (!passed) {
+                return false;
+            }
+        }
+        return false;
     }
 }

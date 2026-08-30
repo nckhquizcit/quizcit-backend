@@ -122,7 +122,7 @@ class SubjectVisibilityGuardTest {
     }
 
     @Test
-    void eligibleUserCanAccessChapterAtRequiredTheta() {
+    void firstChapterIsAlwaysAccessible() {
         JpaChapterSkillRepository requirements = mock(JpaChapterSkillRepository.class);
         JpaUserUnlockedChapterRepository unlocked = mock(JpaUserUnlockedChapterRepository.class);
         JpaUserSkillAbilityRepository abilities = mock(JpaUserSkillAbilityRepository.class);
@@ -130,14 +130,46 @@ class SubjectVisibilityGuardTest {
                 contentRepository, quizRepository, requirements, unlocked, abilities);
         authenticateAsUserPrincipal("user-1");
         stubVisibleChapter();
-        when(requirements.findByChapterId("chapter-1"))
+
+        accessGuard.requireVisibleChapter("chapter-1");
+    }
+
+    @Test
+    void eligibleUserCanAccessSubsequentChapterWhenPrecedingSkillsMet() {
+        JpaChapterSkillRepository requirements = mock(JpaChapterSkillRepository.class);
+        JpaUserUnlockedChapterRepository unlocked = mock(JpaUserUnlockedChapterRepository.class);
+        JpaUserSkillAbilityRepository abilities = mock(JpaUserSkillAbilityRepository.class);
+        SubjectVisibilityGuard accessGuard = new SubjectVisibilityGuard(
+                contentRepository, quizRepository, requirements, unlocked, abilities);
+        authenticateAsUserPrincipal("user-1");
+        stubVisibleChapter();
+        when(requirements.findByChapterIdIn(List.of("chapter-1", "chapter-2")))
                 .thenReturn(List.of(ChapterSkill.create("chapter-1", "skill-1", 0.5)));
         UserSkillAbility ability = UserSkillAbility.create("user-1", "skill-1");
         ability.updateAbility(0.5);
         when(abilities.findByUserId("user-1")).thenReturn(List.of(ability));
 
-        accessGuard.requireVisibleChapter("chapter-1");
+        accessGuard.requireVisibleChapter("chapter-2");
+    }
 
+    @Test
+    void ineligibleUserCannotAccessSubsequentChapterWhenPrecedingSkillsNotMet() {
+        JpaChapterSkillRepository requirements = mock(JpaChapterSkillRepository.class);
+        JpaUserUnlockedChapterRepository unlocked = mock(JpaUserUnlockedChapterRepository.class);
+        JpaUserSkillAbilityRepository abilities = mock(JpaUserSkillAbilityRepository.class);
+        SubjectVisibilityGuard accessGuard = new SubjectVisibilityGuard(
+                contentRepository, quizRepository, requirements, unlocked, abilities);
+        authenticateAsUserPrincipal("user-1");
+        stubVisibleChapter();
+        when(requirements.findByChapterIdIn(List.of("chapter-1", "chapter-2")))
+                .thenReturn(List.of(ChapterSkill.create("chapter-1", "skill-1", 0.5)));
+        UserSkillAbility ability = UserSkillAbility.create("user-1", "skill-1");
+        ability.updateAbility(0.2);
+        when(abilities.findByUserId("user-1")).thenReturn(List.of(ability));
+
+        assertThatThrownBy(() -> accessGuard.requireVisibleChapter("chapter-2"))
+                .isInstanceOf(AppException.class)
+                .hasMessage(ErrorMessages.CHAPTER_NOT_FOUND);
     }
 
     @Test
@@ -149,14 +181,17 @@ class SubjectVisibilityGuardTest {
                 contentRepository, quizRepository, requirements, unlocked, abilities);
         authenticateAsUserPrincipal("user-1");
         stubVisibleChapter();
-        when(unlocked.existsByUserIdAndChapterId("user-1", "chapter-1")).thenReturn(true);
+        when(unlocked.existsByUserIdAndChapterId("user-1", "chapter-2")).thenReturn(true);
 
-        accessGuard.requireVisibleChapter("chapter-1");
+        accessGuard.requireVisibleChapter("chapter-2");
     }
 
     private void stubVisibleChapter() {
-        when(contentRepository.findChapterById("chapter-1")).thenReturn(Optional.of(
-                Chapter.builder().chapterId("chapter-1").subjectId("subject-1").name("Chương 1").build()));
+        Chapter ch1 = Chapter.builder().chapterId("chapter-1").subjectId("subject-1").name("Chương 1").displayOrder(1).build();
+        Chapter ch2 = Chapter.builder().chapterId("chapter-2").subjectId("subject-1").name("Chương 2").displayOrder(2).build();
+        when(contentRepository.findChapterById("chapter-1")).thenReturn(Optional.of(ch1));
+        when(contentRepository.findChapterById("chapter-2")).thenReturn(Optional.of(ch2));
+        when(contentRepository.findAllChapter("subject-1")).thenReturn(List.of(ch1, ch2));
         when(contentRepository.findSubjectById("subject-1")).thenReturn(Optional.of(
                 Subject.builder().subjectId("subject-1").courseCode("CT101").name("Môn học").visible(true).build()));
     }
