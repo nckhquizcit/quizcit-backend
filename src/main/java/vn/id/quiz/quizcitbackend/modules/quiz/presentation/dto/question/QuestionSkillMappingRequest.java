@@ -1,5 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,8 +14,10 @@ import lombok.Setter;
 @Setter
 public class QuestionSkillMappingRequest {
 
+    @NotBlank(message = "ID kỹ năng không được để trống")
     private String skillId;
 
+    @Positive(message = "Trọng số kỹ năng phải lớn hơn 0")
     private Double weight;
 
     private boolean primary;

@@ -40,6 +40,16 @@ public final class ErrorMessages {
     public static final String SELF_ADMIN_CHANGE_DENIED =
             "Bạn không thể khóa, xóa hoặc thay đổi vai trò của tài khoản đang đăng nhập";
     public static final String REFRESH_TOKEN_INVALID = "Refresh token đã hết hạn hoặc không hợp lệ";
+    public static final String USERNAME_REQUIRED = "Tên đăng nhập không được để trống";
+    public static final String USERNAME_LENGTH = "Tên đăng nhập phải từ 3 đến 50 ký tự";
+    public static final String USERNAME_INVALID =
+            "Tên đăng nhập không được chứa khoảng trắng, dấu tiếng Việt hoặc ký tự đặc biệt";
+    public static final String IDENTIFIER_REQUIRED = "Tên đăng nhập hoặc email không được để trống";
+    public static final String IDENTIFIER_LENGTH = "Tên đăng nhập hoặc email không được vượt quá 100 ký tự";
+    public static final String COURSE_CODE_REQUIRED = "Mã học phần không được để trống";
+    public static final String COURSE_CODE_LENGTH = "Mã học phần phải từ 2 đến 20 ký tự";
+    public static final String COURSE_CODE_INVALID =
+            "Mã học phần không được chứa khoảng trắng, dấu tiếng Việt hoặc ký tự đặc biệt";
     public static final String PASSWORD_REQUIRED = "Mật khẩu không được để trống";
     public static final String PASSWORD_LENGTH = "Mật khẩu phải từ 6 đến 255 ký tự";
     public static final String DISPLAY_NAME_REQUIRED = "Tên hiển thị không được để trống";

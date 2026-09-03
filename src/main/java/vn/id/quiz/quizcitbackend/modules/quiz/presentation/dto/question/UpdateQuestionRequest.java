@@ -55,7 +55,8 @@ public class UpdateQuestionRequest {
      * Nếu khác null, ánh xạ skill của câu hỏi sẽ được thay thế bằng danh sách
      * này. Cho phép null để giữ nguyên.
      */
-    private List<QuestionSkillMappingRequest> skills;
+    @Valid
+    private List<@Valid QuestionSkillMappingRequest> skills;
 
     public String getContentFormat() {
         return "blocknote".equalsIgnoreCase(contentFormat) ? "blocknote" : "plain";

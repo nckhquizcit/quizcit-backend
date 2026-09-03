@@ -41,7 +41,8 @@ public class CreateQuestionRequest {
      * Danh sách ID kỹ năng (skill) gắn với câu hỏi.
      * Hỗ trợ Phase 2 (P1): API quản lý kỹ năng / IRT.
      */
-    private List<QuestionSkillMappingRequest> skills;
+    @Valid
+    private List<@Valid QuestionSkillMappingRequest> skills;
 
     public String getContentFormat() {
         return "blocknote".equalsIgnoreCase(contentFormat) ? "blocknote" : "plain";

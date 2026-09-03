@@ -2,12 +2,14 @@ package vn.id.quiz.quizcitbackend.modules.auth.presentation.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 public record RegisterRequest(
-        @NotBlank(message = "Tên đăng nhập không được để trống")
-        @Size(max = 50, message = "Tên đăng nhập không được vượt quá 50 ký tự")
+        @NotBlank(message = ErrorMessages.USERNAME_REQUIRED)
+        @Size(min = 3, max = 50, message = ErrorMessages.USERNAME_LENGTH)
+        @Pattern(regexp = "^[a-zA-Z0-9._-]+$", message = ErrorMessages.USERNAME_INVALID)
         String username,
 
         @NotBlank(message = ErrorMessages.PASSWORD_REQUIRED)
@@ -19,7 +21,7 @@ public record RegisterRequest(
         @Size(max = 100, message = ErrorMessages.EMAIL_LENGTH)
         String email,
 
-        @Size(max = 100, message = "Tên hiển thị không được vượt quá 100 ký tự")
+        @Size(max = 100, message = ErrorMessages.DISPLAY_NAME_LENGTH)
         String displayName
 ) {
 }

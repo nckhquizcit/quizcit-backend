@@ -7,8 +7,8 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
 
 public record LoginRequest(
         @JsonAlias({"username", "email"})
-        @NotBlank(message = "Tên đăng nhập hoặc email không được để trống")
-        @Size(max = 100, message = "Tên đăng nhập hoặc email không được vượt quá 100 ký tự")
+        @NotBlank(message = ErrorMessages.IDENTIFIER_REQUIRED)
+        @Size(max = 100, message = ErrorMessages.IDENTIFIER_LENGTH)
         String identifier,
 
         @NotBlank(message = ErrorMessages.PASSWORD_REQUIRED)
