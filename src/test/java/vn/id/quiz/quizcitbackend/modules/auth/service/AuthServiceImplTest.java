@@ -10,6 +10,7 @@ import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.AuthResponse;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.LoginRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RegisterRequest;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.dto.RegisterResponse;
+import vn.id.quiz.quizcitbackend.modules.auth.presentation.model.AuthChallengePurpose;
 import vn.id.quiz.quizcitbackend.modules.auth.repository.AuthRepository;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.model.User;
@@ -150,11 +151,18 @@ class AuthServiceImplTest {
     void loginShouldRejectUnverifiedUser() {
         User user = User.create("student01", passwordService.hash("secret123"), "student01@example.com", "Student One");
         when(authRepository.findUserByUsername("student01")).thenReturn(Optional.of(user));
+        when(authChallengeService.issueOrReuseActive(user.getUserId(), AuthChallengePurpose.EMAIL_VERIFICATION, user.getEmail()))
+                .thenReturn(new AuthChallengeService.IssuedChallenge("challenge-id", "123456"));
 
         assertThatThrownBy(() -> service().login(new LoginRequest("student01", "secret123")))
                 .isInstanceOf(AppException.class)
-                .extracting("status")
-                .isEqualTo(HttpStatus.FORBIDDEN.value());
+                .satisfies(e -> {
+                    AppException appException = (AppException) e;
+                    assertThat(appException.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
+                    assertThat(appException.getData()).isEqualTo(new RegisterResponse(user.getEmail(), "challenge-id"));
+                });
+
+        verify(emailOutboxService).enqueueVerificationOtp(user.getEmail(), "123456");
     }
 
     private AuthServiceImpl service() {

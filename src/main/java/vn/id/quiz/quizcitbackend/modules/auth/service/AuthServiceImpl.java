@@ -166,16 +166,16 @@ public class AuthServiceImpl implements AuthUseCase {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = AppException.class)
     public AuthResponse login(LoginRequest request) {
         String identifier = normalizeLoginIdentifier(request.identifier());
         rateLimitService.check(identifier.toLowerCase(Locale.ROOT), "LOGIN", 10, 900);
         User user = findUserByIdentifier(identifier)
                 .orElseThrow(this::invalidCredentials);
 
-        ensureUserCanAuthenticate(user);
         ensurePasswordMatches(request.password(), user.getPassword());
         upgradeLegacyPasswordIfNeeded(user, request.password());
+        ensureUserCanAuthenticate(user);
 
         UserRole role = resolveUserRole(user.getUserId());
         return issueTokenPair(user, role);
@@ -215,12 +215,29 @@ public class AuthServiceImpl implements AuthUseCase {
     }
 
     private void ensureUserCanAuthenticate(User user) {
-        if (user.getStatus() == UserStatus.UNVERIFIED) {
-            throw new AppException(ErrorMessages.ACCOUNT_UNVERIFIED, HttpStatus.FORBIDDEN);
-        }
         if (user.getStatus() == UserStatus.BANNED) {
             throw new AppException(ErrorMessages.ACCOUNT_BANNED, HttpStatus.FORBIDDEN);
         }
+        if (user.getStatus() == UserStatus.UNVERIFIED) {
+            String verificationToken = prepareVerificationChallenge(user);
+            throw new AppException(
+                    ErrorMessages.ACCOUNT_UNVERIFIED,
+                    HttpStatus.FORBIDDEN,
+                    new RegisterResponse(user.getEmail(), verificationToken)
+            );
+        }
+    }
+
+    private String prepareVerificationChallenge(User user) {
+        var issued = authChallengeService.issueOrReuseActive(
+                user.getUserId(),
+                AuthChallengePurpose.EMAIL_VERIFICATION,
+                user.getEmail()
+        );
+        if (issued.code() != null) {
+            emailOutboxService.enqueueVerificationOtp(user.getEmail(), issued.code());
+        }
+        return issued.challengeId();
     }
 
     private void ensurePasswordMatches(String rawPassword, String storedPassword) {

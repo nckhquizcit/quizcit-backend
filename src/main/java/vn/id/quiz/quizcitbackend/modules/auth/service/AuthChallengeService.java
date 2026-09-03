@@ -48,6 +48,29 @@ public class AuthChallengeService {
         return new IssuedChallenge(challenge.getChallengeId(), code);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public IssuedChallenge issueOrReuseActive(String userId, AuthChallengePurpose purpose, String targetEmail) {
+        ZonedDateTime now = ZonedDateTime.now();
+        var previousOpt = repository.findFirstByUserIdAndPurposeOrderByCreatedAtDesc(userId, purpose)
+                .filter(previous -> previous.getConsumedAt() == null && previous.isOpen(now));
+
+        if (previousOpt.isPresent()) {
+            var previous = previousOpt.get();
+            if (previous.getResendAvailableAt().isAfter(now)) {
+                return new IssuedChallenge(previous.getChallengeId(), null);
+            }
+            previous.consume();
+            repository.save(previous);
+        }
+
+        String code = otpService.generateCode();
+        AuthChallenge challenge = AuthChallenge.create(userId, purpose, targetEmail,
+                passwordService.hash(code), now.plusSeconds(expirationSeconds),
+                now.plusSeconds(resendCooldownSeconds));
+        repository.save(challenge);
+        return new IssuedChallenge(challenge.getChallengeId(), code);
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = AppException.class)
     public AuthChallenge verify(String challengeId, AuthChallengePurpose purpose, String otp) {
         AuthChallenge challenge = required(challengeId, purpose);

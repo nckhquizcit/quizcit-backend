@@ -2,6 +2,7 @@ package vn.id.quiz.quizcitbackend.modules.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.id.quiz.quizcitbackend.modules.auth.presentation.model.EmailOutbox;
 import vn.id.quiz.quizcitbackend.modules.auth.repository.persistence.JpaEmailOutboxRepository;
@@ -13,7 +14,7 @@ public class EmailOutboxService {
     public static final String RESET_PASSWORD_OTP = "RESET_PASSWORD_OTP";
     private final JpaEmailOutboxRepository repository;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void enqueueVerificationOtp(String email, String code) {
         repository.save(EmailOutbox.create(email, VERIFY_OTP, code));
     }
