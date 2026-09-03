@@ -74,7 +74,7 @@ public class CourseEnrollmentService {
     private EnrolledSubjectResponse toResponse(Subject subject, java.time.ZonedDateTime enrolledAt) {
         return new EnrolledSubjectResponse(
                 subject.getSubjectId(), subject.getCourseCode(), subject.getName(), subject.getDescription(),
-                subject.getCreatedAt(), subject.getDisplayOrder(), enrolledAt);
+                subject.getCreatedAt(), subject.getDisplayOrder(), enrolledAt, subject.getImageUrl());
     }
 }
 

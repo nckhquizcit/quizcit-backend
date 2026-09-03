@@ -32,7 +32,7 @@ class CourseEnrollmentServiceTest {
     @BeforeEach
     void setUp() {
         subject = Subject.builder().subjectId("subject-1").courseCode("CT101")
-                .name("Lập trình").visible(true).displayOrder(1).build();
+                .name("Lập trình").visible(true).displayOrder(1).imageUrl("https://example.com/cover.png").build();
         when(users.existsById("user-1")).thenReturn(true);
         when(content.findSubjectById("subject-1")).thenReturn(Optional.of(subject));
     }
@@ -49,6 +49,7 @@ class CourseEnrollmentServiceTest {
 
         assertThat(response.subjectId()).isEqualTo("subject-1");
         assertThat(response.enrolledAt()).isEqualTo(enrolledAt);
+        assertThat(response.imageUrl()).isEqualTo("https://example.com/cover.png");
         verify(visibility).requireVisibleSubject("subject-1");
     }
 
@@ -81,6 +82,7 @@ class CourseEnrollmentServiceTest {
         assertThat(response).singleElement().satisfies(value -> {
             assertThat(value.courseCode()).isEqualTo("CT101");
             assertThat(value.enrolledAt()).isEqualTo(enrolledAt);
+            assertThat(value.imageUrl()).isEqualTo("https://example.com/cover.png");
         });
     }
 }

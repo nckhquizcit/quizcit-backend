@@ -9,7 +9,8 @@ public record EnrolledSubjectResponse(
         String description,
         ZonedDateTime createdAt,
         int displayOrder,
-        ZonedDateTime enrolledAt
+        ZonedDateTime enrolledAt,
+        String imageUrl
 ) {
 }
 

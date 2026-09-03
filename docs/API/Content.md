@@ -805,7 +805,8 @@ Chỉ đăng ký được môn đang hiển thị đối với user thông thư�
     "description": "string",
     "createdAt": "ZonedDateTime",
     "displayOrder": 1,
-    "enrolledAt": "ZonedDateTime"
+    "enrolledAt": "ZonedDateTime",
+    "imageUrl": "string"
   }
 }
 ```
