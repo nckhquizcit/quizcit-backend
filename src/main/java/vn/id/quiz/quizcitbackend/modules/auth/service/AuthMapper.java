@@ -23,6 +23,7 @@ public class AuthMapper {
                 user.getUsername(),
                 user.getEmail(),
                 user.getDisplayName(),
+                user.getAvatarUrl(),
                 role,
                 user.getStatus(),
                 user.getCreatedAt()

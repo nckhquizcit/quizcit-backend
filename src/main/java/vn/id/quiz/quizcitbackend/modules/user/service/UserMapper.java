@@ -18,6 +18,7 @@ public interface UserMapper {
                 entity.getUsername(),
                 entity.getEmail(),
                 entity.getDisplayName(),
+                entity.getAvatarUrl(),
                 role,
                 entity.getStatus(),
                 entity.getCreatedAt()

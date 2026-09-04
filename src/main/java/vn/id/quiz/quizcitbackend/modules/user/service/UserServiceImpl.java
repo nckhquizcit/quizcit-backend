@@ -78,6 +78,10 @@ public class UserServiceImpl implements UserUseCase {
 
         User user = getRequiredUser(userId);
         user.setDisplayName(displayName);
+        if (request.avatarUrl() != null) {
+            String trimmedAvatar = request.avatarUrl().trim();
+            user.setAvatarUrl(trimmedAvatar.isEmpty() ? null : trimmedAvatar);
+        }
         userRepository.save(user);
         return mapper.toUserResponse(user, resolveUserRole(userId));
     }

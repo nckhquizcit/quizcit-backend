@@ -48,6 +48,39 @@ class UserServiceImplTest {
     }
 
     @Test
+    void updateUserProfileShouldUpdateAvatarUrlWhenProvided() {
+        User user = User.create("student01", "hashed-password", "student01@example.com", "Student One");
+        userRepository.user = user;
+
+        service.updateUserProfile(user.getUserId(), new UpdateUserProfileRequest(
+                "Student Updated",
+                null,
+                "/api/uploads/avatars/avatar-123.webp"
+        ));
+
+        assertThat(user.getDisplayName()).isEqualTo("Student Updated");
+        assertThat(user.getAvatarUrl()).isEqualTo("/api/uploads/avatars/avatar-123.webp");
+        assertThat(userRepository.savedUser).isSameAs(user);
+    }
+
+    @Test
+    void updateUserProfileShouldClearAvatarUrlWhenEmptyStringProvided() {
+        User user = User.create("student01", "hashed-password", "student01@example.com", "Student One");
+        user.setAvatarUrl("/api/uploads/avatars/avatar-123.webp");
+        userRepository.user = user;
+
+        service.updateUserProfile(user.getUserId(), new UpdateUserProfileRequest(
+                "Student Updated",
+                null,
+                "   "
+        ));
+
+        assertThat(user.getDisplayName()).isEqualTo("Student Updated");
+        assertThat(user.getAvatarUrl()).isNull();
+        assertThat(userRepository.savedUser).isSameAs(user);
+    }
+
+    @Test
     void updateUserProfileShouldRequireVerifiedFlowWhenEmailProvided() {
         User user = User.create("student01", "hashed-password", "student01@example.com", "Student One");
         userRepository.user = user;

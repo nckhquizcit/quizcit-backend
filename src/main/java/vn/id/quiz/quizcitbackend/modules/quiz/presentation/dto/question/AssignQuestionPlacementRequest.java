@@ -18,7 +18,7 @@ import lombok.Setter;
 @Builder
 public class AssignQuestionPlacementRequest {
 
-    @NotBlank(message = "Mã môn học không được để trống")
+    @NotBlank(message = "Mã học phần không được để trống")
     private String subjectId;
 
     @NotBlank(message = "Mã chương học không được để trống")

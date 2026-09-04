@@ -12,9 +12,16 @@ public record UpdateUserProfileRequest(
 
         @Email(message = ErrorMessages.EMAIL_INVALID)
         @Size(max = 100, message = ErrorMessages.EMAIL_LENGTH)
-        String email
+        String email,
+
+        @Size(max = 500, message = "Đường dẫn ảnh đại diện không hợp lệ")
+        String avatarUrl
 ) {
     public UpdateUserProfileRequest(String displayName) {
-        this(displayName, null);
+        this(displayName, null, null);
+    }
+
+    public UpdateUserProfileRequest(String displayName, String email) {
+        this(displayName, email, null);
     }
 }

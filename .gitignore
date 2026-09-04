@@ -41,3 +41,8 @@ application.properties
 __pycache__/
 *.py[cod]
 .venv/
+
+### Uploads ###
+uploads/
+**/uploads/
+

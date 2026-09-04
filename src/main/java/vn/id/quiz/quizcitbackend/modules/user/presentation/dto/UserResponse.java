@@ -10,6 +10,7 @@ public record UserResponse(
         String username,
         String email,
         String displayName,
+        String avatarUrl,
         UserRole role,
         UserStatus status,
         ZonedDateTime createdAt
@@ -18,6 +19,17 @@ public record UserResponse(
         if (createdAt == null) {
             createdAt = ZonedDateTime.now();
         }
+    }
 
+    public UserResponse(
+            String userId,
+            String username,
+            String email,
+            String displayName,
+            UserRole role,
+            UserStatus status,
+            ZonedDateTime createdAt
+    ) {
+        this(userId, username, email, displayName, null, role, status, createdAt);
     }
 }

@@ -14,7 +14,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.QuizType;
 @Setter
 public class CreateQuizRequest {
 
-    @NotBlank(message = "Mã môn học không được để trống")
+    @NotBlank(message = "Mã học phần không được để trống")
     private String subjectId;
 
     @NotBlank(message = "Mã chương không được để trống")

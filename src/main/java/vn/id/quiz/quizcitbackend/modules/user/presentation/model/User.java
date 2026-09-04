@@ -47,6 +47,10 @@ public class User {
     private String displayName;
 
     @Setter
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
+    @Setter
     @Enumerated(EnumType.STRING)
     @Column(length = 20, columnDefinition = "user_status_enum")
     private UserStatus status;
@@ -96,6 +100,7 @@ public class User {
         username = "deleted_" + userId;
         email = "deleted_" + userId + "@deleted.invalid";
         displayName = "Người dùng đã xóa";
+        avatarUrl = null;
         password = "!deleted!";
         status = UserStatus.BANNED;
     }

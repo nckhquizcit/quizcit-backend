@@ -19,7 +19,6 @@ quizcit.auth.otp.from-address=${QUIZCIT_MAIL_FROM:no-reply@example.com}
 quizcit.auth.otp.token-secret=${QUIZCIT_OTP_TOKEN_SECRET:quizcit-local-otp-secret-change-me}
 quizcit.auth.otp.expiration-seconds=${QUIZCIT_OTP_EXPIRATION_SECONDS:300}
 
-quizcit.upload.dir=${QUIZCIT_UPLOAD_DIR:uploads}
 spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=10MB
 
@@ -32,3 +31,6 @@ spring.data.redis.lettuce.pool.max-active=16
 spring.data.redis.lettuce.pool.max-idle=8
 spring.data.redis.lettuce.pool.min-idle=2
 spring.cache.type=redis
+
+# Cloudinary
+quizcit.cloudinary.url=${CLOUDINARY_URL:cloudinary://api_key:api_secret@cloud_name}

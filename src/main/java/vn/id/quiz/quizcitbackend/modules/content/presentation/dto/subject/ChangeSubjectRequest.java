@@ -4,9 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 
 public record ChangeSubjectRequest (
 
-        @NotBlank(message = "Mã môn học nguồn không được để trống")
+        @NotBlank(message = "Mã học phần nguồn không được để trống")
         String sourceSubject,
-        @NotBlank(message = "Mã môn học đích không được để trống")
+        @NotBlank(message = "Mã học phần đích không được để trống")
         String targetSubject
 ){
 }

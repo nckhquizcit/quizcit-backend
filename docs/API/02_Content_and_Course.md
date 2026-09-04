@@ -11,7 +11,7 @@ Tài liệu chi tiết các endpoint quản lý Môn học (`/api/subjects`), Ch
 | `GET` | `/api/subjects` | Public / User | Lấy danh sách tất cả môn học (đã lọc các môn đang hiển thị). |
 | `GET` | `/api/subjects/{subjectId}` | Public / User | Lấy chi tiết thông tin một môn học. |
 | `POST` | `/api/subjects` | `ADMINISTRATOR` | Tạo mới một môn học. |
-| `PUT` | `/api/subjects/{subjectId}` | `ADMINISTRATOR` | Cập nhật thông tin môn học (tên, mã môn, mô tả, ảnh, hiển thị). |
+| `PUT` | `/api/subjects/{subjectId}` | `ADMINISTRATOR` | Cập nhật thông tin môn học (tên học phần, mã học phần, mô tả, ảnh, hiển thị). |
 | `PUT` | `/api/subjects/display-order` | `ADMINISTRATOR` | Cập nhật thứ tự sắp xếp (display order) các môn học. |
 | `DELETE` | `/api/subjects/{subjectId}` | `ADMINISTRATOR` | Xóa mềm hoặc Xóa cứng (`?hard=true`) môn học. |
 | `GET` | `/api/subjects/{subjectId}/quizzes` | `isAuthenticated()` | Lấy danh sách đề thi thuộc môn học. |
@@ -32,7 +32,7 @@ Tài liệu chi tiết các endpoint quản lý Môn học (`/api/subjects`), Ch
 | `POST` | `/api/users/me/course-enrollments/{subjectId}` | `isAuthenticated()` | Đăng ký (Ghi danh) vào một môn học. |
 | `DELETE` | `/api/users/me/course-enrollments/{subjectId}` | `isAuthenticated()` | Hủy đăng ký (Rút lui) khỏi môn học. |
 | `GET` | `/api/users/me/course-enrollments` | `isAuthenticated()` | Lấy danh sách các môn học mà người dùng hiện tại đã đăng ký. |
-| `POST` | `/api/uploads/image` | `ADMINISTRATOR` | Tải lên hình ảnh dạng `multipart/form-data`. |
+| `POST` | `/api/uploads/image` | `isAuthenticated()` | Tải lên hình ảnh dạng `multipart/form-data` (`ADMINISTRATOR` tải lên mọi thư mục, `USER` tải lên `avatars`). |
 | `POST` | `/api/uploads/from-url` | `ADMINISTRATOR` | Tải và lưu trữ hình ảnh từ đường dẫn URL bên ngoài. |
 | `GET` | `/api/uploads/{folder}/{fileName}` | Public | Truy xuất hình ảnh tĩnh (có cache trình duyệt 30 ngày). |
 
@@ -80,8 +80,8 @@ Tài liệu chi tiết các endpoint quản lý Môn học (`/api/subjects`), Ch
 }
 ```
 *Ghi chú:*
-- `courseCode`: Mã môn học (Ví dụ: `CT101`, `CS202`), bắt buộc, tối đa 50 ký tự, không trùng lặp giữa các môn đang hoạt động.
-- `name`: Tên môn học, bắt buộc, tối đa 255 ký tự.
+- `courseCode`: Mã học phần (Ví dụ: `CT101`, `CS202`), bắt buộc, tối đa 50 ký tự, không trùng lặp giữa các môn đang hoạt động.
+- `name`: Tên học phần, bắt buộc, tối đa 255 ký tự.
 - `visible`: Trạng thái bật/tắt hiển thị với học viên.
 
 #### Các lỗi có thể gặp:
@@ -272,20 +272,21 @@ Tài liệu chi tiết các endpoint quản lý Môn học (`/api/subjects`), Ch
 
 ## 6. 🖼️ Quản lý Tải lên Phương tiện (`/api/uploads`)
 
-### 6.1 Tải ảnh lên (`POST /api/uploads/image`)
+### 6.1 Tải ảnh / media lên (`POST /api/uploads/image` hoặc `POST /api/uploads/media`)
 - **Content-Type:** `multipart/form-data`
-- **Quyền:** `ADMINISTRATOR`
+- **Quyền:** `isAuthenticated()` (`ADMINISTRATOR` tải lên mọi thư mục; `USER` tự động lưu vào thư mục `avatars`)
 - **Form Data:**
-  - `file`: Tệp hình ảnh (`.png`, `.jpg`, `.jpeg`, `.webp`, tối đa 5MB).
-  - `folder`: Thư mục lưu trữ (Ví dụ: `subjects`, `theories`, `questions`, `avatars`). Mặc định: `subjects`.
+  - `file`: Tệp hình ảnh (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`) hoặc video (`.mp4`, `.webm`, `.mov`, `.avi`, `.mkv`).
+  - `folder`: Thư mục lưu trữ trên Cloudinary (Ví dụ: `subjects`, `theories`, `questions`, `avatars`). Mặc định: `subjects`.
+- **Lưu trữ:** Tự động tối ưu hóa và lưu trên Cloudinary theo namespace `quizcit/{folder}/...`.
 
 #### Response `201 Created`:
 ```json
 {
   "status": 201,
-  "message": "Tải ảnh lên thành công",
+  "message": "Tải tệp lên thành công",
   "data": {
-    "url": "http://localhost:8080/api/uploads/theories/pointer-diagram-123456.png",
+    "url": "https://res.cloudinary.com/<cloud_name>/image/upload/v12345/quizcit/theories/pointer-diagram-123456.png",
     "fileName": "pointer-diagram-123456.png",
     "size": 245890,
     "contentType": "image/png"
@@ -293,11 +294,44 @@ Tài liệu chi tiết các endpoint quản lý Môn học (`/api/subjects`), Ch
 }
 ```
 
-#### Các lỗi có thể gặp:
-- `400 Bad Request`: `Tệp tải lên không phải là định dạng hình ảnh hợp lệ.`, `Dung lượng tệp vượt quá giới hạn 5MB.`
+---
+
+### 6.2 Di chuyển dữ liệu cũ sang Cloudinary (`POST /api/admin/uploads/migrate-to-cloudinary`)
+- **Quyền:** `ADMINISTRATOR`
+- **Mục đích:** Quét toàn bộ file media cũ còn lưu trong thư mục `uploads/` cục bộ trên server, tự động tải lên Cloudinary theo đúng namespace và cập nhật lại URL tương ứng trong database (`subjects`, `users`, `theories`, `questions`).
+- **Script hỗ trợ:** `quizcit-backend/scripts/migrate-uploads-to-cloudinary.sh`
+
+#### Response `200 OK`:
+```json
+{
+  "status": 200,
+  "message": "Di chuyển dữ liệu hình ảnh sang Cloudinary thành công",
+  "data": {
+    "totalFilesFound": 12,
+    "migratedFiles": 12,
+    "failedFiles": 0,
+    "updatedSubjectRows": 2,
+    "updatedUserRows": 5,
+    "updatedTheoryRows": 4,
+    "updatedQuestionRows": 1,
+    "details": [
+      {
+        "folder": "subjects",
+        "fileName": "sample.webp",
+        "localPath": "subjects/sample.webp",
+        "cloudinaryUrl": "https://res.cloudinary.com/.../quizcit/subjects/sample.webp",
+        "status": "SUCCESS",
+        "error": null
+      }
+    ]
+  }
+}
+```
 
 ---
 
-### 6.2 Truy xuất tệp tĩnh (`GET /api/uploads/{folder}/{fileName}`)
+### 6.3 Truy xuất tệp tĩnh (`GET /api/uploads/{folder}/{fileName}`)
 - **Quyền:** Public.
+- **Mục đích:** Duy trì tương thích ngược (fallback) cho các tệp tĩnh cũ chưa migrate trên server disk.
 - **Header phản hồi:** `Cache-Control: public, max-age=2592000` (Cache 30 ngày) và `Content-Type` chuẩn của tệp ảnh.
+
