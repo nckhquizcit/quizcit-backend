@@ -153,11 +153,16 @@ public class SubjectVisibilityGuard {
         }
     }
 
-    private boolean canAccessChapter(String chapterId) {
-        if (chapterSkillRepository == null) return true;
+    public boolean canAccessChapter(String chapterId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication != null && authentication.getPrincipal() instanceof CustomUserPrincipal principal
                 ? principal.getUserId() : null;
+        return canAccessChapter(userId, chapterId);
+    }
+
+    public boolean canAccessChapter(String userId, String chapterId) {
+        if (isAdministrator()) return true;
+        if (chapterSkillRepository == null) return true;
         if (userId != null && unlockedChapterRepository != null
                 && unlockedChapterRepository.existsByUserIdAndChapterId(userId, chapterId)) {
             return true;

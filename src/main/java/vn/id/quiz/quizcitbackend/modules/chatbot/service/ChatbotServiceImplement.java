@@ -1,10 +1,12 @@
 package vn.id.quiz.quizcitbackend.modules.chatbot.service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.ai.dto.ChatRequest;
@@ -15,12 +17,13 @@ import vn.id.quiz.quizcitbackend.modules.chatbot.presentation.dto.ChatbotAnswerR
 import vn.id.quiz.quizcitbackend.modules.chatbot.repository.TheoryChunkMatch;
 import vn.id.quiz.quizcitbackend.modules.chatbot.repository.TheoryChunkRepository;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserUnlockedChapter;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
 import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
 
 /**
- * Chatbox trả lời câu hỏi lý thuyết bằng RAG (pgvector), với 2 lớp ràng buộc
+ * Chatbox trả lời câu hỏi lý thuyết bằng RAG (pgvector), với các lớp ràng buộc
  * quan trọng:
  * <ol>
  *   <li><b>Không lộ đáp án trắc nghiệm:</b> {@code context} truy hồi CHỈ từ
@@ -28,10 +31,10 @@ import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
  *       giờ động tới {@code Question}/{@code Option} — AI vật lý không có
  *       đường nào chạm vào đáp án. Lớp bảo vệ thứ 2 là system prompt ở AI
  *       Service (xem {@code rag_chat.py}).</li>
- *   <li><b>Giới hạn theo tiến độ mở khóa:</b> phạm vi tìm kiếm luôn được lọc
- *       theo {@code unlockedChapterIds} của user trong subject — chương nào
- *       chưa mở khóa thì chunk của chương đó không bao giờ lọt vào context,
- *       bất kể câu hỏi có nhắc tới hay không.</li>
+ *   <li><b>Giới hạn theo tiến độ mở khóa (Sequential Unlock Chain):</b>
+ *       Chỉ từ chối trả lời nếu required theta của các chương trước đó không đủ.
+ *       Nếu user đã mở khóa chapter (truy vấn nhanh qua {@code user_unlocked_chapters})
+ *       hoặc các chương trước đó đã đạt ngưỡng thì chấp nhận trả lời.</li>
  * </ol>
  */
 @Service
@@ -48,8 +51,31 @@ public class ChatbotServiceImplement implements ChatbotService {
     private final AIService aiService;
 
     @Override
+    @Transactional
     public ChatbotAnswerResponse ask(String userId, AskChatbotRequest request) {
         visibilityGuard.requireVisibleSubject(request.subjectId());
+
+        if (request.chapterId() != null && !request.chapterId().isBlank()) {
+            String targetChapterId = request.chapterId().trim();
+            Chapter currentChapter = contentRepository.findChapterById(targetChapterId).orElse(null);
+            if (currentChapter == null || !request.subjectId().equals(currentChapter.getSubjectId())) {
+                return new ChatbotAnswerResponse(
+                        "Chương được yêu cầu không tồn tại trong môn học này.",
+                        List.of(),
+                        false);
+            }
+
+            // Tối ưu hóa: kiểm tra nhanh xem chapter đã mở khóa chưa (Fast-path qua user_unlocked_chapters),
+            // nếu chưa thì kiểm tra theo logic mới (chỉ từ chối nếu required theta của các chương trước đó không đủ).
+            boolean canAccess = visibilityGuard.canAccessChapter(userId, targetChapterId);
+            if (!canAccess) {
+                return new ChatbotAnswerResponse(
+                        "Bạn chưa mở khóa chương này do chưa đạt yêu cầu năng lực của các chương trước đó. "
+                                + "Hãy hoàn thành bài học và bài kiểm tra ở các chương trước để mở khóa nhé!",
+                        List.of(),
+                        false);
+            }
+        }
 
         Set<String> unlockedChapterIds = unlockedChaptersOf(userId, request.subjectId());
         if (unlockedChapterIds.isEmpty()) {
@@ -81,15 +107,43 @@ public class ChatbotServiceImplement implements ChatbotService {
                         snippet(match.content())))
                 .toList();
 
-        return new ChatbotAnswerResponse(answer, sources, true);
+        return new ChatbotAnswerResponse(answer, sources, !contextTexts.isEmpty());
     }
 
     private Set<String> unlockedChaptersOf(String userId, String subjectId) {
+        if (visibilityGuard.isAdministrator()) {
+            return contentRepository.findAllChapter(subjectId).stream()
+                    .map(Chapter::getChapterId)
+                    .collect(Collectors.toSet());
+        }
+
         List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        if (chapters.isEmpty()) {
+            return Set.of();
+        }
+
         List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
-        return unlockedChapterRepository.findByUserIdAndChapterIdIn(userId, chapterIds).stream()
-                .map(unlocked -> unlocked.getChapterId())
-                .collect(Collectors.toSet());
+        Set<String> unlocked = unlockedChapterRepository.findByUserIdAndChapterIdIn(userId, chapterIds).stream()
+                .map(UserUnlockedChapter::getChapterId)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        // Tối ưu tốc độ: duyệt theo chuỗi các chương để mở khóa các chương kế tiếp
+        // (chương đầu tiên luôn mở khóa, các chương sau mở nếu các chương trước đó đã đủ required theta)
+        boolean chainActive = true;
+        for (int i = 0; i < chapters.size(); i++) {
+            Chapter ch = chapters.get(i);
+            String chId = ch.getChapterId();
+            if (unlocked.contains(chId)) {
+                continue;
+            }
+            if (chainActive && visibilityGuard.canAccessChapter(userId, chId)) {
+                unlocked.add(chId);
+            } else {
+                chainActive = false;
+            }
+        }
+
+        return unlocked;
     }
 
     private String snippet(String content) {
