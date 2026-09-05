@@ -622,7 +622,7 @@ public class ContentServiceImplement implements ContentService {
             List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of());
             List<ChapterSkillResponse> skills = reqs.stream()
                     .map(item -> new ChapterSkillResponse(item.getSkillId(), skillNames.get(item.getSkillId()),
-                            item.getRequiredTheta())).toList();
+                            item.getRequiredTheta(), thetaBySkill.get(item.getSkillId()))).toList();
             return new ChapterResponse(chapter.getChapterId(), chapter.getSubjectId(), chapter.getName(),
                     chapter.getCreatedAt(), chapter.getDisplayOrder(), skills, unlocked);
         }).toList();
@@ -643,12 +643,13 @@ public class ContentServiceImplement implements ContentService {
                 .collect(Collectors.toMap(skill -> skill.getSkillId(), skill -> skill.getName()));
 
         List<Chapter> accessible = chapters;
+        Map<String, Double> thetaBySkill = Map.of();
         if (!administrator) {
             String userId = currentUserId();
             Set<String> saved = userId == null ? Set.of() : unlockedChapterRepository
                     .findByUserIdAndChapterIdIn(userId, chapterIds).stream()
                     .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
-            Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository
+            thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository
                     .findByUserId(userId).stream().collect(Collectors.toMap(
                             UserSkillAbility::getSkillId,
                             ability -> ability.getTheta() == null ? 0.0 : ability.getTheta()));
@@ -668,8 +669,9 @@ public class ContentServiceImplement implements ContentService {
             }
             accessible = accessibleList;
         }
+        final Map<String, Double> finalThetaBySkill = thetaBySkill;
         return accessible.stream().map(chapter -> toChapterResponse(
-                chapter, requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of()), skillNames)).toList();
+                chapter, requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of()), skillNames, finalThetaBySkill)).toList();
     }
 
     private void recalculateUnlockedChaptersForSubject(String subjectId) {
@@ -744,14 +746,24 @@ public class ContentServiceImplement implements ContentService {
         List<ChapterSkill> requirements = chapterSkillRepository.findByChapterId(chapter.getChapterId());
         Map<String, String> names = skillRepository.findByIds(requirements.stream().map(ChapterSkill::getSkillId).toList())
                 .stream().collect(Collectors.toMap(skill -> skill.getSkillId(), skill -> skill.getName()));
-        return toChapterResponse(chapter, requirements, names);
+        String userId = currentUserId();
+        Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository
+                .findByUserId(userId).stream().collect(Collectors.toMap(
+                        UserSkillAbility::getSkillId,
+                        ability -> ability.getTheta() == null ? 0.0 : ability.getTheta()));
+        return toChapterResponse(chapter, requirements, names, thetaBySkill);
     }
 
     private ChapterResponse toChapterResponse(
             Chapter chapter, List<ChapterSkill> requirements, Map<String, String> skillNames) {
+        return toChapterResponse(chapter, requirements, skillNames, Map.of());
+    }
+
+    private ChapterResponse toChapterResponse(
+            Chapter chapter, List<ChapterSkill> requirements, Map<String, String> skillNames, Map<String, Double> thetaBySkill) {
         List<ChapterSkillResponse> skills = requirements.stream()
                 .map(item -> new ChapterSkillResponse(item.getSkillId(), skillNames.get(item.getSkillId()),
-                        item.getRequiredTheta())).toList();
+                        item.getRequiredTheta(), thetaBySkill.get(item.getSkillId()))).toList();
         return new ChapterResponse(chapter.getChapterId(), chapter.getSubjectId(), chapter.getName(),
                 chapter.getCreatedAt(), chapter.getDisplayOrder(), skills);
     }
