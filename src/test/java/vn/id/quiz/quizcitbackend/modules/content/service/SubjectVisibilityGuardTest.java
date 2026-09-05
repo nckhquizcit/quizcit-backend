@@ -12,6 +12,7 @@ import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserUnlockedChapter;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserCourseEnrollmentRepository;
@@ -167,9 +168,10 @@ class SubjectVisibilityGuardTest {
         ability.updateAbility(0.2);
         when(abilities.findByUserId("user-1")).thenReturn(List.of(ability));
 
-        assertThatThrownBy(() -> accessGuard.requireVisibleChapter("chapter-2"))
-                .isInstanceOf(AppException.class)
-                .hasMessage(ErrorMessages.CHAPTER_NOT_FOUND);
+        assertThat(accessGuard.canAccessChapter("user-1", "chapter-2")).isFalse();
+        assertThat(accessGuard.getUnlockedChapterIds("user-1", "subject-1")).containsExactly("chapter-1");
+        // Người dùng vẫn có thể xem nội dung chương và bài kiểm tra trên giao diện môn học
+        accessGuard.requireVisibleChapter("chapter-2");
     }
 
     @Test
@@ -181,9 +183,56 @@ class SubjectVisibilityGuardTest {
                 contentRepository, quizRepository, requirements, unlocked, abilities);
         authenticateAsUserPrincipal("user-1");
         stubVisibleChapter();
-        when(unlocked.existsByUserIdAndChapterId("user-1", "chapter-2")).thenReturn(true);
+        when(unlocked.findByUserIdAndChapterIdIn(org.mockito.ArgumentMatchers.eq("user-1"), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of(
+                        UserUnlockedChapter.create("user-1", "chapter-1"),
+                        UserUnlockedChapter.create("user-1", "chapter-2")));
 
-        accessGuard.requireVisibleChapter("chapter-2");
+        assertThat(accessGuard.canAccessChapter("user-1", "chapter-2")).isTrue();
+    }
+
+    @Test
+    void skippingAheadDoesNotUnlockSubsequentChapterWhenPrecedingGapExists() {
+        JpaChapterSkillRepository requirements = mock(JpaChapterSkillRepository.class);
+        JpaUserUnlockedChapterRepository unlocked = mock(JpaUserUnlockedChapterRepository.class);
+        JpaUserSkillAbilityRepository abilities = mock(JpaUserSkillAbilityRepository.class);
+        SubjectVisibilityGuard accessGuard = new SubjectVisibilityGuard(
+                contentRepository, quizRepository, requirements, unlocked, abilities);
+        authenticateAsUserPrincipal("user-1");
+
+        Chapter ch1 = Chapter.builder().chapterId("ch-1").subjectId("subject-1").name("Chương 1").displayOrder(1).build();
+        Chapter ch2 = Chapter.builder().chapterId("ch-2").subjectId("subject-1").name("Chương 2").displayOrder(2).build();
+        Chapter ch3 = Chapter.builder().chapterId("ch-3").subjectId("subject-1").name("Chương 3").displayOrder(3).build();
+        Chapter ch4 = Chapter.builder().chapterId("ch-4").subjectId("subject-1").name("Chương 4").displayOrder(4).build();
+        Chapter ch5 = Chapter.builder().chapterId("ch-5").subjectId("subject-1").name("Chương 5").displayOrder(5).build();
+        Chapter ch6 = Chapter.builder().chapterId("ch-6").subjectId("subject-1").name("Chương 6").displayOrder(6).build();
+
+        when(contentRepository.findAllChapter("subject-1")).thenReturn(List.of(ch1, ch2, ch3, ch4, ch5, ch6));
+        when(contentRepository.findChapterById("ch-5")).thenReturn(Optional.of(ch5));
+        when(contentRepository.findChapterById("ch-6")).thenReturn(Optional.of(ch6));
+
+        // ch-1, ch-2 yêu cầu skill-1 (0.5), ch-3 yêu cầu skill-2 (1.0), ch-5 yêu cầu skill-3 (0.8)
+        when(requirements.findByChapterIdIn(List.of("ch-1", "ch-2", "ch-3", "ch-4", "ch-5", "ch-6")))
+                .thenReturn(List.of(
+                        ChapterSkill.create("ch-1", "skill-1", 0.5),
+                        ChapterSkill.create("ch-2", "skill-1", 0.5),
+                        ChapterSkill.create("ch-3", "skill-2", 1.0),
+                        ChapterSkill.create("ch-5", "skill-3", 0.8)
+                ));
+
+        // User có skill-1: 0.8 (đủ ch1, ch2), skill-2: 0.1 (CHƯA ĐỦ ch3), nhưng skill-3: 1.5 (làm ch5 điểm cao)
+        UserSkillAbility s1 = UserSkillAbility.create("user-1", "skill-1"); s1.updateAbility(0.8);
+        UserSkillAbility s2 = UserSkillAbility.create("user-1", "skill-2"); s2.updateAbility(0.1);
+        UserSkillAbility s3 = UserSkillAbility.create("user-1", "skill-3"); s3.updateAbility(1.5);
+        when(abilities.findByUserId("user-1")).thenReturn(List.of(s1, s2, s3));
+
+        // Kiểm tra mở khóa:
+        // ch-1: mở, ch-2: mở, ch-3: mở (vì ch1, ch2 pass)
+        // Nhưng ch-3 không pass -> chuỗi đứt tại ch-3 -> ch-4, ch-5, ch-6 ĐỀU BỊ KHÓA
+        assertThat(accessGuard.canAccessChapter("user-1", "ch-6")).isFalse();
+        assertThat(accessGuard.canAccessChapter("user-1", "ch-5")).isFalse();
+        assertThat(accessGuard.getUnlockedChapterIds("user-1", "subject-1"))
+                .containsExactly("ch-1", "ch-2", "ch-3");
     }
 
     private void stubVisibleChapter() {

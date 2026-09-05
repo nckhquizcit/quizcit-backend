@@ -121,6 +121,42 @@ class ContentServiceImplementTest {
     }
 
     @Test
+    void getAllChaptersReturnsAllChaptersWithUnlockStatus() {
+        String subjectId = "subject-1";
+        Chapter first = Chapter.builder().chapterId("chapter-1").subjectId(subjectId)
+                .name("Chương 1").displayOrder(1).build();
+        Chapter second = Chapter.builder().chapterId("chapter-2").subjectId(subjectId)
+                .name("Chương 2").displayOrder(2).build();
+        var principal = new CustomUserPrincipal(
+                "user-1", "student", "student@example.com", "USER", "ACTIVE");
+        SecurityContextHolder.getContext().setAuthentication(
+                new TestingAuthenticationToken(principal, null));
+        when(visibility.isAdministrator()).thenReturn(false);
+        when(visibility.requireVisibleSubjectEntity(subjectId)).thenReturn(
+                vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject.builder()
+                        .subjectId(subjectId).courseCode("CT101").name("Subject").build()
+        );
+        when(content.findAllChapter(subjectId)).thenReturn(List.of(first, second));
+        when(chapterSkills.findByChapterIdIn(List.of("chapter-1", "chapter-2"))).thenReturn(List.of(
+                vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill.create("chapter-1", "skill-1", 1.0)
+        ));
+        when(skills.findByIds(java.util.Set.of("skill-1"))).thenReturn(List.of(
+                vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill.builder()
+                        .skillId("skill-1").name("Skill 1").description("Desc").build()
+        ));
+        when(abilities.findByUserId("user-1")).thenReturn(List.of());
+        when(unlocked.findByUserIdAndChapterIdIn("user-1", List.of("chapter-1", "chapter-2"))).thenReturn(List.of());
+
+        var allChapters = service.getAllChapters(subjectId);
+        // Returns ALL chapters
+        assertThat(allChapters).hasSize(2);
+        assertThat(allChapters.get(0).chapterId()).isEqualTo("chapter-1");
+        assertThat(allChapters.get(0).unlocked()).isTrue();
+        assertThat(allChapters.get(1).chapterId()).isEqualTo("chapter-2");
+        assertThat(allChapters.get(1).unlocked()).isFalse();
+    }
+
+    @Test
     void reorderChaptersRecalculatesUnlockedChaptersForEnrolledUsers() {
         String subjectId = "subject-1";
         Chapter first = Chapter.builder().chapterId("chapter-1").subjectId(subjectId)

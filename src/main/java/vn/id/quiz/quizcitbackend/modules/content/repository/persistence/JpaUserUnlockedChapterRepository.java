@@ -48,6 +48,12 @@ public interface JpaUserUnlockedChapterRepository extends JpaRepository<UserUnlo
     void deleteByChapterIdIn(@Param("chapterIds") Collection<String> chapterIds);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM UserUnlockedChapter u WHERE u.userId = :userId AND u.chapterId IN :chapterIds")
+    void deleteByUserIdAndChapterIdIn(
+            @Param("userId") String userId,
+            @Param("chapterIds") Collection<String> chapterIds);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM UserUnlockedChapter u WHERE u.userId = :userId")
     void deleteByUserId(@Param("userId") String userId);
 }

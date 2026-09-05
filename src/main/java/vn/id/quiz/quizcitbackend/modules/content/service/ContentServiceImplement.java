@@ -177,7 +177,7 @@ public class ContentServiceImplement implements ContentService {
             throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
         visibilityGuard.requireAccessibleSubject(subjectId);
-        return toAccessibleChapterResponses(contentRepository.findAllChapter(subjectId));
+        return toChapterResponsesWithStatus(contentRepository.findAllChapter(subjectId), subjectId);
     }
 
     @Override
@@ -537,36 +537,95 @@ public class ContentServiceImplement implements ContentService {
     }
 
     private boolean canUnlock(String userId, String chapterId) {
-        if (userId != null && unlockedChapterRepository.existsByUserIdAndChapterId(userId, chapterId)) return true;
-        Chapter currentChapter = contentRepository.findChapterById(chapterId).orElse(null);
-        if (currentChapter == null) return false;
+        return visibilityGuard.canAccessChapter(userId, chapterId);
+    }
 
-        List<Chapter> chapters = contentRepository.findAllChapter(currentChapter.getSubjectId());
-        if (chapters == null || chapters.isEmpty()) return false;
+    private Set<String> computeUnlockedChapterIds(
+            String userId,
+            List<Chapter> chapters,
+            Map<String, List<ChapterSkill>> requirementsByChapter,
+            Map<String, Double> thetaBySkill,
+            Set<String> savedUnlocked) {
+        Set<String> unlocked = new java.util.LinkedHashSet<>();
+        if (chapters.isEmpty()) return unlocked;
 
-        Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository.findByUserId(userId)
-                .stream().collect(Collectors.toMap(UserSkillAbility::getSkillId, a -> a.getTheta() == null ? 0.0 : a.getTheta()));
-
-        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
-        Map<String, List<ChapterSkill>> skillsByChapter = chapterSkillRepository.findByChapterIdIn(chapterIds)
-                .stream().collect(Collectors.groupingBy(ChapterSkill::getChapterId));
-
+        boolean chainActive = true;
         for (int i = 0; i < chapters.size(); i++) {
             Chapter ch = chapters.get(i);
-            if (ch.getChapterId().equals(chapterId)) {
-                if (userId != null) {
-                    unlockedChapterRepository.insertIfAbsent(userId, chapterId);
+            String chId = ch.getChapterId();
+
+            if (i == 0) {
+                unlocked.add(chId);
+                List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chId, List.of());
+                boolean passed = reqs.isEmpty() || reqs.stream().allMatch(
+                        req -> thetaBySkill.containsKey(req.getSkillId())
+                                && thetaBySkill.get(req.getSkillId()) >= req.getRequiredTheta());
+                if (!passed) {
+                    chainActive = false;
                 }
-                return true;
-            }
-            List<ChapterSkill> reqs = skillsByChapter.getOrDefault(ch.getChapterId(), List.of());
-            boolean passed = reqs.stream().allMatch(
-                    req -> thetaBySkill.getOrDefault(req.getSkillId(), 0.0) >= req.getRequiredTheta());
-            if (!passed) {
-                return false;
+            } else {
+                if (chainActive) {
+                    unlocked.add(chId);
+                    List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chId, List.of());
+                    boolean passed = reqs.isEmpty() || reqs.stream().allMatch(
+                            req -> thetaBySkill.containsKey(req.getSkillId())
+                                    && thetaBySkill.get(req.getSkillId()) >= req.getRequiredTheta());
+                    if (!passed) {
+                        chainActive = false;
+                    }
+                } else {
+                    break;
+                }
             }
         }
-        return false;
+
+        if (userId != null && unlockedChapterRepository != null) {
+            Set<String> invalidSaved = savedUnlocked.stream()
+                    .filter(id -> !unlocked.contains(id))
+                    .collect(Collectors.toSet());
+            if (!invalidSaved.isEmpty()) {
+                unlockedChapterRepository.deleteByUserIdAndChapterIdIn(userId, invalidSaved);
+            }
+            List<String> newlyUnlocked = unlocked.stream()
+                    .filter(id -> !savedUnlocked.contains(id))
+                    .toList();
+            if (!newlyUnlocked.isEmpty()) {
+                unlockedChapterRepository.insertAllIfAbsent(userId, newlyUnlocked);
+            }
+        }
+
+        return unlocked;
+    }
+
+    private List<ChapterResponse> toChapterResponsesWithStatus(List<Chapter> chapters, String subjectId) {
+        if (chapters.isEmpty()) return List.of();
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+        Map<String, List<ChapterSkill>> requirementsByChapter = chapterSkillRepository
+                .findByChapterIdIn(chapterIds).stream().collect(Collectors.groupingBy(ChapterSkill::getChapterId));
+        Set<String> skillIds = requirementsByChapter.values().stream().flatMap(List::stream)
+                .map(ChapterSkill::getSkillId).collect(Collectors.toSet());
+        Map<String, String> skillNames = skillRepository.findByIds(skillIds).stream()
+                .collect(Collectors.toMap(skill -> skill.getSkillId(), skill -> skill.getName()));
+
+        String userId = currentUserId();
+        Set<String> saved = userId == null ? Set.of() : unlockedChapterRepository
+                .findByUserIdAndChapterIdIn(userId, chapterIds).stream()
+                .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
+        Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository
+                .findByUserId(userId).stream().collect(Collectors.toMap(
+                        UserSkillAbility::getSkillId,
+                        ability -> ability.getTheta() == null ? 0.0 : ability.getTheta()));
+        Set<String> unlockedIds = computeUnlockedChapterIds(userId, chapters, requirementsByChapter, thetaBySkill, saved);
+
+        return chapters.stream().map(chapter -> {
+            boolean unlocked = unlockedIds.contains(chapter.getChapterId());
+            List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of());
+            List<ChapterSkillResponse> skills = reqs.stream()
+                    .map(item -> new ChapterSkillResponse(item.getSkillId(), skillNames.get(item.getSkillId()),
+                            item.getRequiredTheta())).toList();
+            return new ChapterResponse(chapter.getChapterId(), chapter.getSubjectId(), chapter.getName(),
+                    chapter.getCreatedAt(), chapter.getDisplayOrder(), skills, unlocked);
+        }).toList();
     }
 
     private List<ChapterResponse> toAccessibleChapterResponses(List<Chapter> chapters) {
@@ -586,7 +645,7 @@ public class ContentServiceImplement implements ContentService {
         List<Chapter> accessible = chapters;
         if (!administrator) {
             String userId = currentUserId();
-            Set<String> unlocked = userId == null ? Set.of() : unlockedChapterRepository
+            Set<String> saved = userId == null ? Set.of() : unlockedChapterRepository
                     .findByUserIdAndChapterIdIn(userId, chapterIds).stream()
                     .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
             Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository
@@ -598,49 +657,16 @@ public class ContentServiceImplement implements ContentService {
                     .collect(Collectors.groupingBy(Chapter::getSubjectId, java.util.LinkedHashMap::new, Collectors.toList()));
 
             List<Chapter> accessibleList = new java.util.ArrayList<>();
-            List<String> newlyUnlocked = new java.util.ArrayList<>();
-
             for (List<Chapter> subjectChapters : chaptersBySubject.values()) {
-                boolean chainActive = true;
-                for (int i = 0; i < subjectChapters.size(); i++) {
-                    Chapter ch = subjectChapters.get(i);
-                    String chId = ch.getChapterId();
-                    boolean isCurrentlyUnlocked = unlocked.contains(chId);
-
-                    if (i == 0) {
+                Set<String> unlockedIds = computeUnlockedChapterIds(
+                        userId, subjectChapters, requirementsByChapter, thetaBySkill, saved);
+                for (Chapter ch : subjectChapters) {
+                    if (unlockedIds.contains(ch.getChapterId())) {
                         accessibleList.add(ch);
-                        if (!isCurrentlyUnlocked) {
-                            newlyUnlocked.add(chId);
-                        }
-                        List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chId, List.of());
-                        boolean passed = reqs.stream().allMatch(
-                                req -> thetaBySkill.getOrDefault(req.getSkillId(), 0.0) >= req.getRequiredTheta());
-                        if (!passed) {
-                            chainActive = false;
-                        }
-                    } else {
-                        if (chainActive) {
-                            accessibleList.add(ch);
-                            if (!isCurrentlyUnlocked) {
-                                newlyUnlocked.add(chId);
-                            }
-                            List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chId, List.of());
-                            boolean passed = reqs.stream().allMatch(
-                                    req -> thetaBySkill.getOrDefault(req.getSkillId(), 0.0) >= req.getRequiredTheta());
-                            if (!passed) {
-                                chainActive = false;
-                            }
-                        } else if (isCurrentlyUnlocked) {
-                            accessibleList.add(ch);
-                        }
                     }
                 }
             }
-
             accessible = accessibleList;
-            if (userId != null && !newlyUnlocked.isEmpty()) {
-                unlockedChapterRepository.insertAllIfAbsent(userId, newlyUnlocked);
-            }
         }
         return accessible.stream().map(chapter -> toChapterResponse(
                 chapter, requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of()), skillNames)).toList();
@@ -668,8 +694,8 @@ public class ContentServiceImplement implements ContentService {
                 Chapter ch = chapters.get(i);
                 userUnlockedChapterIds.add(ch.getChapterId());
                 List<ChapterSkill> reqs = skillsByChapter.getOrDefault(ch.getChapterId(), List.of());
-                boolean passed = reqs.stream().allMatch(
-                        req -> thetaBySkill.getOrDefault(req.getSkillId(), 0.0) >= req.getRequiredTheta());
+                boolean passed = reqs.isEmpty() || reqs.stream().allMatch(
+                        req -> thetaBySkill.containsKey(req.getSkillId()) && thetaBySkill.get(req.getSkillId()) >= req.getRequiredTheta());
                 if (!passed) {
                     break;
                 }

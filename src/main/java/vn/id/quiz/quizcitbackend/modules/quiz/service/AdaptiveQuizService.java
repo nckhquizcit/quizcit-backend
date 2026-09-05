@@ -236,9 +236,11 @@ public class AdaptiveQuizService {
 
     private List<Chapter> unlockedChapters(String userId, String subjectId) {
         List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
-        Set<String> unlockedIds = unlockedChapterRepository
-                .findByUserIdAndChapterIdIn(userId, chapters.stream().map(Chapter::getChapterId).toList())
-                .stream().map(value -> value.getChapterId()).collect(Collectors.toSet());
+        Set<String> unlockedIds = visibilityGuard != null
+                ? visibilityGuard.getUnlockedChapterIds(userId, subjectId)
+                : unlockedChapterRepository
+                        .findByUserIdAndChapterIdIn(userId, chapters.stream().map(Chapter::getChapterId).toList())
+                        .stream().map(value -> value.getChapterId()).collect(Collectors.toSet());
         return chapters.stream().filter(chapter -> unlockedIds.contains(chapter.getChapterId())).toList();
     }
 

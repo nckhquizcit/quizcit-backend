@@ -111,39 +111,7 @@ public class ChatbotServiceImplement implements ChatbotService {
     }
 
     private Set<String> unlockedChaptersOf(String userId, String subjectId) {
-        if (visibilityGuard.isAdministrator()) {
-            return contentRepository.findAllChapter(subjectId).stream()
-                    .map(Chapter::getChapterId)
-                    .collect(Collectors.toSet());
-        }
-
-        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
-        if (chapters.isEmpty()) {
-            return Set.of();
-        }
-
-        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
-        Set<String> unlocked = unlockedChapterRepository.findByUserIdAndChapterIdIn(userId, chapterIds).stream()
-                .map(UserUnlockedChapter::getChapterId)
-                .collect(Collectors.toCollection(HashSet::new));
-
-        // Tối ưu tốc độ: duyệt theo chuỗi các chương để mở khóa các chương kế tiếp
-        // (chương đầu tiên luôn mở khóa, các chương sau mở nếu các chương trước đó đã đủ required theta)
-        boolean chainActive = true;
-        for (int i = 0; i < chapters.size(); i++) {
-            Chapter ch = chapters.get(i);
-            String chId = ch.getChapterId();
-            if (unlocked.contains(chId)) {
-                continue;
-            }
-            if (chainActive && visibilityGuard.canAccessChapter(userId, chId)) {
-                unlocked.add(chId);
-            } else {
-                chainActive = false;
-            }
-        }
-
-        return unlocked;
+        return visibilityGuard.getUnlockedChapterIds(userId, subjectId);
     }
 
     private String snippet(String content) {

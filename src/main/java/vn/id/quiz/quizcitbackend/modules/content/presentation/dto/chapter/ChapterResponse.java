@@ -9,11 +9,23 @@ public record ChapterResponse(
         String name,
         ZonedDateTime createdAt,
         int displayOrder,
-        List<ChapterSkillResponse> skills
+        List<ChapterSkillResponse> skills,
+        boolean unlocked
 ) {
     public ChapterResponse{
         if(createdAt==null){
             createdAt=ZonedDateTime.now();
         }
+    }
+
+    public ChapterResponse(
+            String chapterId,
+            String subjectId,
+            String name,
+            ZonedDateTime createdAt,
+            int displayOrder,
+            List<ChapterSkillResponse> skills
+    ) {
+        this(chapterId, subjectId, name, createdAt, displayOrder, skills, true);
     }
 }

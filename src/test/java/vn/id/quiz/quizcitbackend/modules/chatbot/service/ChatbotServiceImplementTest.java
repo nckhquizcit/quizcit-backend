@@ -63,6 +63,7 @@ class ChatbotServiceImplementTest {
 
         when(contentRepository.findChapterById(chapterId)).thenReturn(Optional.of(ch2));
         when(visibilityGuard.canAccessChapter(USER_ID, chapterId)).thenReturn(true);
+        when(visibilityGuard.getUnlockedChapterIds(USER_ID, SUBJECT_ID)).thenReturn(java.util.Set.of("chp-1", "chp-2"));
         when(contentRepository.findAllChapter(SUBJECT_ID)).thenReturn(List.of(ch1, ch2));
         when(unlockedChapterRepository.findByUserIdAndChapterIdIn(eq(USER_ID), any()))
                 .thenReturn(List.of(UserUnlockedChapter.create(USER_ID, "chp-1"), UserUnlockedChapter.create(USER_ID, "chp-2")));

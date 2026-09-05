@@ -7,11 +7,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.ChapterSkill;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserUnlockedChapter;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
@@ -127,9 +131,6 @@ public class SubjectVisibilityGuard {
         Chapter chapter = contentRepository.findChapterById(chapterId)
                 .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
         requireAccessibleSubject(chapter.getSubjectId());
-        if (!isAdministrator() && !canAccessChapter(chapterId)) {
-            throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
-        }
         return chapter;
     }
 
@@ -148,9 +149,6 @@ public class SubjectVisibilityGuard {
         Quiz quiz = quizRepository.findQuizById(quizId)
                 .orElseThrow(() -> new AppException(ErrorMessages.QUIZ_NOT_FOUND, HttpStatus.NOT_FOUND));
         requireAccessibleSubject(quiz.getSubjectId());
-        if (!isAdministrator() && chapterSkillRepository != null) {
-            requireVisibleChapter(quiz.getChapterId());
-        }
     }
 
     public boolean canAccessChapter(String chapterId) {
@@ -161,45 +159,85 @@ public class SubjectVisibilityGuard {
     }
 
     public boolean canAccessChapter(String userId, String chapterId) {
-        if (isAdministrator()) return true;
-        if (chapterSkillRepository == null) return true;
-        if (userId != null && unlockedChapterRepository != null
-                && unlockedChapterRepository.existsByUserIdAndChapterId(userId, chapterId)) {
-            return true;
-        }
-
+        if (chapterId == null || chapterId.isBlank()) return false;
         Chapter currentChapter = contentRepository.findChapterById(chapterId).orElse(null);
         if (currentChapter == null) return false;
+        return getUnlockedChapterIds(userId, currentChapter.getSubjectId()).contains(chapterId);
+    }
 
-        List<Chapter> chapters = contentRepository.findAllChapter(currentChapter.getSubjectId());
-        if (chapters == null || chapters.isEmpty()) return false;
+    public Set<String> getUnlockedChapterIds(String userId, String subjectId) {
+        if (subjectId == null || subjectId.isBlank()) return Set.of();
+        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        if (chapters == null || chapters.isEmpty()) return Set.of();
 
-        var theta = userId == null || userSkillAbilityRepository == null
-                ? java.util.Map.<String, Double>of()
+        if (chapterSkillRepository == null) {
+            return chapters.stream().map(Chapter::getChapterId).collect(Collectors.toSet());
+        }
+
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+        if (userId == null || userId.isBlank()) {
+            return Set.of(chapters.get(0).getChapterId());
+        }
+
+        Map<String, Double> thetaBySkill = userSkillAbilityRepository == null
+                ? Map.of()
                 : userSkillAbilityRepository.findByUserId(userId).stream()
-                        .collect(java.util.stream.Collectors.toMap(
+                        .collect(Collectors.toMap(
                                 a -> a.getSkillId(),
                                 a -> a.getTheta() == null ? 0.0 : a.getTheta()));
 
-        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
-        Map<String, List<ChapterSkill>> skillsByChapter = chapterSkillRepository.findByChapterIdIn(chapterIds).stream()
-                .collect(java.util.stream.Collectors.groupingBy(ChapterSkill::getChapterId));
+        Map<String, List<ChapterSkill>> skillsByChapter = chapterSkillRepository.findByChapterIdIn(chapterIds)
+                .stream().collect(Collectors.groupingBy(ChapterSkill::getChapterId));
+
+        Set<String> savedUnlocked = unlockedChapterRepository == null ? Set.of() :
+                unlockedChapterRepository.findByUserIdAndChapterIdIn(userId, chapterIds).stream()
+                        .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
+
+        Set<String> unlocked = new LinkedHashSet<>();
+        boolean chainActive = true;
 
         for (int i = 0; i < chapters.size(); i++) {
             Chapter ch = chapters.get(i);
-            if (ch.getChapterId().equals(chapterId)) {
-                if (userId != null && unlockedChapterRepository != null) {
-                    unlockedChapterRepository.insertIfAbsent(userId, chapterId);
+            String chId = ch.getChapterId();
+
+            if (i == 0) {
+                unlocked.add(chId);
+                List<ChapterSkill> reqs = skillsByChapter.getOrDefault(chId, List.of());
+                boolean passed = reqs.isEmpty() || reqs.stream().allMatch(
+                        r -> thetaBySkill.containsKey(r.getSkillId()) && thetaBySkill.get(r.getSkillId()) >= r.getRequiredTheta());
+                if (!passed) {
+                    chainActive = false;
                 }
-                return true;
-            }
-            List<ChapterSkill> reqs = skillsByChapter.getOrDefault(ch.getChapterId(), List.of());
-            boolean passed = reqs.stream().allMatch(
-                    r -> theta.getOrDefault(r.getSkillId(), 0.0) >= r.getRequiredTheta());
-            if (!passed) {
-                return false;
+            } else {
+                if (chainActive) {
+                    unlocked.add(chId);
+                    List<ChapterSkill> reqs = skillsByChapter.getOrDefault(chId, List.of());
+                    boolean passed = reqs.isEmpty() || reqs.stream().allMatch(
+                            r -> thetaBySkill.containsKey(r.getSkillId()) && thetaBySkill.get(r.getSkillId()) >= r.getRequiredTheta());
+                    if (!passed) {
+                        chainActive = false;
+                    }
+                } else {
+                    break;
+                }
             }
         }
-        return false;
+
+        if (unlockedChapterRepository != null) {
+            Set<String> invalidSaved = savedUnlocked.stream()
+                    .filter(id -> !unlocked.contains(id))
+                    .collect(Collectors.toSet());
+            if (!invalidSaved.isEmpty()) {
+                unlockedChapterRepository.deleteByUserIdAndChapterIdIn(userId, invalidSaved);
+            }
+            List<String> newlyUnlocked = unlocked.stream()
+                    .filter(id -> !savedUnlocked.contains(id))
+                    .toList();
+            if (!newlyUnlocked.isEmpty()) {
+                unlockedChapterRepository.insertAllIfAbsent(userId, newlyUnlocked);
+            }
+        }
+
+        return unlocked;
     }
 }
