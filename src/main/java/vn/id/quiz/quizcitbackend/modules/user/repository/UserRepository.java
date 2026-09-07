@@ -22,6 +22,9 @@ public interface UserRepository {
         int end = Math.min(start + pageable.getPageSize(), users.size());
         return new org.springframework.data.domain.PageImpl<>(users.subList(start, end), pageable, users.size());
     }
+    default Page<User> findAll(String search, UserRole role, vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus status, Pageable pageable) {
+        return findAll(pageable);
+    }
 
     User save(User user);
 

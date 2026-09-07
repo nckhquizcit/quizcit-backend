@@ -115,11 +115,16 @@ public class UserController {
     @GetMapping
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> getAllUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole role,
+            @RequestParam(required = false) vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus status,
+            @AuthenticationPrincipal CustomUserPrincipal principal,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
         Pageable bounded = PageRequest.of(pageable.getPageNumber(),
                 Math.min(pageable.getPageSize(), 100), pageable.getSort());
-        Page<UserResponse> responses = userUseCase.getAllUsers(bounded);
+        String currentUserId = principal != null ? principal.getUserId() : null;
+        Page<UserResponse> responses = userUseCase.getAllUsers(search, role, status, currentUserId, bounded);
         return ResponseEntity.ok(ApiResponse.success(PageResponse.from(responses)));
     }
 

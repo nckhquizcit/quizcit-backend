@@ -62,6 +62,12 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
+    public Page<User> findAll(String search, UserRole role, vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus status, Pageable pageable) {
+        String cleanSearch = (search != null && !search.isBlank()) ? search.trim() : null;
+        return jpaUserRepository.findUsers(cleanSearch, role, status, pageable);
+    }
+
+    @Override
     @CacheEvict(value = CacheConfig.CACHE_AUTH_USER_STATE, key = "#user.userId")
     public User save(User user) {
         return jpaUserRepository.save(user);

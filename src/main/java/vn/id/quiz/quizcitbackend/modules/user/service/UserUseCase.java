@@ -11,9 +11,15 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserRole;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.model.UserStatus;
+
 public interface UserUseCase {
     List<UserResponse> getAllUsers();
-    Page<UserResponse> getAllUsers(Pageable pageable);
+    default Page<UserResponse> getAllUsers(Pageable pageable) {
+        return getAllUsers(null, null, null, null, pageable);
+    }
+    Page<UserResponse> getAllUsers(String search, UserRole role, UserStatus status, String currentUserId, Pageable pageable);
 
     UserResponse getUserById(String userId);
 

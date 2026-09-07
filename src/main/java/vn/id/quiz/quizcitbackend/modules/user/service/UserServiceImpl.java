@@ -22,6 +22,10 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import vn.id.quiz.quizcitbackend.shared.exceptions.ErrorMessages;
@@ -52,10 +56,60 @@ public class UserServiceImpl implements UserUseCase {
     @Override
     @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable) {
-        Page<User> users = userRepository.findAll(pageable);
+        return getAllUsers(null, null, null, null, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UserResponse> getAllUsers(String search, UserRole role, UserStatus status, String currentUserId, Pageable pageable) {
+        Sort originalSort = pageable.getSort();
+        Sort.Order roleOrder = originalSort.getOrderFor("role");
+        Pageable queryPageable;
+        if (roleOrder != null) {
+            Sort safeSort = Sort.by(originalSort.stream()
+                    .filter(order -> !"role".equalsIgnoreCase(order.getProperty()))
+                    .toList());
+            if (safeSort.isEmpty()) {
+                safeSort = Sort.by(Sort.Direction.DESC, "createdAt");
+            }
+            queryPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), safeSort);
+        } else {
+            queryPageable = pageable;
+        }
+
+        Page<User> users = userRepository.findAll(search, role, status, queryPageable);
         Map<String, UserRole> roles = userRepository.findRolesByUserIds(
                 users.getContent().stream().map(User::getUserId).toList());
-        return users.map(user -> mapper.toUserResponse(user, roles.get(user.getUserId())));
+
+        List<UserResponse> list = new ArrayList<>(users.getContent().stream()
+                .map(user -> mapper.toUserResponse(user, roles.get(user.getUserId())))
+                .toList());
+
+        if (roleOrder != null) {
+            boolean asc = roleOrder.isAscending();
+            list.sort((u1, u2) -> {
+                String r1 = u1.role() != null ? u1.role().name() : "";
+                String r2 = u2.role() != null ? u2.role().name() : "";
+                int cmp = r1.compareTo(r2);
+                return asc ? cmp : -cmp;
+            });
+        }
+
+        if (currentUserId != null && pageable.getPageNumber() == 0 && !list.isEmpty()) {
+            int selfIdx = -1;
+            for (int i = 0; i < list.size(); i++) {
+                if (currentUserId.equals(list.get(i).userId())) {
+                    selfIdx = i;
+                    break;
+                }
+            }
+            if (selfIdx > 0) {
+                UserResponse selfUser = list.remove(selfIdx);
+                list.add(0, selfUser);
+            }
+        }
+
+        return new PageImpl<>(list, pageable, users.getTotalElements());
     }
 
     // Lay chi tiet user; neu khong co thi nem AppException de GlobalExceptionHandler xu ly.

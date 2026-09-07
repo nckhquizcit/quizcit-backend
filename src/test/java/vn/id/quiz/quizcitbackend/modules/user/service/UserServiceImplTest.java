@@ -17,6 +17,7 @@ import vn.id.quiz.quizcitbackend.modules.user.repository.UserRepository;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -218,8 +219,44 @@ class UserServiceImplTest {
                 .isEqualTo(HttpStatus.BAD_REQUEST.value());
     }
 
+    @Test
+    void getAllUsersShouldPutCurrentUserFirstOnFirstPage() {
+        User user1 = User.create("user01", "hashed", "user01@example.com", "User One");
+        User user2 = User.create("admin01", "hashed", "admin01@example.com", "Admin One");
+        userRepository.usersList = List.of(user1, user2);
+
+        org.springframework.data.domain.Page<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UserResponse> page =
+                service.getAllUsers(null, null, null, user2.getUserId(), org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).hasSize(2);
+        assertThat(page.getContent().get(0).userId()).isEqualTo(user2.getUserId());
+        assertThat(page.getContent().get(1).userId()).isEqualTo(user1.getUserId());
+    }
+
+    @Test
+    void getAllUsersShouldHandleRoleSortingGracefully() {
+        User user1 = User.create("user01", "hashed", "user01@example.com", "User One");
+        User user2 = User.create("admin01", "hashed", "admin01@example.com", "Admin One");
+        userRepository.usersList = List.of(user1, user2);
+        userRepository.rolesMap = Map.of(
+                user1.getUserId(), UserRole.USER,
+                user2.getUserId(), UserRole.ADMINISTRATOR
+        );
+
+        org.springframework.data.domain.Page<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UserResponse> page =
+                service.getAllUsers(null, null, null, null,
+                        org.springframework.data.domain.PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("role")));
+
+        assertThat(page.getContent()).hasSize(2);
+        // ADMINISTRATOR trước USER theo thứ tự A-Z
+        assertThat(page.getContent().get(0).role()).isEqualTo(UserRole.ADMINISTRATOR);
+        assertThat(page.getContent().get(1).role()).isEqualTo(UserRole.USER);
+    }
+
     private static class FakeUserRepository implements UserRepository {
         private User user;
+        private List<User> usersList;
+        private Map<String, UserRole> rolesMap = Map.of();
         private User savedUser;
         private boolean existsById;
         private boolean emailExistsForOtherUser;
@@ -227,7 +264,13 @@ class UserServiceImplTest {
 
         @Override
         public List<User> findAll() {
+            if (usersList != null) return usersList;
             return user == null ? List.of() : List.of(user);
+        }
+
+        @Override
+        public Map<String, UserRole> findRolesByUserIds(java.util.Collection<String> userIds) {
+            return rolesMap != null ? rolesMap : Map.of();
         }
 
         @Override
