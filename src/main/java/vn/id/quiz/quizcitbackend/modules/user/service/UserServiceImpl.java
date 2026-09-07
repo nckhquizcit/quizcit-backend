@@ -176,15 +176,11 @@ public class UserServiceImpl implements UserUseCase {
         userRepository.deleteById(userId);
     }
 
-    // Xóa cứng vĩnh viễn user và toàn bộ dữ liệu phụ thuộc.
+    // Không cho phép xóa cứng user - hệ thống chỉ xóa mềm.
     @Override
     @Transactional
     public void hardDeleteUser(String actorUserId, String userId) {
-        rejectSelfLockout(actorUserId, userId);
-        if (!userRepository.existsById(userId)) {
-            throw new AppException(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
-        }
-        userRepository.hardDeleteById(userId);
+        throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
     }
 
     // =========================================================================
@@ -308,9 +304,7 @@ public class UserServiceImpl implements UserUseCase {
     @Override
     @Transactional
     public void hardDeleteRole(String roleId) {
-        userRepository.findRoleById(roleId)
-                .orElseThrow(() -> new AppException("Không tìm thấy vai trò", HttpStatus.NOT_FOUND));
-        userRepository.hardDeleteRoleById(roleId);
+        throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
     }
 
     @Override
@@ -330,8 +324,6 @@ public class UserServiceImpl implements UserUseCase {
     @Override
     @Transactional
     public void hardDeletePermission(String permissionId) {
-        userRepository.findPermissionById(permissionId)
-                .orElseThrow(() -> new AppException("Không tìm thấy quyền", HttpStatus.NOT_FOUND));
-        userRepository.hardDeletePermissionById(permissionId);
+        throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
     }
 }

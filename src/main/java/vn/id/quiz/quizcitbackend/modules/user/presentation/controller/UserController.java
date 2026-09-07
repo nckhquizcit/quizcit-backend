@@ -2,7 +2,9 @@ package vn.id.quiz.quizcitbackend.modules.user.presentation.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -166,10 +168,9 @@ public class UserController {
             @PathVariable String userId,
             @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
         if (hard) {
-            userUseCase.hardDeleteUser(principal.getUserId(), userId);
-        } else {
-            userUseCase.deleteUser(principal.getUserId(), userId);
+            throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
         }
+        userUseCase.deleteUser(principal.getUserId(), userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -219,10 +220,9 @@ public class UserController {
             @PathVariable String roleId,
             @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
         if (hard) {
-            userUseCase.hardDeleteRole(roleId);
-        } else {
-            userUseCase.deleteRole(roleId);
+            throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
         }
+        userUseCase.deleteRole(roleId);
         return ResponseEntity.noContent().build();
     }
 
@@ -238,10 +238,9 @@ public class UserController {
             @PathVariable String permissionId,
             @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
         if (hard) {
-            userUseCase.hardDeletePermission(permissionId);
-        } else {
-            userUseCase.deletePermission(permissionId);
+            throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
         }
+        userUseCase.deletePermission(permissionId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -13,7 +13,7 @@ Tài liệu chi tiết các endpoint Quản lý Kỹ năng (`/api/skills`), Nh�
 | `POST` | `/api/skills` | `ADMINISTRATOR` | Tạo mới một kỹ năng. |
 | `POST` | `/api/skills/bulk` | `ADMINISTRATOR` | Nhập hàng loạt kỹ năng (từ file CSV hoặc danh sách import). |
 | `PUT` | `/api/skills/{skillId}` | `ADMINISTRATOR` | Cập nhật thông tin kỹ năng (tên, mô tả). |
-| `DELETE` | `/api/skills/{skillId}` | `ADMINISTRATOR` | Xóa mềm hoặc Xóa cứng (`?hard=true`) kỹ năng. |
+| `DELETE` | `/api/skills/{skillId}` | `ADMINISTRATOR` | Xóa mềm kỹ năng (Hệ thống chỉ hỗ trợ xóa mềm). |
 | `GET` | `/api/users/{userId}/skills` | Owner / `ADMINISTRATOR` | Lấy danh sách điểm năng lực ($\theta$) của học viên theo từng kỹ năng. |
 | `GET` | `/api/users/{userId}/skills/{skillId}` | Owner / `ADMINISTRATOR` | Lấy điểm năng lực của học viên cho một kỹ năng cụ thể. |
 | `GET` | `/api/users/{userId}/abilities/history` | Owner / `ADMINISTRATOR` | Lấy toàn bộ lịch sử biến thiên năng lực qua các lần làm bài thi. |

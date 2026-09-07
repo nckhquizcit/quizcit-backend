@@ -194,17 +194,7 @@ public class QuizServiceImplement implements QuizService {
     @Transactional
     @CacheEvict(value = CacheConfig.CACHE_QUIZZES_BY_SUBJECT, allEntries = true)
     public void hardDeleteQuiz(String quizId) {
-        if (quizRepository.findQuizById(quizId).isEmpty()) {
-            throw new AppException(
-                    ErrorMessages.QUIZ_NOT_FOUND,
-                    HttpStatus.NOT_FOUND);
-        }
-        if (quizRepository.existsAttemptByQuizId(quizId)) {
-            throw new AppException(
-                    "Đề thi đã có lượt làm bài, không thể xóa vĩnh viễn. Vui lòng sử dụng tính năng xóa mềm (ẩn đề thi).",
-                    HttpStatus.BAD_REQUEST);
-        }
-        quizRepository.hardDeleteQuizById(quizId);
+        throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
     }
 
     @Override

@@ -336,57 +336,7 @@ public class ContentServiceImplement implements ContentService {
     @Transactional
     @CacheEvict(value = {CacheConfig.CACHE_SUBJECTS, CacheConfig.CACHE_SUBJECT_DETAIL, CacheConfig.CACHE_QUIZZES_BY_SUBJECT}, allEntries = true)
     public void hardDeleteSubject(String subjectId) {
-        Subject subject = contentRepository.findSubjectById(subjectId)
-                .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
-
-        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
-                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subject.getName())) {
-            throw new AppException("Không thể xóa Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
-        }
-
-        Subject bankSubject = contentRepository.getOrCreateQuestionBankSubject();
-        Chapter bankChapter = contentRepository.getOrCreateQuestionBankChapter(bankSubject.getSubjectId());
-
-        // 1. Reassign questions to Question Bank
-        quizRepository.reassignQuestionsBySubjectId(
-                subjectId, bankSubject.getSubjectId(), bankChapter.getChapterId());
-
-        // 2. Delete all chapters in the subject (theories, chunks, skills, quizzes, chapters)
-        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
-        if (!chapters.isEmpty()) {
-            List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
-            quizRepository.reassignQuestionsByChapterIds(
-                    chapterIds, bankSubject.getSubjectId(), bankChapter.getChapterId());
-
-            for (String chapterId : chapterIds) {
-                List<Theory> theories = contentRepository.findAllTheory(chapterId);
-                for (Theory theory : theories) {
-                    theoryIndexingService.delete(theory.getTheoryId());
-                    contentRepository.hardDeleteTheoryById(theory.getTheoryId());
-                }
-                chapterSkillRepository.deleteByChapterId(chapterId);
-                unlockedChapterRepository.deleteByChapterId(chapterId);
-                List<Quiz> chapterQuizzes = quizRepository.findQuizzesByChapterId(chapterId);
-                for (Quiz quiz : chapterQuizzes) {
-                    quizRepository.deleteQuizQuestionsByQuizId(quiz.getQuizId());
-                    quizRepository.hardDeleteQuizById(quiz.getQuizId());
-                }
-                contentRepository.hardDeleteChapterById(chapterId);
-            }
-        }
-
-        // 3. Delete quizzes directly in this subject
-        List<Quiz> quizzes = quizRepository.findQuizzesBySubjectId(subjectId);
-        for (Quiz quiz : quizzes) {
-            quizRepository.deleteQuizQuestionsByQuizId(quiz.getQuizId());
-            quizRepository.hardDeleteQuizById(quiz.getQuizId());
-        }
-
-        // 4. Delete enrollments
-        enrollmentRepository.deleteBySubjectId(subjectId);
-
-        // 5. Hard delete subject
-        contentRepository.hardDeleteSubjectById(subjectId);
+        throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
     }
 
     @Override
@@ -439,46 +389,7 @@ public class ContentServiceImplement implements ContentService {
     @Transactional
     @CacheEvict(value = {CacheConfig.CACHE_SUBJECT_DETAIL, CacheConfig.CACHE_QUIZZES_BY_SUBJECT}, allEntries = true)
     public void hardDeleteChapter(String chapterId) {
-        Chapter chapter = contentRepository.findChapterById(chapterId)
-                .orElseThrow(() -> new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND));
-
-        contentRepository.findSubjectById(chapter.getSubjectId()).ifPresent(parentSubject -> {
-            if ((ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(parentSubject.getCourseCode())
-                    || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(parentSubject.getName()))
-                    && ContentConstants.QUESTION_BANK_CHAPTER_NAME.equalsIgnoreCase(chapter.getName())) {
-                throw new AppException("Không thể xóa Ngân hàng câu hỏi mặc định", HttpStatus.BAD_REQUEST);
-            }
-        });
-
-        Subject bankSubject = contentRepository.getOrCreateQuestionBankSubject();
-        Chapter bankChapter = contentRepository.getOrCreateQuestionBankChapter(bankSubject.getSubjectId());
-        String subjectId = chapter.getSubjectId();
-
-        // 1. Reassign all questions belonging to this chapter to Question Bank
-        quizRepository.reassignQuestionsByChapterId(
-                chapterId, bankSubject.getSubjectId(), bankChapter.getChapterId());
-
-        // 2. Delete theories in chapter
-        List<Theory> theories = contentRepository.findAllTheory(chapterId);
-        for (Theory theory : theories) {
-            theoryIndexingService.delete(theory.getTheoryId());
-            contentRepository.hardDeleteTheoryById(theory.getTheoryId());
-        }
-
-        // 3. Delete chapter skills and unlocked chapters
-        chapterSkillRepository.deleteByChapterId(chapterId);
-        unlockedChapterRepository.deleteByChapterId(chapterId);
-
-        // 4. Delete quizzes in this chapter
-        List<Quiz> quizzes = quizRepository.findQuizzesByChapterId(chapterId);
-        for (Quiz quiz : quizzes) {
-            quizRepository.deleteQuizQuestionsByQuizId(quiz.getQuizId());
-            quizRepository.hardDeleteQuizById(quiz.getQuizId());
-        }
-
-        // 5. Hard delete chapter
-        contentRepository.hardDeleteChapterById(chapterId);
-        recalculateUnlockedChaptersForSubject(subjectId);
+        throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
     }
 
     @Override
@@ -491,8 +402,7 @@ public class ContentServiceImplement implements ContentService {
     @Override
     @Transactional
     public void hardDeleteTheory(String theoryId) {
-        theoryIndexingService.delete(theoryId);
-        contentRepository.hardDeleteTheoryById(theoryId);
+        throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
     }
 
     @Override

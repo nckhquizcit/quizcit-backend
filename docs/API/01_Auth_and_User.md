@@ -29,11 +29,11 @@ Tài liệu chi tiết các endpoint thuộc phân hệ Xác thực (`/api/auth`
 | `PATCH` | `/api/users/{userId}/password` | `ADMINISTRATOR` | Admin đặt lại mật khẩu cho người dùng. |
 | `PATCH` | `/api/users/{userId}/status` | `ADMINISTRATOR` | Khóa / Mở khóa tài khoản (`VERIFIED` / `BANNED`). |
 | `PATCH` | `/api/users/{userId}/role` | `ADMINISTRATOR` | Thay đổi vai trò người dùng (`USER` / `ADMINISTRATOR`). |
-| `DELETE` | `/api/users/{userId}` | `ADMINISTRATOR` | Xóa mềm (mặc định) hoặc Xóa cứng (`?hard=true`) người dùng. |
+| `DELETE` | `/api/users/{userId}` | `ADMINISTRATOR` | Xóa mềm người dùng (Hệ thống chỉ hỗ trợ xóa mềm). |
 | `GET` | `/api/roles` | `ADMINISTRATOR` | Lấy danh sách tất cả các vai trò trong hệ thống. |
-| `DELETE` | `/api/roles/{roleId}` | `ADMINISTRATOR` | Xóa mềm hoặc Xóa cứng (`?hard=true`) một vai trò. |
+| `DELETE` | `/api/roles/{roleId}` | `ADMINISTRATOR` | Xóa mềm một vai trò (Hệ thống chỉ hỗ trợ xóa mềm). |
 | `GET` | `/api/permissions` | `ADMINISTRATOR` | Lấy danh sách tất cả các quyền hạn trong hệ thống. |
-| `DELETE` | `/api/permissions/{permissionId}` | `ADMINISTRATOR` | Xóa mềm hoặc Xóa cứng (`?hard=true`) một quyền hạn. |
+| `DELETE` | `/api/permissions/{permissionId}` | `ADMINISTRATOR` | Xóa mềm một quyền hạn (Hệ thống chỉ hỗ trợ xóa mềm). |
 | `GET` | `/api/admin/data-stats` | `ADMINISTRATOR` | Thống kê số lượng users, subjects, questions, quizzes, attempts. |
 
 ---
@@ -329,8 +329,7 @@ Tài liệu chi tiết các endpoint thuộc phân hệ Xác thực (`/api/auth`
 
 #### Xóa Người dùng (`DELETE /api/users/{userId}`)
 - **Query Params:**
-  - `hard`: `false` (mặc định - Xóa mềm: ẩn danh dữ liệu, giữ lại lịch sử học tập).
-  - `hard`: `true` (Xóa cứng: xóa vĩnh viễn user và toàn bộ kết quả, token, lịch sử thi, tracking).
+  - `hard`: `false` (mặc định - Xóa mềm: ẩn danh dữ liệu, giữ lại lịch sử học tập. Hệ thống không cho phép xóa cứng).
 - **Quy tắc bảo vệ:** Admin không thể tự xóa tài khoản của chính mình (`400 Bad Request`).
 - **Response `204 No Content`**.
 

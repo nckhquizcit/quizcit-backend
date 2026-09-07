@@ -201,7 +201,7 @@ public class QuestionServiceImplement implements QuestionService {
     @Override
     @Transactional
     public void hardDeleteQuestion(String questionId) {
-        quizRepository.hardDeleteQuestionById(questionId);
+        throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
     }
 
     @Override

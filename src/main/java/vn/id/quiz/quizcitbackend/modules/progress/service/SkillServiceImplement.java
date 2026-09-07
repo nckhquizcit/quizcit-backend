@@ -84,14 +84,7 @@ public class SkillServiceImplement implements SkillService {
     @Transactional
     @CacheEvict(value = {CacheConfig.CACHE_SKILLS, CacheConfig.CACHE_SKILL_DETAIL}, allEntries = true)
     public void hardDeleteSkill(String skillId) {
-        if (skillRepository.findById(skillId).isEmpty()) {
-            throw new AppException("Không tìm thấy kỹ năng", HttpStatus.NOT_FOUND);
-        }
-        questionSkillRepository.deleteBySkillId(skillId);
-        chapterSkillRepository.deleteBySkillId(skillId);
-        userSkillAbilityRepository.deleteBySkillId(skillId);
-        abilityHistoryRepository.deleteBySkillId(skillId);
-        skillRepository.hardDeleteById(skillId);
+        throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
     }
 }
 

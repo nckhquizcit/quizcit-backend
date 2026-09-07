@@ -60,17 +60,10 @@ class SkillServiceImplementTest {
     }
 
     @Test
-    void hardDeleteSkillCleansUpDependenciesAndDeletes() {
-        Skill skill = Skill.builder().skillId("skill-1").name("Vòng lặp").build();
-        when(skillRepository.findById("skill-1")).thenReturn(Optional.of(skill));
-
-        service.hardDeleteSkill("skill-1");
-
-        verify(questionSkillRepository).deleteBySkillId("skill-1");
-        verify(chapterSkillRepository).deleteBySkillId("skill-1");
-        verify(userSkillAbilityRepository).deleteBySkillId("skill-1");
-        verify(abilityHistoryRepository).deleteBySkillId("skill-1");
-        verify(skillRepository).hardDeleteById("skill-1");
+    void hardDeleteSkillThrowsExceptionWhenHardDeleteAttempted() {
+        assertThatThrownBy(() -> service.hardDeleteSkill("skill-1"))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.");
     }
 
     @Test

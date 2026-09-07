@@ -117,10 +117,9 @@ public class SkillController {
             @PathVariable String skillId,
             @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
         if (hard) {
-            skillService.hardDeleteSkill(skillId);
-        } else {
-            skillService.deleteSkill(skillId);
+            throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
         }
+        skillService.deleteSkill(skillId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Đã xóa kỹ năng thành công", null));
     }

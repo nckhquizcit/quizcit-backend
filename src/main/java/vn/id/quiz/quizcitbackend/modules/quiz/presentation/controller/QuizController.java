@@ -8,6 +8,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResponse
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.UpdateQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.QuizService;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
 
 import java.util.List;
@@ -100,10 +101,9 @@ public class QuizController {
             @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
 
         if (hard) {
-            quizService.hardDeleteQuiz(quizId);
-        } else {
-            quizService.deleteQuiz(quizId);
+            throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
         }
+        quizService.deleteQuiz(quizId);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success(

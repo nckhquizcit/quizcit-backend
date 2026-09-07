@@ -128,10 +128,9 @@ public class QuestionController {
             @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
 
         if (hard) {
-            questionService.hardDeleteQuestion(questionId);
-        } else {
-            questionService.deleteQuestion(questionId);
+            throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
         }
+        questionService.deleteQuestion(questionId);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success(

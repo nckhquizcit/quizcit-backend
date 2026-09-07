@@ -13,7 +13,7 @@ Tài liệu chi tiết các endpoint quản lý Môn học (`/api/subjects`), Ch
 | `POST` | `/api/subjects` | `ADMINISTRATOR` | Tạo mới một môn học. |
 | `PUT` | `/api/subjects/{subjectId}` | `ADMINISTRATOR` | Cập nhật thông tin môn học (tên học phần, mã học phần, mô tả, ảnh, hiển thị). |
 | `PUT` | `/api/subjects/display-order` | `ADMINISTRATOR` | Cập nhật thứ tự sắp xếp (display order) các môn học. |
-| `DELETE` | `/api/subjects/{subjectId}` | `ADMINISTRATOR` | Xóa mềm hoặc Xóa cứng (`?hard=true`) môn học. |
+| `DELETE` | `/api/subjects/{subjectId}` | `ADMINISTRATOR` | Xóa mềm môn học (Hệ thống chỉ hỗ trợ xóa mềm). |
 | `GET` | `/api/subjects/{subjectId}/quizzes` | `isAuthenticated()` | Lấy danh sách đề thi thuộc môn học. |
 | `GET` | `/api/subjects/{subjectId}/chapters` | `isAuthenticated()` | Lấy danh sách các chương thuộc môn học (yêu cầu ghi danh). |
 | `GET` | `/api/chapters` | `isAuthenticated()` | Lấy danh sách tất cả các chương thuộc các môn người dùng được phép truy cập. |
@@ -21,13 +21,13 @@ Tài liệu chi tiết các endpoint quản lý Môn học (`/api/subjects`), Ch
 | `POST` | `/api/subjects/{subjectId}/chapters` | `ADMINISTRATOR` | Thêm chương học mới vào môn học. |
 | `PUT` | `/api/chapters/{chapterId}` | `ADMINISTRATOR` | Cập nhật thông tin chương học và danh sách kỹ năng liên kết. |
 | `PUT` | `/api/subjects/{subjectId}/chapters/display-order` | `ADMINISTRATOR` | Cập nhật thứ tự sắp xếp các chương trong một môn học. |
-| `DELETE` | `/api/chapters/{chapterId}` | `ADMINISTRATOR` | Xóa mềm hoặc Xóa cứng (`?hard=true`) chương học. |
+| `DELETE` | `/api/chapters/{chapterId}` | `ADMINISTRATOR` | Xóa mềm chương học (Hệ thống chỉ hỗ trợ xóa mềm). |
 | `GET` | `/api/chapters/{chapterId}/theories` | `isAuthenticated()` | Lấy danh sách các bài lý thuyết thuộc chương học. |
 | `GET` | `/api/subjects/{subjectId}/theories` | `isAuthenticated()` | Lấy toàn bộ các bài lý thuyết trong một môn học. |
 | `GET` | `/api/theories/{theoryId}` | `isAuthenticated()` | Lấy chi tiết một bài lý thuyết (kèm nội dung BlockNote/Markdown). |
 | `POST` | `/api/chapters/{chapterId}/theories` | `ADMINISTRATOR` | Tạo bài lý thuyết mới và tự động đánh chỉ mục vector. |
 | `PUT` | `/api/theories/{theoryId}` | `ADMINISTRATOR` | Cập nhật nội dung bài lý thuyết và reindex vector. |
-| `DELETE` | `/api/theories/{theoryId}` | `ADMINISTRATOR` | Xóa mềm hoặc Xóa cứng (`?hard=true`) bài lý thuyết. |
+| `DELETE` | `/api/theories/{theoryId}` | `ADMINISTRATOR` | Xóa mềm bài lý thuyết (Hệ thống chỉ hỗ trợ xóa mềm). |
 | `POST` | `/api/subjects/{subjectId}/theories/reindex` | `ADMINISTRATOR` | Đánh lại chỉ mục vector toàn bộ lý thuyết của môn học cho Chatbot AI. |
 | `POST` | `/api/users/me/course-enrollments/{subjectId}` | `isAuthenticated()` | Đăng ký (Ghi danh) vào một môn học. |
 | `DELETE` | `/api/users/me/course-enrollments/{subjectId}` | `isAuthenticated()` | Hủy đăng ký (Rút lui) khỏi môn học. |

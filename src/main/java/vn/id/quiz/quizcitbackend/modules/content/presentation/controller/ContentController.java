@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
+import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -83,10 +84,9 @@ public class ContentController {
             @PathVariable String subjectId,
             @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
         if (hard) {
-            subjectUseCase.hardDeleteSubject(subjectId);
-        } else {
-            subjectUseCase.deleteSubject(subjectId);
+            throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
         }
+        subjectUseCase.deleteSubject(subjectId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Đã xóa thành công học phần", null));
     }
@@ -147,10 +147,9 @@ public class ContentController {
             @PathVariable String chapterId,
             @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
         if (hard) {
-            subjectUseCase.hardDeleteChapter(chapterId);
-        } else {
-            subjectUseCase.deleteChapter(chapterId);
+            throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
         }
+        subjectUseCase.deleteChapter(chapterId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Đã xóa chương thành công", null));
     }
@@ -215,10 +214,9 @@ public class ContentController {
             @PathVariable String theoryId,
             @RequestParam(name = "hard", defaultValue = "false") boolean hard) {
         if (hard) {
-            subjectUseCase.hardDeleteTheory(theoryId);
-        } else {
-            subjectUseCase.deleteTheory(theoryId);
+            throw new AppException("Hệ thống chỉ hỗ trợ xóa mềm, không cho phép xóa cứng dữ liệu.", HttpStatus.BAD_REQUEST);
         }
+        subjectUseCase.deleteTheory(theoryId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(ApiResponse.success("Đã xóa nội dung lý thuyết thành công", null));
     }

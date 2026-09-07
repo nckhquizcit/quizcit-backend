@@ -14,7 +14,7 @@ Tài liệu chi tiết các endpoint Quản lý Ngân hàng Câu hỏi (`/api/qu
 | `POST` | `/api/questions/bulk` | `ADMINISTRATOR` | Tạo hoặc import hàng loạt câu hỏi cùng lúc. |
 | `GET` | `/api/questions/{questionId}` | Public / User / Admin | Lấy chi tiết câu hỏi (Ẩn đáp án đúng nếu là học viên). |
 | `PUT` | `/api/questions/{questionId}` | `ADMINISTRATOR` | Cập nhật nội dung câu hỏi, tham số IRT, đáp án, kỹ năng. |
-| `DELETE` | `/api/questions/{questionId}` | `ADMINISTRATOR` | Xóa mềm hoặc Xóa cứng (`?hard=true`) câu hỏi. |
+| `DELETE` | `/api/questions/{questionId}` | `ADMINISTRATOR` | Xóa mềm câu hỏi (Hệ thống chỉ hỗ trợ xóa mềm). |
 | `PATCH` | `/api/questions/{questionId}/placement` | `ADMINISTRATOR` | Gán hoặc chuyển đổi môn học và chương cho một câu hỏi. |
 | `PATCH` | `/api/questions/placement` | `ADMINISTRATOR` | Gán môn học và chương hàng loạt cho nhiều câu hỏi. |
 | `GET` | `/api/chapters/{chapterId}/quizzes` | `isAuthenticated()` | Lấy danh sách đề thi thuộc về một chương học. |
@@ -23,7 +23,7 @@ Tài liệu chi tiết các endpoint Quản lý Ngân hàng Câu hỏi (`/api/qu
 | `GET` | `/api/quizzes/{quizId}/questions` | `isAuthenticated()` | Lấy danh sách toàn bộ câu hỏi và lựa chọn để học viên làm bài. |
 | `PUT` | `/api/quizzes/{quizId}` | `ADMINISTRATOR` | Cập nhật thông tin đề thi và cấu trúc danh sách câu hỏi. |
 | `PUT` | `/api/chapters/{chapterId}/quizzes/display-order` | `ADMINISTRATOR` | Cập nhật thứ tự hiển thị các đề thi trong chương. |
-| `DELETE` | `/api/quizzes/{quizId}` | `ADMINISTRATOR` | Xóa mềm hoặc Xóa cứng (`?hard=true`) đề thi (có kiểm tra an toàn). |
+| `DELETE` | `/api/quizzes/{quizId}` | `ADMINISTRATOR` | Xóa mềm đề thi (Hệ thống chỉ hỗ trợ xóa mềm). |
 
 ---
 
