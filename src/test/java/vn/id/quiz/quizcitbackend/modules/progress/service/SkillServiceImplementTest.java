@@ -133,4 +133,33 @@ class SkillServiceImplementTest {
         assertThat(response.getDescription()).isEqualTo("Updated Desc");
         assertThat(skill.getName()).isEqualTo("Updated Name");
     }
+
+    @Test
+    void createSkillThrowsWhenNameAlreadyExistsIgnoreCase() {
+        when(skillRepository.existsByNameIgnoreCase("Existing Skill")).thenReturn(true);
+
+        SkillRequest request = SkillRequest.builder()
+                .name("  Existing Skill  ")
+                .description("Desc")
+                .build();
+
+        assertThatThrownBy(() -> service.createSkill(request))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Tên kỹ năng đã tồn tại");
+    }
+
+    @Test
+    void updateSkillThrowsWhenNameAlreadyExistsIgnoreCaseForOtherSkill() {
+        Skill skill = Skill.builder().skillId("s1").name("Old Name").build();
+        when(skillRepository.findById("s1")).thenReturn(Optional.of(skill));
+        when(skillRepository.existsByNameIgnoreCaseAndSkillIdNot("Duplicate Name", "s1")).thenReturn(true);
+
+        SkillRequest request = SkillRequest.builder()
+                .name("Duplicate Name")
+                .build();
+
+        assertThatThrownBy(() -> service.updateSkill("s1", request))
+                .isInstanceOf(AppException.class)
+                .hasMessage("Tên kỹ năng đã tồn tại");
+    }
 }

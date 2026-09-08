@@ -52,6 +52,30 @@ public class SkillRepositoryAdapter implements SkillRepository {
     }
 
     @Override
+    public boolean existsByNameIgnoreCase(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        return jpa.existsByNameIgnoreCaseTrimmed(name.trim());
+    }
+
+    @Override
+    public boolean existsByNameIgnoreCaseAndSkillIdNot(String name, String skillId) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        return jpa.existsByNameIgnoreCaseTrimmedAndSkillIdNot(name.trim(), skillId);
+    }
+
+    @Override
+    public Optional<Skill> findByNameIgnoreCase(String name) {
+        if (name == null || name.isBlank()) {
+            return Optional.empty();
+        }
+        return jpa.findByNameIgnoreCaseTrimmed(name.trim());
+    }
+
+    @Override
     public Map<String, String> findSkillNamesByIds(Collection<String> skillIds) {
         if (skillIds == null || skillIds.isEmpty()) {
             return Map.of();

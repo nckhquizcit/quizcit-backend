@@ -55,7 +55,14 @@ public class SkillServiceImplement implements SkillService {
     @Transactional
     @CacheEvict(value = {CacheConfig.CACHE_SKILLS, CacheConfig.CACHE_SKILL_DETAIL}, allEntries = true)
     public SkillResponse createSkill(SkillRequest request) {
-        Skill skill = Skill.create(request.getName(), request.getDescription());
+        String trimmedName = request.getName() != null ? request.getName().trim() : "";
+        if (trimmedName.isEmpty()) {
+            throw new AppException("Tên kỹ năng không được để trống", HttpStatus.BAD_REQUEST);
+        }
+        if (skillRepository.existsByNameIgnoreCase(trimmedName)) {
+            throw new AppException("Tên kỹ năng đã tồn tại", HttpStatus.CONFLICT);
+        }
+        Skill skill = Skill.create(trimmedName, request.getDescription() != null ? request.getDescription().trim() : null);
         return SkillResponse.from(skillRepository.save(skill));
     }
 
@@ -66,7 +73,14 @@ public class SkillServiceImplement implements SkillService {
         Skill skill = skillRepository.findById(skillId)
                 .orElseThrow(() -> new AppException(
                         "Không tìm thấy kỹ năng", HttpStatus.NOT_FOUND));
-        skill.updateSkill(request.getName(), request.getDescription());
+        String trimmedName = request.getName() != null ? request.getName().trim() : "";
+        if (trimmedName.isEmpty()) {
+            throw new AppException("Tên kỹ năng không được để trống", HttpStatus.BAD_REQUEST);
+        }
+        if (skillRepository.existsByNameIgnoreCaseAndSkillIdNot(trimmedName, skillId)) {
+            throw new AppException("Tên kỹ năng đã tồn tại", HttpStatus.CONFLICT);
+        }
+        skill.updateSkill(trimmedName, request.getDescription() != null ? request.getDescription().trim() : null);
         return SkillResponse.from(skillRepository.save(skill));
     }
 

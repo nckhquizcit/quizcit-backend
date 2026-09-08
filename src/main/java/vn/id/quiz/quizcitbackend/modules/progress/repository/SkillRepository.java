@@ -23,6 +23,28 @@ public interface SkillRepository {
         deleteById(skillId);
     }
 
+    default boolean existsByNameIgnoreCase(String name) {
+        if (name == null || name.isBlank()) return false;
+        String trimmed = name.trim();
+        return findAll().stream()
+                .anyMatch(s -> s.getName() != null && s.getName().trim().equalsIgnoreCase(trimmed));
+    }
+
+    default boolean existsByNameIgnoreCaseAndSkillIdNot(String name, String skillId) {
+        if (name == null || name.isBlank()) return false;
+        String trimmed = name.trim();
+        return findAll().stream()
+                .anyMatch(s -> !s.getSkillId().equals(skillId) && s.getName() != null && s.getName().trim().equalsIgnoreCase(trimmed));
+    }
+
+    default Optional<Skill> findByNameIgnoreCase(String name) {
+        if (name == null || name.isBlank()) return Optional.empty();
+        String trimmed = name.trim();
+        return findAll().stream()
+                .filter(s -> s.getName() != null && s.getName().trim().equalsIgnoreCase(trimmed))
+                .findFirst();
+    }
+
     default Map<String, String> findSkillNamesByIds(Collection<String> skillIds) {
         if (skillIds == null || skillIds.isEmpty()) {
             return Map.of();
