@@ -34,10 +34,11 @@ public class AdminDataStatsController {
                        AND (NOT EXISTS (SELECT 1 FROM quizzes q
                                         WHERE q.quiz_id = a.quiz_id AND q.type = 'ADAPTIVE')
                             OR (SELECT COUNT(*) FROM responses r WHERE r.attempt_id = a.attempt_id)
-                               >= a.total_question))
+                               >= a.total_question)),
+                  (SELECT COUNT(*) FROM skills WHERE deleted_at IS NULL)
                 """).getSingleResult();
         return ApiResponse.success(new AdminDataStatsResponse(
-                number(row[0]), number(row[1]), number(row[2]), number(row[3]), number(row[4])));
+                number(row[0]), number(row[1]), number(row[2]), number(row[3]), number(row[4]), number(row[5])));
     }
 
     private long number(Object value) {

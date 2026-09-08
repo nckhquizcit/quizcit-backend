@@ -5,5 +5,15 @@ public record AdminDataStatsResponse(
         long totalSubjects,
         long totalQuestions,
         long totalQuizzes,
-        long totalAttempts) {
+        long totalAttempts,
+        long totalSkills) {
+
+    public AdminDataStatsResponse(
+            long totalUsers,
+            long totalSubjects,
+            long totalQuestions,
+            long totalQuizzes,
+            long totalAttempts) {
+        this(totalUsers, totalSubjects, totalQuestions, totalQuizzes, totalAttempts, 0L);
+    }
 }

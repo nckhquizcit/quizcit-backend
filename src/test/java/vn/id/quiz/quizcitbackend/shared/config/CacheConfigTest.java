@@ -70,7 +70,7 @@ class CacheConfigTest {
 
     @Test
     void shouldSerializeAndDeserializeAdminDataStatsResponse() {
-        AdminDataStatsResponse original = new AdminDataStatsResponse(10, 5, 100, 20, 50);
+        AdminDataStatsResponse original = new AdminDataStatsResponse(10, 5, 100, 20, 50, 15);
         byte[] bytes = serializer.serialize(original);
         assertThat(bytes).isNotNull();
 
@@ -79,6 +79,7 @@ class CacheConfigTest {
         AdminDataStatsResponse result = (AdminDataStatsResponse) deserialized;
         assertThat(result.totalUsers()).isEqualTo(10);
         assertThat(result.totalQuestions()).isEqualTo(100);
+        assertThat(result.totalSkills()).isEqualTo(15);
     }
 
     @Test

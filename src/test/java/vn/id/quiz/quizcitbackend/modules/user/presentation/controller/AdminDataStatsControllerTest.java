@@ -16,7 +16,7 @@ class AdminDataStatsControllerTest {
         EntityManager entityManager = mock(EntityManager.class);
         Query query = mock(Query.class);
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
-        when(query.getSingleResult()).thenReturn(new Object[]{11L, 12L, 13L, 14L, 15L});
+        when(query.getSingleResult()).thenReturn(new Object[]{11L, 12L, 13L, 14L, 15L, 16L});
 
         var stats = new AdminDataStatsController(entityManager).getDataStats().data();
 
@@ -25,5 +25,6 @@ class AdminDataStatsControllerTest {
         assertThat(stats.totalQuestions()).isEqualTo(13);
         assertThat(stats.totalQuizzes()).isEqualTo(14);
         assertThat(stats.totalAttempts()).isEqualTo(15);
+        assertThat(stats.totalSkills()).isEqualTo(16);
     }
 }
