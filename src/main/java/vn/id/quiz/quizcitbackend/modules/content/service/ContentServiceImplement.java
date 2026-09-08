@@ -256,8 +256,56 @@ public class ContentServiceImplement implements ContentService {
             }
         });
 
-        int displayOrder = positiveOrDefault(request.displayOrder(), chapter.getDisplayOrder());
-        chapter.updateChapter(request.name(), displayOrder);
+        List<Chapter> chapters = contentRepository.findAllChapter(chapter.getSubjectId());
+        if (chapters == null) {
+            chapters = java.util.List.of();
+        }
+        int totalChapters = Math.max(1, chapters.size());
+
+        int oldOrder = chapter.getDisplayOrder();
+        int targetOrder = request.displayOrder() != null ? request.displayOrder() : oldOrder;
+        if (targetOrder < 1) {
+            targetOrder = 1;
+        } else if (targetOrder > totalChapters) {
+            targetOrder = totalChapters;
+        }
+
+        if (targetOrder != oldOrder) {
+            Chapter swappedChapter = null;
+            for (Chapter c : chapters) {
+                if (!c.getChapterId().equals(chapterId) && c.getDisplayOrder() == targetOrder) {
+                    swappedChapter = c;
+                    break;
+                }
+            }
+            if (swappedChapter == null && targetOrder - 1 >= 0 && targetOrder - 1 < chapters.size()) {
+                Chapter candidate = chapters.get(targetOrder - 1);
+                if (!candidate.getChapterId().equals(chapterId)) {
+                    swappedChapter = candidate;
+                }
+            }
+
+            if (swappedChapter != null) {
+                int targetSwappedOrder = oldOrder;
+                if (targetSwappedOrder < 1 || targetSwappedOrder > totalChapters) {
+                    int currentIdx = -1;
+                    for (int i = 0; i < chapters.size(); i++) {
+                        if (chapters.get(i).getChapterId().equals(chapterId)) {
+                            currentIdx = i;
+                            break;
+                        }
+                    }
+                    targetSwappedOrder = currentIdx >= 0 ? currentIdx + 1 : 1;
+                }
+                if (targetSwappedOrder == targetOrder) {
+                    targetSwappedOrder = swappedChapter.getDisplayOrder();
+                }
+                swappedChapter.updateChapter(swappedChapter.getName(), targetSwappedOrder);
+                contentRepository.save(swappedChapter);
+            }
+        }
+
+        chapter.updateChapter(request.name(), targetOrder);
         contentRepository.save(chapter);
         if (request.skills() != null) {
             replaceChapterSkills(chapterId, request.skills(), true);

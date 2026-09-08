@@ -365,6 +365,72 @@ class ContentServiceImplementTest {
     }
 
     @Test
+    void updateChapterShouldClampDisplayOrderTo1WhenNegativeAndSwapWithFirstChapter() {
+        Subject normalSubject = Subject.builder().subjectId("sub-1").courseCode("CS101").name("Computer Science").build();
+        Chapter ch1 = Chapter.builder().chapterId("ch-1").subjectId("sub-1").name("Chapter 1").displayOrder(1).build();
+        Chapter ch2 = Chapter.builder().chapterId("ch-2").subjectId("sub-1").name("Chapter 2").displayOrder(2).build();
+        Chapter ch3 = Chapter.builder().chapterId("ch-3").subjectId("sub-1").name("Chapter 3").displayOrder(3).build();
+
+        when(content.findChapterById("ch-3")).thenReturn(Optional.of(ch3));
+        when(content.findSubjectById("sub-1")).thenReturn(Optional.of(normalSubject));
+        when(content.findAllChapter("sub-1")).thenReturn(List.of(ch1, ch2, ch3));
+
+        var req = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest(
+                "Chapter 3 Updated", -5, List.of());
+        service.updateChapter("ch-3", req);
+
+        // ch-3 displayOrder was -5 -> clamped to 1, swapped with ch-1 (which gets ch-3's old order = 3)
+        assertThat(ch3.getDisplayOrder()).isEqualTo(1);
+        assertThat(ch3.getName()).isEqualTo("Chapter 3 Updated");
+        assertThat(ch1.getDisplayOrder()).isEqualTo(3);
+        verify(content).save(ch1);
+        verify(content).save(ch3);
+    }
+
+    @Test
+    void updateChapterShouldClampDisplayOrderToMaxWhenGreaterThanTotalAndSwapWithLastChapter() {
+        Subject normalSubject = Subject.builder().subjectId("sub-1").courseCode("CS101").name("Computer Science").build();
+        Chapter ch1 = Chapter.builder().chapterId("ch-1").subjectId("sub-1").name("Chapter 1").displayOrder(1).build();
+        Chapter ch2 = Chapter.builder().chapterId("ch-2").subjectId("sub-1").name("Chapter 2").displayOrder(2).build();
+        Chapter ch3 = Chapter.builder().chapterId("ch-3").subjectId("sub-1").name("Chapter 3").displayOrder(3).build();
+
+        when(content.findChapterById("ch-1")).thenReturn(Optional.of(ch1));
+        when(content.findSubjectById("sub-1")).thenReturn(Optional.of(normalSubject));
+        when(content.findAllChapter("sub-1")).thenReturn(List.of(ch1, ch2, ch3));
+
+        var req = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest(
+                "Chapter 1 Updated", 999, List.of());
+        service.updateChapter("ch-1", req);
+
+        // ch-1 displayOrder was 999 -> clamped to 3 (total chapters = 3), swapped with ch-3 (which gets ch-1's old order = 1)
+        assertThat(ch1.getDisplayOrder()).isEqualTo(3);
+        assertThat(ch1.getName()).isEqualTo("Chapter 1 Updated");
+        assertThat(ch3.getDisplayOrder()).isEqualTo(1);
+        verify(content).save(ch3);
+        verify(content).save(ch1);
+    }
+
+    @Test
+    void updateChapterShouldSwapWhenValidOrderOccupiedByAnotherChapter() {
+        Subject normalSubject = Subject.builder().subjectId("sub-1").courseCode("CS101").name("Computer Science").build();
+        Chapter ch1 = Chapter.builder().chapterId("ch-1").subjectId("sub-1").name("Chapter 1").displayOrder(1).build();
+        Chapter ch2 = Chapter.builder().chapterId("ch-2").subjectId("sub-1").name("Chapter 2").displayOrder(2).build();
+
+        when(content.findChapterById("ch-1")).thenReturn(Optional.of(ch1));
+        when(content.findSubjectById("sub-1")).thenReturn(Optional.of(normalSubject));
+        when(content.findAllChapter("sub-1")).thenReturn(List.of(ch1, ch2));
+
+        var req = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest(
+                "Chapter 1 Renamed", 2, List.of());
+        service.updateChapter("ch-1", req);
+
+        assertThat(ch1.getDisplayOrder()).isEqualTo(2);
+        assertThat(ch2.getDisplayOrder()).isEqualTo(1);
+        verify(content).save(ch2);
+        verify(content).save(ch1);
+    }
+
+    @Test
     void addChapterShouldThrowWhenAttemptingToAddToQuestionBank() {
         Subject bankSubject = Subject.builder().subjectId("bank-sub").courseCode("QUESTION_BANK")
                 .name("Ngân hàng câu hỏi").build();
