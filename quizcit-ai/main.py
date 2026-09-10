@@ -14,10 +14,19 @@ from rag_chat import (
 
 app = FastAPI()
 
+# Hằng số chung cho thang đo theta/b (logit), dùng cho cả rasch_theta() và
+# update_difficulty(). Đặt ở đây để tránh lặp lại theta_min/theta_max rải rác.
+THETA_MIN = -4.0
+THETA_MAX = 4.0
+MIN_RESPONSES_FOR_CALIBRATION = 20  # xem giải thích trong update_difficulty
+SHRINKAGE_K = 30  # n=30 -> weight_data=0.5 ; n=90 -> weight_data=0.75 ...
+
+
 class AttemptData(BaseModel):
     responses: list  # [1,0,1,1,...]
     difficulties: list  # [0.2, -0.5, ...]
     weights: list        # [0.8, 0.3, 1.0, ...]
+
 
 def rasch_theta(responses, difficulties, weights, max_iter=20,
                 theta_min=-4.0, theta_max=4.0):
@@ -138,29 +147,63 @@ def advice(data: AdviceData):
     return {"advice": text}
 
 
-# Phần này hiện chưa xài, chỉ xài để cập nhật độ khó câu hỏi nếu cuối kỳ cảm thấy cần
-# def update_difficulty(
-#     b_old: float,
-#     theta_raws: list[float],   # theta_raw lấy từ ability_history.theta
-#     responses: list[int],      # 0/1 từ responses.score
-#     decay: float = 0.6
-# ) -> float:
-#     """
-#     Cập nhật difficulty_b cuối kỳ.
-#     Bắt buộc dùng theta_raw — KHÔNG dùng theta_scaled.
-#     Cần ít nhất 10 lượt làm mới cập nhật.
-#     """
-#     if len(theta_raws) < 10:
-#         return round(b_old, 4)
+# =============================================================================
+# Item calibration (hiệu chỉnh độ khó câu hỏi cuối kỳ) — CHƯA gắn endpoint.
+# Chỉ dùng để kiểm chứng bằng dữ liệu mô phỏng (xem test_calibration.py),
+# chưa đủ dữ liệu thực tế (200-300 lượt/kỳ) để chạy calibration thật.
+# =============================================================================
 
-#     theta_arr    = np.array(theta_raws, dtype=float)
-#     response_arr = np.array(responses,  dtype=float)
+def update_difficulty(
+    b_old: float,
+    theta_raws: list,   # theta_raw lấy từ ability_history.theta, KHÔNG dùng theta_scaled
+    responses: list,    # 0/1 từ responses.score, đúng thứ tự tương ứng với theta_raws
+    max_iter: int = 20,
+) -> float:
+    """
+    Cập nhật difficulty_b cho MỘT câu hỏi, dựa trên toàn bộ lượt làm bài
+    tích lũy được của câu đó trong kỳ.
 
-#     theta_mean  = float(np.mean(theta_arr))
-#     p_observed  = float(np.clip(np.mean(response_arr), 0.01, 0.99))
+    Dùng Newton-Raphson để giải b tối đa hóa likelihood (giữ theta cố định),
+    thay vì suy b từ theta_mean/p_observed — cách cũ là "khớp mô-men"
+    (moment matching), dễ lệch khi mẫu nhỏ hoặc theta không đồng nhất do
+    tính phi tuyến của hàm sigmoid (bất đẳng thức Jensen).
 
-#     b_new   = theta_mean - np.log(p_observed / (1 - p_observed))
-#     b_new   = float(np.clip(b_new, THETA_MIN, THETA_MAX))
-#     b_final = b_old * decay + b_new * (1 - decay)
+    Trọng số kết hợp b_old/b_new phụ thuộc vào n (số lượt phản hồi) thay vì
+    decay cố định: n nhỏ -> tin b_old (giảng viên) nhiều hơn; n lớn -> tin
+    b_mle (dữ liệu) nhiều hơn.
+    """
+    n = len(theta_raws)
+    if n < MIN_RESPONSES_FOR_CALIBRATION:
+        return round(b_old, 4)
 
-#     return round(b_final, 4)
+    theta = np.array(theta_raws, dtype=float)
+    y = np.array(responses, dtype=float)
+
+    b = b_old  # khởi tạo từ giá trị hiện tại, hội tụ nhanh hơn
+
+    for _ in range(max_iter):
+        p = 1 / (1 + np.exp(-(theta - b)))
+
+        # d/db [ log P ]: b tăng thì p giảm, nên dấu ngược với gradient
+        # theo theta trong rasch_theta().
+        gradient = -np.sum(y - p)
+        hessian = -np.sum(p * (1 - p))
+
+        if hessian == 0:
+            break
+
+        b_new = b - gradient / hessian
+        b_new = float(np.clip(b_new, THETA_MIN, THETA_MAX))
+
+        if abs(b_new - b) < 1e-4:
+            b = b_new
+            break
+        b = b_new
+
+    b_mle = float(b)
+
+    # Shrinkage theo n: weight_data -> 1 khi n -> vô cực.
+    weight_data = n / (n + SHRINKAGE_K)
+    b_final = b_old * (1 - weight_data) + b_mle * weight_data
+
+    return round(float(np.clip(b_final, THETA_MIN, THETA_MAX)), 4)
