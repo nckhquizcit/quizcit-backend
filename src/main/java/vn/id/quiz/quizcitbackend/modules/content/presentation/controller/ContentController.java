@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSummaryResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.CreateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.CreateSubjectRequest;
@@ -95,11 +97,31 @@ public class ContentController {
     // CHAPTER ENDPOINTS (/api/chapters)
     // =========================================================================
 
-    // Nested Route: Lấy danh sách chương CỦA 1 môn học
-    @GetMapping("/subjects/{subjectId}/chapters")
+    /**
+     * Lấy danh sách chương của một môn học.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang quản trị hiển thị số lượng, hãy sử dụng {@code /admin/subjects/{subjectId}/chapters-summary}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
+    @GetMapping({"/subjects/{subjectId}/chapters", "/v1/subjects/{subjectId}/chapters"})
     public ResponseEntity<ApiResponse<List<ChapterResponse>>> getAllChapters(@PathVariable String subjectId) {
         List<ChapterResponse> response = subjectUseCase.getAllChapters(subjectId);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping({"/admin/subjects/{subjectId}/chapters-summary", "/v1/admin/subjects/{subjectId}/chapters-summary"})
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<List<ChapterSummaryResponse>>> getChaptersSummary(
+            @PathVariable String subjectId) {
+        List<ChapterSummaryResponse> responses = subjectUseCase.getChaptersSummary(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    @GetMapping({"/admin/chapters-flat", "/v1/admin/chapters-flat"})
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<List<FlatChapterResponse>>> getAllFlatChapters() {
+        List<FlatChapterResponse> responses = subjectUseCase.getAllFlatChapters();
+        return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
     // Nested Route: Thêm chương VÀO 1 môn học

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -474,5 +475,42 @@ class ContentServiceImplementTest {
         verify(content).save(existing);
         assertThat(existing.getImageUrl()).isEqualTo("https://example.com/updated.png");
         assertThat(existing.getName()).isEqualTo("Cấu trúc dữ liệu và giải thuật");
+    }
+
+    @Test
+    void getChaptersSummaryShouldReturnSummarizedCounts() {
+        Subject subject = Subject.builder().subjectId("sub-1").courseCode("CT101")
+                .name("Lập trình C").visible(true).displayOrder(1).build();
+        Chapter chapter = Chapter.builder().chapterId("ch-1").subjectId("sub-1")
+                .name("Nhập môn C").displayOrder(1).build();
+
+        when(visibility.requireVisibleSubjectEntity("sub-1")).thenReturn(subject);
+        when(content.findAllChapter("sub-1")).thenReturn(List.of(chapter));
+        when(quizzes.countQuestionsByChapterIds(List.of("ch-1"))).thenReturn(Map.of("ch-1", 15L));
+        when(content.countTheoriesByChapterIds(List.of("ch-1"))).thenReturn(Map.of("ch-1", 3L));
+        when(chapterSkills.findByChapterIdIn(List.of("ch-1"))).thenReturn(List.of());
+        when(unlocked.findByUserIdAndChapterIdIn(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
+
+        var summaries = service.getChaptersSummary("sub-1");
+
+        assertThat(summaries).hasSize(1);
+        assertThat(summaries.get(0).chapterId()).isEqualTo("ch-1");
+        assertThat(summaries.get(0).questionCount()).isEqualTo(15L);
+        assertThat(summaries.get(0).theoryCount()).isEqualTo(3L);
+        assertThat(summaries.get(0).unlocked()).isTrue();
+    }
+
+    @Test
+    void getAllFlatChaptersShouldDelegateToRepository() {
+        var flatChapter = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse(
+                "ch-1", "Chương 1", "sub-1", "Môn 1", 1);
+        when(content.findAllFlatChapters()).thenReturn(List.of(flatChapter));
+
+        var results = service.getAllFlatChapters();
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).chapterId()).isEqualTo("ch-1");
+        assertThat(results.get(0).chapterName()).isEqualTo("Chương 1");
+        assertThat(results.get(0).subjectName()).isEqualTo("Môn 1");
     }
 }

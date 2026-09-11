@@ -1,5 +1,6 @@
 package vn.id.quiz.quizcitbackend.modules.content.repository;
 
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
@@ -8,7 +9,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Collection;
 import java.util.Map;
-
 
 public interface ContentRepository {
     List<Subject> findAllSubject();
@@ -21,11 +21,15 @@ public interface ContentRepository {
                 .flatMap(id -> findAllChapter(id).stream()).toList();
     }
     default List<Chapter> findAccessibleChapters(String userId) { return List.of(); }
+    default List<FlatChapterResponse> findAllFlatChapters() { return List.of(); }
+
     List<Theory> findAllTheory(String chapterId);
     default List<Theory> findAllTheories(Collection<String> chapterIds) {
         return chapterIds == null ? List.of() : chapterIds.stream()
                 .flatMap(id -> findAllTheory(id).stream()).toList();
     }
+    default Map<String, Long> countTheoriesByChapterIds(Collection<String> chapterIds) { return Map.of(); }
+
     default int nextSubjectDisplayOrder() { return 1; }
     default int nextChapterDisplayOrder(String subjectId) { return 1; }
 
@@ -112,6 +116,4 @@ public interface ContentRepository {
     default void hardDeleteTheoryById(String theoryId) {
         deleteTheoryById(theoryId);
     }
-
-
 }

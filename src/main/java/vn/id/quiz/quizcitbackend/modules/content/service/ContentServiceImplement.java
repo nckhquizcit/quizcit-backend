@@ -5,6 +5,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSummaryResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.CreateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.CreateSubjectRequest;
@@ -178,6 +181,71 @@ public class ContentServiceImplement implements ContentService {
         }
         visibilityGuard.requireAccessibleSubject(subjectId);
         return toChapterResponsesWithStatus(contentRepository.findAllChapter(subjectId), subjectId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChapterSummaryResponse> getChaptersSummary(String subjectId) {
+        Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subject.getName())) {
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+        visibilityGuard.requireAccessibleSubject(subjectId);
+
+        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        if (chapters.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+        Map<String, Long> questionCounts = quizRepository.countQuestionsByChapterIds(chapterIds);
+        Map<String, Long> theoryCounts = contentRepository.countTheoriesByChapterIds(chapterIds);
+
+        Map<String, List<ChapterSkill>> requirementsByChapter = chapterSkillRepository
+                .findByChapterIdIn(chapterIds).stream().collect(Collectors.groupingBy(ChapterSkill::getChapterId));
+        Set<String> skillIds = requirementsByChapter.values().stream().flatMap(List::stream)
+                .map(ChapterSkill::getSkillId).collect(Collectors.toSet());
+        Map<String, String> skillNames = skillRepository.findByIds(skillIds).stream()
+                .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+
+        String userId = currentUserId();
+        Set<String> saved = userId == null ? Set.of() : unlockedChapterRepository
+                .findByUserIdAndChapterIdIn(userId, chapterIds).stream()
+                .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
+        Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository
+                .findByUserId(userId).stream().collect(Collectors.toMap(
+                        UserSkillAbility::getSkillId,
+                        ability -> ability.getTheta() == null ? 0.0 : ability.getTheta()));
+        Set<String> unlockedIds = computeUnlockedChapterIds(userId, chapters, requirementsByChapter, thetaBySkill, saved);
+
+        return chapters.stream().map(chapter -> {
+            boolean unlocked = unlockedIds.contains(chapter.getChapterId());
+            List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of());
+            List<ChapterSkillResponse> skills = reqs.stream()
+                    .map(item -> new ChapterSkillResponse(
+                            item.getSkillId(),
+                            skillNames.get(item.getSkillId()),
+                            item.getRequiredTheta(),
+                            thetaBySkill.get(item.getSkillId())))
+                    .toList();
+            return new ChapterSummaryResponse(
+                    chapter.getChapterId(),
+                    chapter.getSubjectId(),
+                    chapter.getName(),
+                    chapter.getDisplayOrder(),
+                    questionCounts.getOrDefault(chapter.getChapterId(), 0L),
+                    theoryCounts.getOrDefault(chapter.getChapterId(), 0L),
+                    unlocked,
+                    skills
+            );
+        }).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FlatChapterResponse> getAllFlatChapters() {
+        return contentRepository.findAllFlatChapters();
     }
 
     @Override

@@ -2,7 +2,9 @@ package vn.id.quiz.quizcitbackend.modules.content.service;
 
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.CreateChapterRequest;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.CreateSubjectRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectResponse;
@@ -13,7 +15,6 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.UpdateT
 
 import java.util.List;
 import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
-
 
 public interface ContentService {
     List<SubjectResponse> getAllSubject();
@@ -29,6 +30,8 @@ public interface ContentService {
     List<TheoryResponse> getAllTheoriesBySubject(String subjectId);
     int reindexTheoriesBySubject(String subjectId);
     List<ChapterResponse> getAllChapters(String subjectId);
+    List<ChapterSummaryResponse> getChaptersSummary(String subjectId);
+    List<FlatChapterResponse> getAllFlatChapters();
     List<ChapterResponse> getAllAccessibleChapters();
 
     /**

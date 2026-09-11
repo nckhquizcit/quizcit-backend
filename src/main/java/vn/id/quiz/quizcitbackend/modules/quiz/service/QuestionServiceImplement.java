@@ -10,6 +10,9 @@ import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -241,8 +244,44 @@ public class QuestionServiceImplement implements QuestionService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<QuestionResponse> getAllQuestions() {
         return toQuestionSummaries(quizRepository.findAllQuestions());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<QuestionResponse> getQuestions(String subjectId, String chapterId) {
+        boolean hasSubject = hasText(subjectId);
+        boolean hasChapter = hasText(chapterId);
+        List<Question> questions;
+        if (hasSubject && hasChapter) {
+            questions = quizRepository.findQuestionsBySubjectIdAndChapterId(subjectId, chapterId);
+        } else if (hasChapter) {
+            visibilityGuard.requireVisibleChapter(chapterId);
+            questions = quizRepository.findQuestionsByChapterId(chapterId);
+        } else if (hasSubject) {
+            visibilityGuard.requireAccessibleSubject(subjectId);
+            questions = quizRepository.findQuestionsBySubjectId(subjectId);
+        } else {
+            questions = quizRepository.findAllQuestions();
+        }
+        return toQuestionSummaries(questions);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<QuestionResponse> getQuestionsPaged(String subjectId, String chapterId, Pageable pageable) {
+        boolean hasSubject = hasText(subjectId);
+        boolean hasChapter = hasText(chapterId);
+        if (hasChapter) {
+            visibilityGuard.requireVisibleChapter(chapterId);
+        } else if (hasSubject) {
+            visibilityGuard.requireAccessibleSubject(subjectId);
+        }
+        Page<Question> paged = quizRepository.findQuestionsPaged(subjectId, chapterId, pageable);
+        List<QuestionResponse> responses = toQuestionSummaries(paged.getContent());
+        return new PageImpl<>(responses, pageable, paged.getTotalElements());
     }
 
     private List<QuestionResponse> toQuestionSummaries(List<Question> questions) {
