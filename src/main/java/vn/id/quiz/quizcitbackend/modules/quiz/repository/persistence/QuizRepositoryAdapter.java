@@ -1,8 +1,11 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.ChapterCountProjection;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
@@ -14,6 +17,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -43,6 +47,40 @@ public class QuizRepositoryAdapter implements QuizRepository {
     @Override
     public List<Question> findAllQuestions() {
         return jpaQuestionRepository.findAll();
+    }
+
+    @Override
+    public Map<String, Long> countQuestionsByChapterIds(java.util.Collection<String> chapterIds) {
+        if (chapterIds == null || chapterIds.isEmpty()) {
+            return Map.of();
+        }
+        return jpaQuestionRepository.countQuestionsByChapterIds(chapterIds).stream()
+                .collect(Collectors.toMap(ChapterCountProjection::getChapterId, ChapterCountProjection::getCount));
+    }
+
+    @Override
+    public List<Question> findQuestionsBySubjectId(String subjectId) {
+        return subjectId == null || subjectId.isBlank() ? List.of() : jpaQuestionRepository.findBySubjectId(subjectId);
+    }
+
+    @Override
+    public List<Question> findQuestionsBySubjectIdAndChapterId(String subjectId, String chapterId) {
+        return jpaQuestionRepository.findBySubjectIdAndChapterId(subjectId, chapterId);
+    }
+
+    @Override
+    public Page<Question> findQuestionsPaged(String subjectId, String chapterId, Pageable pageable) {
+        boolean hasSubject = subjectId != null && !subjectId.isBlank();
+        boolean hasChapter = chapterId != null && !chapterId.isBlank();
+        if (hasSubject && hasChapter) {
+            return jpaQuestionRepository.findBySubjectIdAndChapterId(subjectId, chapterId, pageable);
+        } else if (hasChapter) {
+            return jpaQuestionRepository.findByChapterId(chapterId, pageable);
+        } else if (hasSubject) {
+            return jpaQuestionRepository.findBySubjectId(subjectId, pageable);
+        } else {
+            return jpaQuestionRepository.findAll(pageable);
+        }
     }
 
     @Override

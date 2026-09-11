@@ -1,10 +1,29 @@
 package vn.id.quiz.quizcitbackend.modules.content.service;
 
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.ChapterStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.QuizStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.TheoryStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryReaderViewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserCourseEnrollment;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserCourseEnrollmentId;
+import vn.id.quiz.quizcitbackend.modules.chatbot.util.BlockNoteTextExtractor;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterEditContextResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSummaryResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.CreateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.CreateSubjectRequest;
@@ -29,6 +48,8 @@ import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUser
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.ChapterPreviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectCatalogSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
@@ -73,6 +94,313 @@ public class ContentServiceImplement implements ContentService {
                 .toList();
     }
 
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SubjectCatalogSummaryResponse> getSubjectCatalogSummary() {
+        List<Subject> subjects = contentRepository.findAllSubject().stream()
+                .filter(s -> (visibilityGuard.isAdministrator() || s.isVisible())
+                        && !ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(s.getCourseCode())
+                        && !ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(s.getName()))
+                .sorted(java.util.Comparator.comparingInt(Subject::getDisplayOrder)
+                        .thenComparing(Subject::getCreatedAt, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                        .thenComparing(Subject::getSubjectId))
+                .toList();
+
+        if (subjects.isEmpty()) {
+            return List.of();
+        }
+
+        String userId = currentUserId();
+        Map<String, java.time.ZonedDateTime> enrolledMap = new java.util.HashMap<>();
+        if (userId != null && enrollmentRepository != null) {
+            enrollmentRepository.findAllByUserIdWithSubject(userId).forEach(enrollment -> {
+                enrolledMap.put(enrollment.getSubjectId(), enrollment.getEnrolledAt());
+            });
+        }
+
+        List<ChapterResponse> accessibleChapters = getAllAccessibleChapters();
+        Map<String, List<ChapterResponse>> accessibleBySubject = accessibleChapters.stream()
+                .collect(Collectors.groupingBy(ChapterResponse::subjectId));
+
+        List<String> subjectIds = subjects.stream().map(Subject::getSubjectId).toList();
+        Map<String, Long> totalChapterCounts = contentRepository.findAllChapters(subjectIds).stream()
+                .collect(Collectors.groupingBy(Chapter::getSubjectId, Collectors.counting()));
+
+        boolean isAdmin = visibilityGuard.isAdministrator();
+
+        return subjects.stream().map(subject -> {
+            String sId = subject.getSubjectId();
+            List<ChapterResponse> openChapters = accessibleBySubject.getOrDefault(sId, List.of());
+            int openCount = openChapters.size();
+            int totalCount = totalChapterCounts.getOrDefault(sId, 0L).intValue();
+            boolean enrolled = isAdmin || enrolledMap.containsKey(sId);
+            java.time.ZonedDateTime enrolledAt = enrolledMap.get(sId);
+
+            List<ChapterPreviewResponse> previews = openChapters.stream()
+                    .limit(3)
+                    .map(ch -> ChapterPreviewResponse.builder()
+                            .chapterId(ch.chapterId())
+                            .name(ch.name())
+                            .displayOrder(ch.displayOrder())
+                            .build())
+                    .toList();
+
+            return SubjectCatalogSummaryResponse.builder()
+                    .subjectId(sId)
+                    .courseCode(subject.getCourseCode())
+                    .name(subject.getName())
+                    .description(subject.getDescription())
+                    .imageUrl(subject.getImageUrl())
+                    .displayOrder(subject.getDisplayOrder())
+                    .openChapterCount(openCount)
+                    .totalChapterCount(totalCount)
+                    .enrolled(enrolled)
+                    .enrolledAt(enrolledAt)
+                    .chapterPreview(previews)
+                    .build();
+        }).toList();
+    }
+
+    @Override
+    @Transactional
+    public SubjectStudyOverviewResponse getSubjectStudyOverview(String subjectId) {
+        Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
+
+        String userId = currentUserId();
+        boolean isAdmin = visibilityGuard.isAdministrator();
+        boolean enrolled = isAdmin;
+        ZonedDateTime enrolledAt = null;
+
+        if (userId != null && !isAdmin && enrollmentRepository != null) {
+            Optional<UserCourseEnrollment> enrollmentOpt = enrollmentRepository.findById(
+                    new UserCourseEnrollmentId(userId, subjectId));
+            if (enrollmentOpt.isPresent()) {
+                enrolled = true;
+                enrolledAt = enrollmentOpt.get().getEnrolledAt();
+            }
+        }
+
+        if (!enrolled && !isAdmin) {
+            return SubjectStudyOverviewResponse.builder()
+                    .subjectId(subject.getSubjectId())
+                    .name(subject.getName())
+                    .courseCode(subject.getCourseCode())
+                    .imageUrl(subject.getImageUrl())
+                    .description(subject.getDescription())
+                    .enrolled(false)
+                    .enrolledAt(null)
+                    .chapters(List.of())
+                    .build();
+        }
+
+        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+
+        Map<String, List<ChapterSkill>> requirementsByChapter = chapterSkillRepository == null ? Map.of() :
+                chapterSkillRepository.findByChapterIdIn(chapterIds).stream()
+                        .collect(Collectors.groupingBy(ChapterSkill::getChapterId));
+        Set<String> skillIds = requirementsByChapter.values().stream().flatMap(List::stream)
+                .map(ChapterSkill::getSkillId).collect(Collectors.toSet());
+        Map<String, String> skillNames = (skillRepository == null || skillIds.isEmpty()) ? Map.of() :
+                skillRepository.findByIds(skillIds).stream()
+                        .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+
+        Set<String> saved = (userId == null || unlockedChapterRepository == null) ? Set.of() :
+                unlockedChapterRepository.findByUserIdAndChapterIdIn(userId, chapterIds).stream()
+                        .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
+        Map<String, Double> thetaBySkill = (userId == null || userSkillAbilityRepository == null) ? Map.of() :
+                userSkillAbilityRepository.findByUserId(userId).stream().collect(Collectors.toMap(
+                        UserSkillAbility::getSkillId,
+                        ability -> ability.getTheta() == null ? 0.0 : ability.getTheta()));
+        Set<String> unlockedIds = computeUnlockedChapterIds(userId, chapters, requirementsByChapter, thetaBySkill, saved);
+
+        List<Theory> allTheories = contentRepository.findAllTheories(chapterIds);
+        Map<String, List<Theory>> theoriesByChapter = allTheories.stream()
+                .collect(Collectors.groupingBy(Theory::getChapterId));
+
+        List<Quiz> allQuizzes = quizRepository != null
+                ? quizRepository.findNonAdaptiveQuizzesBySubjectId(subjectId)
+                : List.of();
+        Map<String, List<Quiz>> quizzesByChapter = allQuizzes.stream()
+                .collect(Collectors.groupingBy(Quiz::getChapterId));
+
+        List<ChapterStudyOverviewResponse> chapterResponses = chapters.stream().map(chapter -> {
+            String chId = chapter.getChapterId();
+            boolean unlocked = unlockedIds.contains(chId);
+
+            List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chId, List.of());
+            List<ChapterSkillResponse> skills = reqs.stream()
+                    .map(item -> new ChapterSkillResponse(
+                            item.getSkillId(),
+                            skillNames.getOrDefault(item.getSkillId(), "Kỹ năng"),
+                            item.getRequiredTheta(),
+                            thetaBySkill.get(item.getSkillId())))
+                    .toList();
+
+            List<Theory> chapterTheoryList = theoriesByChapter.getOrDefault(chId, List.of());
+            List<TheoryStudyOverviewResponse> theoryResponses = new ArrayList<>();
+            for (int i = 0; i < chapterTheoryList.size(); i++) {
+                Theory theory = chapterTheoryList.get(i);
+                String title = extractTheoryTitle(theory, i + 1);
+                theoryResponses.add(TheoryStudyOverviewResponse.builder()
+                        .theoryId(theory.getTheoryId())
+                        .chapterId(theory.getChapterId())
+                        .title(title)
+                        .displayOrder(i + 1)
+                        .build());
+            }
+
+            List<Quiz> chapterQuizList = quizzesByChapter.getOrDefault(chId, List.of());
+            List<QuizStudyOverviewResponse> quizResponses = chapterQuizList.stream().map(quiz ->
+                    QuizStudyOverviewResponse.builder()
+                            .quizId(quiz.getQuizId())
+                            .chapterId(quiz.getChapterId())
+                            .name(quiz.getName())
+                            .totalQuestions(quiz.getTotalQuestion())
+                            .durationMinutes(quiz.getDuration())
+                            .build()
+            ).toList();
+
+            return ChapterStudyOverviewResponse.builder()
+                    .chapterId(chId)
+                    .subjectId(chapter.getSubjectId())
+                    .name(chapter.getName())
+                    .displayOrder(chapter.getDisplayOrder())
+                    .unlocked(unlocked)
+                    .theories(theoryResponses)
+                    .quizzes(quizResponses)
+                    .requiredSkills(skills)
+                    .build();
+        }).toList();
+
+        return SubjectStudyOverviewResponse.builder()
+                .subjectId(subject.getSubjectId())
+                .name(subject.getName())
+                .courseCode(subject.getCourseCode())
+                .imageUrl(subject.getImageUrl())
+                .description(subject.getDescription())
+                .enrolled(enrolled)
+                .enrolledAt(enrolledAt)
+                .chapters(chapterResponses)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TheoryReaderViewResponse getTheoryReaderView(String theoryId) {
+        Theory theory = visibilityGuard.requireVisibleTheoryEntity(theoryId);
+        Chapter chapter = visibilityGuard.requireVisibleChapterEntity(theory.getChapterId());
+        visibilityGuard.requireAccessibleSubject(chapter.getSubjectId());
+
+        Subject subject = contentRepository.findSubjectById(chapter.getSubjectId()).orElse(null);
+        String subjectName = subject != null ? subject.getName() : null;
+
+        List<Chapter> allChapters = contentRepository.findAllChapter(chapter.getSubjectId());
+        int chapterIndex = -1;
+        for (int i = 0; i < allChapters.size(); i++) {
+            if (allChapters.get(i).getChapterId().equals(chapter.getChapterId())) {
+                chapterIndex = i;
+                break;
+            }
+        }
+
+        List<Theory> siblingTheories = contentRepository.findAllTheory(chapter.getChapterId());
+        List<TheoryReaderViewResponse.TheorySummaryItem> items = new ArrayList<>();
+        String currentTitle = null;
+        for (int i = 0; i < siblingTheories.size(); i++) {
+            Theory item = siblingTheories.get(i);
+            String title = extractTheoryTitle(item, i + 1);
+            if (item.getTheoryId().equals(theory.getTheoryId())) {
+                currentTitle = title;
+            }
+            items.add(TheoryReaderViewResponse.TheorySummaryItem.builder()
+                    .theoryId(item.getTheoryId())
+                    .title(title)
+                    .displayOrder(i + 1)
+                    .build());
+        }
+
+        if (currentTitle == null) {
+            currentTitle = extractTheoryTitle(theory, 1);
+        }
+
+        return TheoryReaderViewResponse.builder()
+                .theoryId(theory.getTheoryId())
+                .chapterId(theory.getChapterId())
+                .subjectId(chapter.getSubjectId())
+                .subjectName(subjectName)
+                .title(currentTitle)
+                .content(theory.getContent())
+                .contentFormat(theory.getContentFormat())
+                .createdAt(theory.getCreatedAt())
+                .chapter(TheoryReaderViewResponse.ChapterInfo.builder()
+                        .chapterId(chapter.getChapterId())
+                        .name(chapter.getName())
+                        .displayOrder(chapter.getDisplayOrder())
+                        .build())
+                .chapterIndex(chapterIndex)
+                .chapterTheories(items)
+                .build();
+    }
+
+    private String extractTheoryTitle(Theory theory, int defaultIndex) {
+        if (theory == null) return "Bài lý thuyết " + defaultIndex;
+        String content = theory.getContent();
+        String format = theory.getContentFormat();
+        if (content == null || content.isBlank()) {
+            return "Bài lý thuyết " + defaultIndex;
+        }
+
+        if ("blocknote".equalsIgnoreCase(format)) {
+            try {
+                JsonNode root = JSON_MAPPER.readTree(content);
+                if (root.isArray()) {
+                    for (JsonNode block : root) {
+                        if (block.has("type") && "heading".equalsIgnoreCase(block.get("type").asText())) {
+                            StringBuilder sb = new StringBuilder();
+                            appendBlockNodeText(block, sb);
+                            String text = sb.toString().trim();
+                            if (!text.isEmpty()) return text;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        String plain = BlockNoteTextExtractor.toPlainText(content, format);
+        if (!plain.isBlank()) {
+            String firstLine = plain.lines().filter(line -> !line.isBlank()).findFirst().orElse("");
+            firstLine = firstLine.replaceAll("^#+\\s*", "").replaceAll("^\\*+\\s*", "").replaceAll("\\*+$", "").trim();
+            if (!firstLine.isEmpty()) {
+                return firstLine.length() > 100 ? firstLine.substring(0, 100).trim() + "..." : firstLine;
+            }
+        }
+
+        return "Bài lý thuyết " + defaultIndex;
+    }
+
+    private void appendBlockNodeText(JsonNode node, StringBuilder builder) {
+        if (node == null || node.isNull()) return;
+        if (node.isArray()) {
+            for (JsonNode child : node) {
+                appendBlockNodeText(child, builder);
+            }
+            return;
+        }
+        if (!node.isObject()) return;
+        JsonNode textNode = node.get("text");
+        if (textNode != null && textNode.isTextual()) {
+            builder.append(textNode.asText()).append(' ');
+        }
+        JsonNode content = node.get("content");
+        if (content != null) appendBlockNodeText(content, builder);
+        JsonNode children = node.get("children");
+        if (children != null) appendBlockNodeText(children, builder);
+    }
+
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = CacheConfig.CACHE_SUBJECTS, key = "@subjectVisibilityGuard.isAdministrator() ? 'admin' : 'user'")
@@ -96,6 +424,43 @@ public class ContentServiceImplement implements ContentService {
         }
         return mapper.toSubjectResponse(subject);
     }
+    @Override
+    @Transactional(readOnly = true)
+    public ChapterEditContextResponse getChapterEditContext(String chapterId) {
+        Chapter chapter = visibilityGuard.requireVisibleChapterEntity(chapterId);
+        Subject parentSubject = contentRepository.findSubjectById(chapter.getSubjectId())
+                .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
+
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(parentSubject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(parentSubject.getName())) {
+            throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+
+        ChapterResponse chapterResponse = toChapterResponse(chapter);
+        List<Chapter> siblingChapterEntities = contentRepository.findAllChapter(chapter.getSubjectId());
+        List<ChapterResponse> siblingChapters = siblingChapterEntities.stream()
+                .map(this::toChapterResponse)
+                .toList();
+        int siblingChaptersCount = siblingChapters.size();
+
+        List<SkillResponse> availableSkills = skillRepository.findAll().stream()
+                .map(SkillResponse::from)
+                .toList();
+
+        List<TheoryResponse> theories = mapper.toTheoryResponseList(
+                contentRepository.findAllTheory(chapterId));
+
+        return new ChapterEditContextResponse(
+                chapterResponse,
+                parentSubject.getSubjectId(),
+                parentSubject.getName(),
+                siblingChaptersCount,
+                siblingChapters,
+                availableSkills,
+                theories
+        );
+    }
+
     @Override
     @Transactional(readOnly = true)
     public ChapterResponse getChapterById(String chapterId){
@@ -178,6 +543,71 @@ public class ContentServiceImplement implements ContentService {
         }
         visibilityGuard.requireAccessibleSubject(subjectId);
         return toChapterResponsesWithStatus(contentRepository.findAllChapter(subjectId), subjectId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChapterSummaryResponse> getChaptersSummary(String subjectId) {
+        Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(subject.getName())) {
+            throw new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+        visibilityGuard.requireAccessibleSubject(subjectId);
+
+        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        if (chapters.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+        Map<String, Long> questionCounts = quizRepository.countQuestionsByChapterIds(chapterIds);
+        Map<String, Long> theoryCounts = contentRepository.countTheoriesByChapterIds(chapterIds);
+
+        Map<String, List<ChapterSkill>> requirementsByChapter = chapterSkillRepository
+                .findByChapterIdIn(chapterIds).stream().collect(Collectors.groupingBy(ChapterSkill::getChapterId));
+        Set<String> skillIds = requirementsByChapter.values().stream().flatMap(List::stream)
+                .map(ChapterSkill::getSkillId).collect(Collectors.toSet());
+        Map<String, String> skillNames = skillRepository.findByIds(skillIds).stream()
+                .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+
+        String userId = currentUserId();
+        Set<String> saved = userId == null ? Set.of() : unlockedChapterRepository
+                .findByUserIdAndChapterIdIn(userId, chapterIds).stream()
+                .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
+        Map<String, Double> thetaBySkill = userId == null ? Map.of() : userSkillAbilityRepository
+                .findByUserId(userId).stream().collect(Collectors.toMap(
+                        UserSkillAbility::getSkillId,
+                        ability -> ability.getTheta() == null ? 0.0 : ability.getTheta()));
+        Set<String> unlockedIds = computeUnlockedChapterIds(userId, chapters, requirementsByChapter, thetaBySkill, saved);
+
+        return chapters.stream().map(chapter -> {
+            boolean unlocked = unlockedIds.contains(chapter.getChapterId());
+            List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chapter.getChapterId(), List.of());
+            List<ChapterSkillResponse> skills = reqs.stream()
+                    .map(item -> new ChapterSkillResponse(
+                            item.getSkillId(),
+                            skillNames.get(item.getSkillId()),
+                            item.getRequiredTheta(),
+                            thetaBySkill.get(item.getSkillId())))
+                    .toList();
+            return new ChapterSummaryResponse(
+                    chapter.getChapterId(),
+                    chapter.getSubjectId(),
+                    chapter.getName(),
+                    chapter.getDisplayOrder(),
+                    questionCounts.getOrDefault(chapter.getChapterId(), 0L),
+                    theoryCounts.getOrDefault(chapter.getChapterId(), 0L),
+                    unlocked,
+                    skills
+            );
+        }).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FlatChapterResponse> getAllFlatChapters() {
+        return contentRepository.findAllFlatChapters();
     }
 
     @Override

@@ -19,6 +19,9 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.BulkCrea
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.UpdateQuestionRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.QuestionService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import vn.id.quiz.quizcitbackend.shared.dto.PageResponse;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import vn.id.quiz.quizcitbackend.shared.utils.ApiResponse;
@@ -34,12 +37,29 @@ public class QuestionController {
     private final QuestionService questionService;
     private final Validator validator;
 
-    @GetMapping("/questions")
+    @GetMapping({"/questions", "/v1/questions"})
     @PreAuthorize("hasRole('ADMINISTRATOR')")
-    public ResponseEntity<ApiResponse<List<QuestionResponse>>> getAllQuestions() {
-        return ResponseEntity.ok(ApiResponse.success(questionService.getAllQuestions()));
+    public ResponseEntity<ApiResponse<?>> getAllQuestions(
+            @RequestParam(required = false) String subjectId,
+            @RequestParam(required = false) String chapterId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        if (page != null || size != null) {
+            int pageNum = (page != null && page >= 0) ? page : 0;
+            int pageSize = (size != null && size > 0) ? Math.min(size, 100) : 20;
+            Page<QuestionResponse> paged = questionService.getQuestionsPaged(
+                    subjectId, chapterId, PageRequest.of(pageNum, pageSize));
+            return ResponseEntity.ok(ApiResponse.success(PageResponse.from(paged)));
+        }
+        return ResponseEntity.ok(ApiResponse.success(questionService.getQuestions(subjectId, chapterId)));
     }
 
+    /**
+     * Lấy danh sách câu hỏi theo chương.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang quản trị câu hỏi phân trang hoặc lọc, hãy sử dụng {@code /api/v1/questions?chapterId={chapterId}&page={page}&size={size}}. Đối với quản trị đề thi, hãy sử dụng {@code /admin/quizzes/{quizId}/detail-with-questions}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
     @GetMapping("/chapters/{chapterId}/questions")
     public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestionsByChapter(
             @PathVariable String chapterId) {

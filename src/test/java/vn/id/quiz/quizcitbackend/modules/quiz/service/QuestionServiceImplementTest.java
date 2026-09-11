@@ -312,6 +312,38 @@ class QuestionServiceImplementTest {
     }
 
     @Test
+    void getQuestionsWithSubjectAndChapterShouldReturnFilteredQuestions() {
+        Question q = Question.builder()
+                .questionId("q-filter")
+                .subjectId("subject-new")
+                .chapterId("chapter-new")
+                .content("Filtered question")
+                .build();
+        quizRepository.filteredQuestions = List.of(q);
+
+        var results = service.getQuestions("subject-new", "chapter-new");
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getQuestionId()).isEqualTo("q-filter");
+    }
+
+    @Test
+    void getQuestionsPagedShouldReturnPagedResults() {
+        Question q = Question.builder()
+                .questionId("q-filter-page")
+                .subjectId("subject-new")
+                .chapterId("chapter-new")
+                .content("Paged question")
+                .build();
+        quizRepository.filteredQuestions = List.of(q);
+
+        var page = service.getQuestionsPaged("subject-new", "chapter-new", org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).getQuestionId()).isEqualTo("q-filter-page");
+    }
+
+    @Test
     void createQuestionShouldRejectFewerThanTwoAnswers() {
         CreateQuestionRequest request = createRequest(true);
 
@@ -363,6 +395,18 @@ class QuestionServiceImplementTest {
         private Question savedQuestion;
         private final Map<String, Question> questionsById = new HashMap<>();
         private final List<QuestionSkill> savedQuestionSkills = new ArrayList<>();
+        private List<Question> filteredQuestions = new ArrayList<>();
+
+        @Override
+        public List<Question> findQuestionsBySubjectIdAndChapterId(String subjectId, String chapterId) {
+            return filteredQuestions;
+        }
+
+        @Override
+        public org.springframework.data.domain.Page<Question> findQuestionsPaged(
+                String subjectId, String chapterId, org.springframework.data.domain.Pageable pageable) {
+            return new org.springframework.data.domain.PageImpl<>(filteredQuestions, pageable, filteredQuestions.size());
+        }
 
         @Override
         public Question save(Question question) {

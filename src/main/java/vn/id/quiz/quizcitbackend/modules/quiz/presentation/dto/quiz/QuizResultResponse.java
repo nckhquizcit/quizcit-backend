@@ -19,6 +19,8 @@ public class QuizResultResponse {
 
     private String subjectName;
 
+    private int durationMinutes;
+
     private ZonedDateTime submittedAt;
 
     private double rawScore;
@@ -34,4 +36,8 @@ public class QuizResultResponse {
     // MỚI: lời khuyên cải thiện do AI sinh dựa trên delta theta từng skill,
     // được lưu 1 lần tại thời điểm nộp bài (xem Attempt.adviceText).
     private String overallAdvice;
+
+    public int getDuration() {
+        return durationMinutes;
+    }
 }

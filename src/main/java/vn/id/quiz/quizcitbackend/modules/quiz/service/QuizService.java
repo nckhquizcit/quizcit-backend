@@ -2,7 +2,9 @@ package vn.id.quiz.quizcitbackend.modules.quiz.service;
 
 import java.util.List;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.CreateQuizRequest;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizDetailWithQuestionsResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubjectQuizzesOverviewResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.UpdateQuizRequest;
 import vn.id.quiz.quizcitbackend.shared.dto.ReorderRequest;
 
@@ -27,4 +29,6 @@ public interface QuizService {
     List<QuizResponse> getQuizzesByChapter(
             String chapterId);
     void reorderQuizzes(String chapterId, ReorderRequest request);
+    SubjectQuizzesOverviewResponse getSubjectQuizzesOverview(String subjectId);
+    QuizDetailWithQuestionsResponse getQuizDetailWithQuestions(String quizId);
 }

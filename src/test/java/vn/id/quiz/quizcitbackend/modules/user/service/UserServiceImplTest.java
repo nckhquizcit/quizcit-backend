@@ -261,6 +261,18 @@ class UserServiceImplTest {
         private boolean existsById;
         private boolean emailExistsForOtherUser;
         private String deletedUserId;
+        private List<Role> rolesList = List.of();
+        private List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Permission> permissionsList = List.of();
+
+        @Override
+        public List<Role> findAllRoles() {
+            return rolesList;
+        }
+
+        @Override
+        public List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Permission> findAllPermissions() {
+            return permissionsList;
+        }
 
         @Override
         public List<User> findAll() {

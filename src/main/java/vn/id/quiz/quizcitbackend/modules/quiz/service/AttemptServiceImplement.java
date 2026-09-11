@@ -460,12 +460,20 @@ public class AttemptServiceImplement
                 ? null
                 : contentRepository.findSubjectById(quiz.getSubjectId())
                         .orElse(null);
+        String resolvedQuizName = quiz != null && quiz.getName() != null && !quiz.getName().isBlank()
+                ? quiz.getName()
+                : "Bài kiểm tra";
+        String resolvedSubjectName = subject != null && subject.getName() != null && !subject.getName().isBlank()
+                ? subject.getName()
+                : "Môn học";
+        int durationMinutes = quiz == null ? 0 : quiz.getDuration();
 
         return QuizResultResponse.builder()
                 .attemptId(attempt.getAttemptId())
                 .quizId(attempt.getQuizId())
-                .quizName(quiz == null ? null : quiz.getName())
-                .subjectName(subject == null ? null : subject.getName())
+                .quizName(resolvedQuizName)
+                .subjectName(resolvedSubjectName)
+                .durationMinutes(durationMinutes)
                 .submittedAt(attempt.getCreatedAt())
                 .rawScore(attempt.getRawScore())
                 .totalQuestion(attempt.getTotalQuestion())
@@ -529,11 +537,19 @@ public class AttemptServiceImplement
             Attempt attempt, Map<String, Quiz> quizById, Map<String, Subject> subjectById) {
         Quiz quiz = quizById.get(attempt.getQuizId());
         Subject subject = quiz == null ? null : subjectById.get(quiz.getSubjectId());
+        String resolvedQuizName = quiz != null && quiz.getName() != null && !quiz.getName().isBlank()
+                ? quiz.getName()
+                : "Bài kiểm tra";
+        String resolvedSubjectName = subject != null && subject.getName() != null && !subject.getName().isBlank()
+                ? subject.getName()
+                : "Môn học";
+        int durationMinutes = quiz == null ? 0 : quiz.getDuration();
         return QuizResultResponse.builder()
                 .attemptId(attempt.getAttemptId())
                 .quizId(attempt.getQuizId())
-                .quizName(quiz == null ? null : quiz.getName())
-                .subjectName(subject == null ? null : subject.getName())
+                .quizName(resolvedQuizName)
+                .subjectName(resolvedSubjectName)
+                .durationMinutes(durationMinutes)
                 .submittedAt(attempt.getCreatedAt())
                 .rawScore(attempt.getRawScore())
                 .totalQuestion(attempt.getTotalQuestion())

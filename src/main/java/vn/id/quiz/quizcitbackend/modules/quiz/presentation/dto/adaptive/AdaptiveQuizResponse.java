@@ -10,6 +10,8 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.Question
 public class AdaptiveQuizResponse {
     private String quizId;
     private String attemptId;
+    private String quizName;
+    private String subjectName;
     private int totalQuestion;
     private int answeredQuestion;
     private int page;

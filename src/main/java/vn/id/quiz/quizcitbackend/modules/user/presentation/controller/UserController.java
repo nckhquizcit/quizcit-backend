@@ -208,7 +208,13 @@ public class UserController {
     // Role & Permission Management (Admin Only)
     // =========================================================================
 
-    @GetMapping("/roles")
+    /**
+     * Lấy toàn bộ danh sách vai trò.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang quản trị phân quyền, hãy sử dụng {@code /api/v1/admin/access/matrix}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
+    @GetMapping({"/roles", "/v1/roles"})
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role>>> getAllRoles() {
         return ResponseEntity.ok(ApiResponse.success(userUseCase.getAllRoles()));
@@ -226,7 +232,13 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/permissions")
+    /**
+     * Lấy toàn bộ danh sách quyền hạn.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang quản trị phân quyền, hãy sử dụng {@code /api/v1/admin/access/matrix}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
+    @GetMapping({"/permissions", "/v1/permissions"})
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Permission>>> getAllPermissions() {
         return ResponseEntity.ok(ApiResponse.success(userUseCase.getAllPermissions()));

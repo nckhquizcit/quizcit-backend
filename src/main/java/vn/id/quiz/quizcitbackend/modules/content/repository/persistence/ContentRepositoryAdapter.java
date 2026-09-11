@@ -3,6 +3,7 @@ package vn.id.quiz.quizcitbackend.modules.content.repository.persistence;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.jdbc.core.JdbcTemplate;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
@@ -11,6 +12,7 @@ import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -19,7 +21,6 @@ public class ContentRepositoryAdapter implements ContentRepository {
     private final JpaChapterRepository jpaChapterRepository;
     private final JpaTheoryRepository jpaTheoryRepository;
     private final JdbcTemplate jdbcTemplate;
-
 
     @Override
     public List<Subject> findAllSubject(){return jpaSubjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAscSubjectIdAsc();}
@@ -44,6 +45,11 @@ public class ContentRepositoryAdapter implements ContentRepository {
     }
 
     @Override
+    public List<FlatChapterResponse> findAllFlatChapters() {
+        return jpaChapterRepository.findAllFlatChapters();
+    }
+
+    @Override
     public List<Theory> findAllTheory(String chapterId) {
         return jpaTheoryRepository.findByChapterId(chapterId);
     }
@@ -51,6 +57,15 @@ public class ContentRepositoryAdapter implements ContentRepository {
     @Override
     public List<Theory> findAllTheories(java.util.Collection<String> chapterIds) {
         return chapterIds == null || chapterIds.isEmpty() ? List.of() : jpaTheoryRepository.findByChapterIdIn(chapterIds);
+    }
+
+    @Override
+    public Map<String, Long> countTheoriesByChapterIds(java.util.Collection<String> chapterIds) {
+        if (chapterIds == null || chapterIds.isEmpty()) {
+            return Map.of();
+        }
+        return jpaTheoryRepository.countTheoriesByChapterIds(chapterIds).stream()
+                .collect(Collectors.toMap(ChapterCountProjection::getChapterId, ChapterCountProjection::getCount));
     }
 
     @Override
@@ -169,9 +184,6 @@ public class ContentRepositoryAdapter implements ContentRepository {
     public void hardDeleteTheoryById(String theoryId) {
         jpaTheoryRepository.deleteById(theoryId);
     }
-
-
-
 
     @Override
     public Optional<Theory> findTheoryById(String id) {

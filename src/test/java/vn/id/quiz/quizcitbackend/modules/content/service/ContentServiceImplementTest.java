@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectCatalogSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
@@ -474,5 +476,170 @@ class ContentServiceImplementTest {
         verify(content).save(existing);
         assertThat(existing.getImageUrl()).isEqualTo("https://example.com/updated.png");
         assertThat(existing.getName()).isEqualTo("Cấu trúc dữ liệu và giải thuật");
+    }
+
+    @Test
+    void getChaptersSummaryShouldReturnSummarizedCounts() {
+        Subject subject = Subject.builder().subjectId("sub-1").courseCode("CT101")
+                .name("Lập trình C").visible(true).displayOrder(1).build();
+        Chapter chapter = Chapter.builder().chapterId("ch-1").subjectId("sub-1")
+                .name("Nhập môn C").displayOrder(1).build();
+
+        when(visibility.requireVisibleSubjectEntity("sub-1")).thenReturn(subject);
+        when(content.findAllChapter("sub-1")).thenReturn(List.of(chapter));
+        when(quizzes.countQuestionsByChapterIds(List.of("ch-1"))).thenReturn(Map.of("ch-1", 15L));
+        when(content.countTheoriesByChapterIds(List.of("ch-1"))).thenReturn(Map.of("ch-1", 3L));
+        when(chapterSkills.findByChapterIdIn(List.of("ch-1"))).thenReturn(List.of());
+        when(unlocked.findByUserIdAndChapterIdIn(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
+
+        var summaries = service.getChaptersSummary("sub-1");
+
+        assertThat(summaries).hasSize(1);
+        assertThat(summaries.get(0).chapterId()).isEqualTo("ch-1");
+        assertThat(summaries.get(0).questionCount()).isEqualTo(15L);
+        assertThat(summaries.get(0).theoryCount()).isEqualTo(3L);
+        assertThat(summaries.get(0).unlocked()).isTrue();
+    }
+
+    @Test
+    void getAllFlatChaptersShouldDelegateToRepository() {
+        var flatChapter = new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse(
+                "ch-1", "Chương 1", "sub-1", "Môn 1", 1);
+        when(content.findAllFlatChapters()).thenReturn(List.of(flatChapter));
+
+        var results = service.getAllFlatChapters();
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).chapterId()).isEqualTo("ch-1");
+        assertThat(results.get(0).chapterName()).isEqualTo("Chương 1");
+        assertThat(results.get(0).subjectName()).isEqualTo("Môn 1");
+    }
+
+    @Test
+    void getChapterEditContextShouldReturnFullEditingContext() {
+        String chapterId = "ch-1";
+        String subjectId = "sub-1";
+        Subject subject = Subject.builder().subjectId(subjectId).courseCode("CS101")
+                .name("Computer Science").displayOrder(1).build();
+        Chapter chapter = Chapter.builder().chapterId(chapterId).subjectId(subjectId)
+                .name("Introduction").displayOrder(1).build();
+        Chapter sibling = Chapter.builder().chapterId("ch-2").subjectId(subjectId)
+                .name("Data Types").displayOrder(2).build();
+        Theory theory = Theory.builder().theoryId("th-1").chapterId(chapterId)
+                .content("Content").contentFormat("plain").build();
+        var skill = vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill.builder()
+                .skillId("sk-1").name("Variables").description("Desc").build();
+
+        when(visibility.requireVisibleChapterEntity(chapterId)).thenReturn(chapter);
+        when(content.findSubjectById(subjectId)).thenReturn(Optional.of(subject));
+        when(content.findAllChapter(subjectId)).thenReturn(List.of(chapter, sibling));
+        when(skills.findAll()).thenReturn(List.of(skill));
+        when(content.findAllTheory(chapterId)).thenReturn(List.of(theory));
+        when(chapterSkills.findByChapterId(chapterId)).thenReturn(List.of());
+        when(abilities.findByUserId(org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
+        when(mapper.toTheoryResponseList(List.of(theory))).thenReturn(List.of(
+                new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryResponse(
+                        "th-1", chapterId, "Content", "plain", null)));
+
+        var context = service.getChapterEditContext(chapterId);
+
+        assertThat(context.chapter().chapterId()).isEqualTo(chapterId);
+        assertThat(context.subjectId()).isEqualTo(subjectId);
+        assertThat(context.subjectName()).isEqualTo("Computer Science");
+        assertThat(context.siblingChaptersCount()).isEqualTo(2);
+        assertThat(context.siblingChapters()).hasSize(2);
+        assertThat(context.availableSkills()).hasSize(1);
+        assertThat(context.availableSkills().get(0).getSkillId()).isEqualTo("sk-1");
+        assertThat(context.theories()).hasSize(1);
+        assertThat(context.theories().get(0).theoryId()).isEqualTo("th-1");
+    }
+    @Test
+    void getSubjectStudyOverviewShouldReturnFullOverviewWhenEnrolled() {
+        String subjectId = "sub-1";
+        String chapterId = "ch-1";
+        Subject subject = Subject.builder().subjectId(subjectId).courseCode("CS101")
+                .name("Computer Science").description("Desc").imageUrl("img.png").displayOrder(1).build();
+        Chapter chapter = Chapter.builder().chapterId(chapterId).subjectId(subjectId)
+                .name("Introduction").displayOrder(1).build();
+        Theory theory = Theory.builder().theoryId("th-1").chapterId(chapterId)
+                .content("Introduction Theory").contentFormat("plain").build();
+        Quiz quiz = Quiz.builder().quizId("qz-1").chapterId(chapterId).subjectId(subjectId)
+                .name("Quiz 1").totalQuestion(10).duration(15).build();
+
+        when(visibility.requireVisibleSubjectEntity(subjectId)).thenReturn(subject);
+        when(visibility.isAdministrator()).thenReturn(true);
+        when(content.findAllChapter(subjectId)).thenReturn(List.of(chapter));
+        when(chapterSkills.findByChapterIdIn(List.of(chapterId))).thenReturn(List.of());
+        when(content.findAllTheories(List.of(chapterId))).thenReturn(List.of(theory));
+        when(quizzes.findNonAdaptiveQuizzesBySubjectId(subjectId)).thenReturn(List.of(quiz));
+
+        var overview = service.getSubjectStudyOverview(subjectId);
+
+        assertThat(overview.getSubjectId()).isEqualTo(subjectId);
+        assertThat(overview.getName()).isEqualTo("Computer Science");
+        assertThat(overview.isEnrolled()).isTrue();
+        assertThat(overview.getChapters()).hasSize(1);
+        assertThat(overview.getChapters().get(0).getChapterId()).isEqualTo(chapterId);
+        assertThat(overview.getChapters().get(0).getTheories()).hasSize(1);
+        assertThat(overview.getChapters().get(0).getTheories().get(0).getTheoryId()).isEqualTo("th-1");
+        assertThat(overview.getChapters().get(0).getQuizzes()).hasSize(1);
+        assertThat(overview.getChapters().get(0).getQuizzes().get(0).getQuizId()).isEqualTo("qz-1");
+        assertThat(overview.getChapters().get(0).getQuizzes().get(0).getDurationMinutes()).isEqualTo(15);
+    }
+
+    @Test
+    void getTheoryReaderViewShouldReturnContentAndSiblingTheories() {
+        String subjectId = "sub-1";
+        String chapterId = "ch-1";
+        String theoryId = "th-1";
+        Subject subject = Subject.builder().subjectId(subjectId).courseCode("CS101")
+                .name("Computer Science").build();
+        Chapter chapter = Chapter.builder().chapterId(chapterId).subjectId(subjectId)
+                .name("Introduction").displayOrder(1).build();
+        Theory theory = Theory.builder().theoryId(theoryId).chapterId(chapterId)
+                .content("Content 1").contentFormat("plain").build();
+
+        when(visibility.requireVisibleTheoryEntity(theoryId)).thenReturn(theory);
+        when(visibility.requireVisibleChapterEntity(chapterId)).thenReturn(chapter);
+        when(content.findSubjectById(subjectId)).thenReturn(Optional.of(subject));
+        when(content.findAllChapter(subjectId)).thenReturn(List.of(chapter));
+        when(content.findAllTheory(chapterId)).thenReturn(List.of(theory));
+
+        var readerView = service.getTheoryReaderView(theoryId);
+
+        assertThat(readerView.getTheoryId()).isEqualTo(theoryId);
+        assertThat(readerView.getSubjectId()).isEqualTo(subjectId);
+        assertThat(readerView.getSubjectName()).isEqualTo("Computer Science");
+        assertThat(readerView.getContent()).isEqualTo("Content 1");
+        assertThat(readerView.getChapter().getChapterId()).isEqualTo(chapterId);
+        assertThat(readerView.getChapterIndex()).isEqualTo(0);
+        assertThat(readerView.getChapterTheories()).hasSize(1);
+        assertThat(readerView.getChapterTheories().get(0).getTheoryId()).isEqualTo(theoryId);
+    }
+    @Test
+    void getSubjectCatalogSummaryShouldReturnEnrolledAndOpenChapterCounts() {
+        String subjectId = "sub-1";
+        Subject subject = Subject.builder()
+                .subjectId(subjectId)
+                .courseCode("CS101")
+                .name("Computer Science")
+                .description("Intro")
+                .displayOrder(1)
+                .visible(true)
+                .build();
+
+        when(content.findAllSubject()).thenReturn(List.of(subject));
+        when(visibility.isAdministrator()).thenReturn(true);
+        when(content.findAllChapters(List.of(subjectId))).thenReturn(List.of(
+                Chapter.builder().chapterId("ch-1").subjectId(subjectId).name("Chapter 1").displayOrder(1).build(),
+                Chapter.builder().chapterId("ch-2").subjectId(subjectId).name("Chapter 2").displayOrder(2).build()
+        ));
+
+        List<SubjectCatalogSummaryResponse> summary = service.getSubjectCatalogSummary();
+
+        assertThat(summary).hasSize(1);
+        assertThat(summary.get(0).subjectId()).isEqualTo(subjectId);
+        assertThat(summary.get(0).totalChapterCount()).isEqualTo(2);
+        assertThat(summary.get(0).enrolled()).isTrue();
     }
 }

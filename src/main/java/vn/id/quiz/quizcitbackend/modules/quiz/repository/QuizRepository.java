@@ -2,8 +2,11 @@ package vn.id.quiz.quizcitbackend.modules.quiz.repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
@@ -32,6 +35,16 @@ public interface QuizRepository {
                 .flatMap(id -> findQuestionsByChapterId(id).stream()).toList();
     }
     default List<Question> findAllQuestions() { return List.of(); }
+
+    default Map<String, Long> countQuestionsByChapterIds(Collection<String> chapterIds) { return Map.of(); }
+
+    default List<Question> findQuestionsBySubjectId(String subjectId) { return List.of(); }
+
+    default List<Question> findQuestionsBySubjectIdAndChapterId(String subjectId, String chapterId) { return List.of(); }
+
+    default Page<Question> findQuestionsPaged(String subjectId, String chapterId, Pageable pageable) {
+        return Page.empty(pageable);
+    }
 
     // Batch: lấy nhiều câu hỏi theo danh sách id (tránh N+1).
     List<Question> findQuestionsByIds(

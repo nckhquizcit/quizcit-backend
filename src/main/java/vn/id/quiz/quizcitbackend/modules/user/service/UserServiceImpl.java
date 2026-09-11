@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.id.quiz.quizcitbackend.modules.auth.service.PasswordService;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangePasswordRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.AccessMatrixResponse;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.AdminResetPasswordRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangeUserRoleRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserProfileRequest;
@@ -285,6 +286,12 @@ public class UserServiceImpl implements UserUseCase {
         return userRepository.findRoleByUserId(userId)
                 .map(Role::getName)
                 .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AccessMatrixResponse getAccessMatrix() {
+        return new AccessMatrixResponse(getAllRoles(), getAllPermissions());
     }
 
     @Override

@@ -8,11 +8,17 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterEditContextResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSummaryResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.CreateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.CreateSubjectRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectCatalogSummaryResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryReaderViewResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.UpdateSubjectRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.CreateTheoryRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryResponse;
@@ -41,7 +47,13 @@ public class ContentController {
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
-    @GetMapping("/chapters")
+    /**
+     * Lấy danh sách chương người dùng có thể truy cập.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang danh mục môn học, hãy sử dụng {@code /content/subjects/catalog-summary}. Đối với trang chủ, hãy sử dụng {@code /pages/home-summary}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
+    @GetMapping({"/chapters", "/v1/chapters"})
     public ResponseEntity<ApiResponse<List<ChapterResponse>>> getAllAccessibleChapters() {
         return ResponseEntity.ok(ApiResponse.success(subjectUseCase.getAllAccessibleChapters()));
     }
@@ -95,11 +107,31 @@ public class ContentController {
     // CHAPTER ENDPOINTS (/api/chapters)
     // =========================================================================
 
-    // Nested Route: Lấy danh sách chương CỦA 1 môn học
-    @GetMapping("/subjects/{subjectId}/chapters")
+    /**
+     * Lấy danh sách chương của một môn học.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang quản trị hiển thị số lượng, hãy sử dụng {@code /admin/subjects/{subjectId}/chapters-summary}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
+    @GetMapping({"/subjects/{subjectId}/chapters", "/v1/subjects/{subjectId}/chapters"})
     public ResponseEntity<ApiResponse<List<ChapterResponse>>> getAllChapters(@PathVariable String subjectId) {
         List<ChapterResponse> response = subjectUseCase.getAllChapters(subjectId);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping({"/admin/subjects/{subjectId}/chapters-summary", "/v1/admin/subjects/{subjectId}/chapters-summary"})
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<List<ChapterSummaryResponse>>> getChaptersSummary(
+            @PathVariable String subjectId) {
+        List<ChapterSummaryResponse> responses = subjectUseCase.getChaptersSummary(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    @GetMapping({"/admin/chapters-flat", "/v1/admin/chapters-flat"})
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<List<FlatChapterResponse>>> getAllFlatChapters() {
+        List<FlatChapterResponse> responses = subjectUseCase.getAllFlatChapters();
+        return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
     // Nested Route: Thêm chương VÀO 1 môn học
@@ -113,10 +145,23 @@ public class ContentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
-    // Flat Route: Lấy chi tiết 1 chương bằng ID
-    @GetMapping("/chapters/{chapterId}")
+    /**
+     * Lấy chi tiết 1 chương bằng ID.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang quản trị soạn thảo/chỉnh sửa chương, hãy sử dụng {@code /admin/chapters/{chapterId}/edit-context}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
+    @GetMapping({"/chapters/{chapterId}", "/v1/chapters/{chapterId}"})
     public ResponseEntity<ApiResponse<ChapterResponse>> getChapterById(@PathVariable String chapterId) {
         ChapterResponse response = subjectUseCase.getChapterById(chapterId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping({"/admin/chapters/{chapterId}/edit-context", "/v1/admin/chapters/{chapterId}/edit-context"})
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<ChapterEditContextResponse>> getChapterEditContext(
+            @PathVariable String chapterId) {
+        ChapterEditContextResponse response = subjectUseCase.getChapterEditContext(chapterId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -158,13 +203,24 @@ public class ContentController {
     // THEORY ENDPOINTS (/api/theories)
     // =========================================================================
 
-    // Nested Route: Lấy danh sách lý thuyết CỦA 1 chương
+    /**
+     * Lấy danh sách lý thuyết của một chương.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang đọc bài lý thuyết, hãy sử dụng {@code /content/theories/{theoryId}/reader-view}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
     @GetMapping("/chapters/{chapterId}/theories")
     public ResponseEntity<ApiResponse<List<TheoryResponse>>> getAllTheories(@PathVariable String chapterId) {
         List<TheoryResponse> response = subjectUseCase.getAllTheories(chapterId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    /**
+     * Lấy danh sách lý thuyết theo môn học.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang học tập môn học, hãy sử dụng {@code /content/subjects/{subjectId}/study-overview}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
     @GetMapping("/subjects/{subjectId}/theories")
     public ResponseEntity<ApiResponse<List<TheoryResponse>>> getAllTheoriesBySubject(@PathVariable String subjectId) {
         return ResponseEntity.ok(ApiResponse.success(subjectUseCase.getAllTheoriesBySubject(subjectId)));
@@ -189,7 +245,12 @@ public class ContentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
-    // Flat Route: Lấy chi tiết lý thuyết
+    /**
+     * Lấy chi tiết một bài lý thuyết.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử hoặc quản trị. Đối với trang đọc bài lý thuyết, hãy sử dụng {@code /content/theories/{theoryId}/reader-view}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
     @GetMapping("/theories/{theoryId}")
     public ResponseEntity<ApiResponse<TheoryResponse>> getTheoryById(@PathVariable String theoryId) {
         TheoryResponse response = subjectUseCase.getTheoryById(theoryId);
@@ -224,10 +285,57 @@ public class ContentController {
     // =========================================================================
     // Phase 2 (P1): Danh sách đề thi theo môn học
     // =========================================================================
+    /**
+     * Danh sách đề thi theo môn học.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang học tập môn học, hãy sử dụng {@code /content/subjects/{subjectId}/study-overview}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
     @GetMapping("/subjects/{subjectId}/quizzes")
     public ResponseEntity<ApiResponse<List<QuizSummaryResponse>>> getQuizzesBySubject(
             @PathVariable String subjectId) {
         List<QuizSummaryResponse> responses = subjectUseCase.getQuizzesBySubject(subjectId);
         return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    // =========================================================================
+    // Phase 3: STUDY OVERVIEW & THEORY READER VIEW
+    // =========================================================================
+    @GetMapping({
+            "/content/subjects/{subjectId}/study-overview",
+            "/v1/content/subjects/{subjectId}/study-overview",
+            "/subjects/{subjectId}/study-overview",
+            "/v1/subjects/{subjectId}/study-overview"
+    })
+    public ResponseEntity<ApiResponse<SubjectStudyOverviewResponse>> getSubjectStudyOverview(
+            @PathVariable String subjectId) {
+        SubjectStudyOverviewResponse response = subjectUseCase.getSubjectStudyOverview(subjectId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // =========================================================================
+    // Phase 4: CATALOG MÔN HỌC TỔNG HỢP
+    // =========================================================================
+    @GetMapping({
+            "/content/subjects/catalog-summary",
+            "/v1/content/subjects/catalog-summary",
+            "/subjects/catalog-summary",
+            "/v1/subjects/catalog-summary"
+    })
+    public ResponseEntity<ApiResponse<List<SubjectCatalogSummaryResponse>>> getSubjectCatalogSummary() {
+        List<SubjectCatalogSummaryResponse> responses = subjectUseCase.getSubjectCatalogSummary();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    @GetMapping({
+            "/content/theories/{theoryId}/reader-view",
+            "/v1/content/theories/{theoryId}/reader-view",
+            "/theories/{theoryId}/reader-view",
+            "/v1/theories/{theoryId}/reader-view"
+    })
+    public ResponseEntity<ApiResponse<TheoryReaderViewResponse>> getTheoryReaderView(
+            @PathVariable String theoryId) {
+        TheoryReaderViewResponse response = subjectUseCase.getTheoryReaderView(theoryId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

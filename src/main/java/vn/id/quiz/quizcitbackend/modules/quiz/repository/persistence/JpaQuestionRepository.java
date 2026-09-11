@@ -1,6 +1,9 @@
 package vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.ChapterCountProjection;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 
 import java.util.Collection;
@@ -15,6 +18,15 @@ public interface JpaQuestionRepository extends JpaRepository<Question, String> {
     // JPA tự parse câu dưới thành dạng sql query
     List<Question> findByChapterId(String chapterId);
     List<Question> findByChapterIdIn(Collection<String> chapterIds);
+    List<Question> findBySubjectId(String subjectId);
+    List<Question> findBySubjectIdAndChapterId(String subjectId, String chapterId);
+
+    Page<Question> findBySubjectId(String subjectId, Pageable pageable);
+    Page<Question> findByChapterId(String chapterId, Pageable pageable);
+    Page<Question> findBySubjectIdAndChapterId(String subjectId, String chapterId, Pageable pageable);
+
+    @Query("SELECT q.chapterId AS chapterId, COUNT(q) AS count FROM Question q WHERE q.chapterId IN :chapterIds GROUP BY q.chapterId")
+    List<ChapterCountProjection> countQuestionsByChapterIds(@Param("chapterIds") Collection<String> chapterIds);
 
     Optional<Question> findByQuestionId(
             String questionId);
@@ -64,4 +76,4 @@ public interface JpaQuestionRepository extends JpaRepository<Question, String> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Question q SET q.subjectId = NULL, q.chapterId = NULL WHERE q.chapterId IN :chapterIds")
     void detachQuestionsByChapterIds(@Param("chapterIds") Collection<String> chapterIds);
-};
+}

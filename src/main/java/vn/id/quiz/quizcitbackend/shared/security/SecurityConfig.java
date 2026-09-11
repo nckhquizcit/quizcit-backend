@@ -75,16 +75,19 @@ public class SecurityConfig {
                         // READ endpoints - cả USER + ADMINISTRATOR
                         // Chỉ danh mục và chi tiết môn được xem trước khi đăng ký.
                         .requestMatchers(HttpMethod.GET, "/api/uploads/**", "/uploads/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/subjects", "/api/subjects/*").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/chapters/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/theories/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/quizzes/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/questions/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/skills/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/subjects", "/api/subjects/*", "/api/v1/subjects", "/api/v1/subjects/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/chapters/**", "/api/v1/chapters/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/theories/**", "/api/v1/theories/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/quizzes/**", "/api/v1/quizzes/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/questions/**", "/api/v1/questions/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/skills/**", "/api/v1/skills/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/content/**", "/api/v1/content/**").authenticated()
 
                         // Các endpoint còn lại (bao gồm admin) - yêu cầu ADMINISTRATOR
-                        .requestMatchers("/api/admin/**").hasRole("ADMINISTRATOR")
-                        .requestMatchers("/api/users/**").hasAnyRole("ADMINISTRATOR", "USER")
+                        .requestMatchers("/api/admin/**", "/api/v1/admin/**").hasRole("ADMINISTRATOR")
+                        .requestMatchers("/api/users/**", "/api/v1/users/**").hasAnyRole("ADMINISTRATOR", "USER")
+                        .requestMatchers("/api/pages/**", "/api/v1/pages/**").hasAnyRole("ADMINISTRATOR", "USER")
+                        .requestMatchers("/api/progress/**", "/api/v1/progress/**").hasAnyRole("ADMINISTRATOR", "USER")
 
                         // Mặc định: yêu cầu đã authenticated cho các route còn lại
                         .anyRequest().authenticated())
