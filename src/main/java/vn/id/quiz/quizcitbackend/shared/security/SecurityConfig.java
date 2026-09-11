@@ -81,6 +81,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/quizzes/**", "/api/v1/quizzes/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/questions/**", "/api/v1/questions/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/skills/**", "/api/v1/skills/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/content/**", "/api/v1/content/**").authenticated()
 
                         // Các endpoint còn lại (bao gồm admin) - yêu cầu ADMINISTRATOR
                         .requestMatchers("/api/admin/**", "/api/v1/admin/**").hasRole("ADMINISTRATOR")

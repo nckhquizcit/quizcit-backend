@@ -552,4 +552,67 @@ class ContentServiceImplementTest {
         assertThat(context.theories()).hasSize(1);
         assertThat(context.theories().get(0).theoryId()).isEqualTo("th-1");
     }
+    @Test
+    void getSubjectStudyOverviewShouldReturnFullOverviewWhenEnrolled() {
+        String subjectId = "sub-1";
+        String chapterId = "ch-1";
+        Subject subject = Subject.builder().subjectId(subjectId).courseCode("CS101")
+                .name("Computer Science").description("Desc").imageUrl("img.png").displayOrder(1).build();
+        Chapter chapter = Chapter.builder().chapterId(chapterId).subjectId(subjectId)
+                .name("Introduction").displayOrder(1).build();
+        Theory theory = Theory.builder().theoryId("th-1").chapterId(chapterId)
+                .content("Introduction Theory").contentFormat("plain").build();
+        Quiz quiz = Quiz.builder().quizId("qz-1").chapterId(chapterId).subjectId(subjectId)
+                .name("Quiz 1").totalQuestion(10).duration(15).build();
+
+        when(visibility.requireVisibleSubjectEntity(subjectId)).thenReturn(subject);
+        when(visibility.isAdministrator()).thenReturn(true);
+        when(content.findAllChapter(subjectId)).thenReturn(List.of(chapter));
+        when(chapterSkills.findByChapterIdIn(List.of(chapterId))).thenReturn(List.of());
+        when(content.findAllTheories(List.of(chapterId))).thenReturn(List.of(theory));
+        when(quizzes.findNonAdaptiveQuizzesBySubjectId(subjectId)).thenReturn(List.of(quiz));
+
+        var overview = service.getSubjectStudyOverview(subjectId);
+
+        assertThat(overview.getSubjectId()).isEqualTo(subjectId);
+        assertThat(overview.getName()).isEqualTo("Computer Science");
+        assertThat(overview.isEnrolled()).isTrue();
+        assertThat(overview.getChapters()).hasSize(1);
+        assertThat(overview.getChapters().get(0).getChapterId()).isEqualTo(chapterId);
+        assertThat(overview.getChapters().get(0).getTheories()).hasSize(1);
+        assertThat(overview.getChapters().get(0).getTheories().get(0).getTheoryId()).isEqualTo("th-1");
+        assertThat(overview.getChapters().get(0).getQuizzes()).hasSize(1);
+        assertThat(overview.getChapters().get(0).getQuizzes().get(0).getQuizId()).isEqualTo("qz-1");
+        assertThat(overview.getChapters().get(0).getQuizzes().get(0).getDurationMinutes()).isEqualTo(15);
+    }
+
+    @Test
+    void getTheoryReaderViewShouldReturnContentAndSiblingTheories() {
+        String subjectId = "sub-1";
+        String chapterId = "ch-1";
+        String theoryId = "th-1";
+        Subject subject = Subject.builder().subjectId(subjectId).courseCode("CS101")
+                .name("Computer Science").build();
+        Chapter chapter = Chapter.builder().chapterId(chapterId).subjectId(subjectId)
+                .name("Introduction").displayOrder(1).build();
+        Theory theory = Theory.builder().theoryId(theoryId).chapterId(chapterId)
+                .content("Content 1").contentFormat("plain").build();
+
+        when(visibility.requireVisibleTheoryEntity(theoryId)).thenReturn(theory);
+        when(visibility.requireVisibleChapterEntity(chapterId)).thenReturn(chapter);
+        when(content.findSubjectById(subjectId)).thenReturn(Optional.of(subject));
+        when(content.findAllChapter(subjectId)).thenReturn(List.of(chapter));
+        when(content.findAllTheory(chapterId)).thenReturn(List.of(theory));
+
+        var readerView = service.getTheoryReaderView(theoryId);
+
+        assertThat(readerView.getTheoryId()).isEqualTo(theoryId);
+        assertThat(readerView.getSubjectId()).isEqualTo(subjectId);
+        assertThat(readerView.getSubjectName()).isEqualTo("Computer Science");
+        assertThat(readerView.getContent()).isEqualTo("Content 1");
+        assertThat(readerView.getChapter().getChapterId()).isEqualTo(chapterId);
+        assertThat(readerView.getChapterIndex()).isEqualTo(0);
+        assertThat(readerView.getChapterTheories()).hasSize(1);
+        assertThat(readerView.getChapterTheories().get(0).getTheoryId()).isEqualTo(theoryId);
+    }
 }

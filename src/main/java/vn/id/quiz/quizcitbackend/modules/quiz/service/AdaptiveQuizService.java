@@ -169,7 +169,7 @@ public class AdaptiveQuizService {
         Attempt attempt = Attempt.create(userId, quiz.getQuizId(), totalQuestion);
         quizRepository.save(attempt);
         appendQuestions(attempt, unlocked, Math.min(INITIAL_BUFFER_SIZE, totalQuestion));
-        return state(attempt);
+        return state(attempt, quiz);
     }
 
     @Transactional(readOnly = true)
@@ -490,17 +490,36 @@ public class AdaptiveQuizService {
     }
 
     private AdaptiveQuizResponse state(Attempt attempt) {
+        return state(attempt, quizRepository.findQuizById(attempt.getQuizId()).orElse(null));
+    }
+
+    private AdaptiveQuizResponse state(Attempt attempt, Quiz quiz) {
         List<Response> responses = quizRepository.findResponsesByAttemptId(attempt.getAttemptId());
         Set<String> answered = responses.stream().map(Response::getQuestionId).collect(Collectors.toSet());
         List<String> nextIds = quizRepository.findQuizQuestionsByQuizId(attempt.getQuizId()).stream()
                 .map(QuizQuestion::getQuestionId).filter(id -> !answered.contains(id)).limit(PAGE_SIZE).toList();
-        return AdaptiveQuizResponse.builder().quizId(attempt.getQuizId()).attemptId(attempt.getAttemptId())
-                .totalQuestion(attempt.getTotalQuestion()).answeredQuestion(responses.size())
+
+        String quizName = quiz != null ? quiz.getName() : null;
+        String subjectName = null;
+        if (quiz != null && quiz.getSubjectId() != null && contentRepository != null) {
+            subjectName = contentRepository.findSubjectById(quiz.getSubjectId())
+                    .map(vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject::getName)
+                    .orElse(null);
+        }
+
+        return AdaptiveQuizResponse.builder()
+                .quizId(attempt.getQuizId())
+                .attemptId(attempt.getAttemptId())
+                .quizName(quizName)
+                .subjectName(subjectName)
+                .totalQuestion(attempt.getTotalQuestion())
+                .answeredQuestion(responses.size())
                 .page(responses.size() >= attempt.getTotalQuestion()
                         ? attempt.getTotalQuestion() / PAGE_SIZE
                         : responses.size() / PAGE_SIZE + 1)
                 .completed(responses.size() >= attempt.getTotalQuestion())
-                .questions(toQuestionResponses(nextIds)).build();
+                .questions(toQuestionResponses(nextIds))
+                .build();
     }
 
     private List<QuestionResponse> toQuestionResponses(Collection<String> ids) {

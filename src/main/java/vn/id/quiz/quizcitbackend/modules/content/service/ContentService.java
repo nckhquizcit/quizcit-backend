@@ -1,6 +1,8 @@
 package vn.id.quiz.quizcitbackend.modules.content.service;
 
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryReaderViewResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterEditContextResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSummaryResponse;
@@ -40,6 +42,16 @@ public interface ContentService {
      * Phase 2 (P1): lấy danh sách đề thi thuộc về một môn học.
      */
     List<QuizSummaryResponse> getQuizzesBySubject(String subjectId);
+
+    /**
+     * Phase 3: Tổng quan không gian học tập của môn học (môn, trạng thái đăng ký, cây chương, lý thuyết, quiz, kỹ năng).
+     */
+    SubjectStudyOverviewResponse getSubjectStudyOverview(String subjectId);
+
+    /**
+     * Phase 3: Nội dung chi tiết bài học lý thuyết kèm danh sách bài học cùng chương để render điều hướng bài đọc.
+     */
+    TheoryReaderViewResponse getTheoryReaderView(String theoryId);
 
     void updateSubject(String subjectId, UpdateSubjectRequest request);
     void updateChapter(String chapterId, UpdateChapterRequest request);

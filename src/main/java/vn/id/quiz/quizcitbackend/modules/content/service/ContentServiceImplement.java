@@ -1,5 +1,19 @@
 package vn.id.quiz.quizcitbackend.modules.content.service;
 
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.ChapterStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.QuizStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.TheoryStudyOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryReaderViewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserCourseEnrollment;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.UserCourseEnrollmentId;
+import vn.id.quiz.quizcitbackend.modules.chatbot.util.BlockNoteTextExtractor;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -76,6 +90,246 @@ public class ContentServiceImplement implements ContentService {
         return quizzes.stream()
                 .map(QuizSummaryResponse::from)
                 .toList();
+    }
+
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    @Override
+    @Transactional
+    public SubjectStudyOverviewResponse getSubjectStudyOverview(String subjectId) {
+        Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
+
+        String userId = currentUserId();
+        boolean isAdmin = visibilityGuard.isAdministrator();
+        boolean enrolled = isAdmin;
+        ZonedDateTime enrolledAt = null;
+
+        if (userId != null && !isAdmin && enrollmentRepository != null) {
+            Optional<UserCourseEnrollment> enrollmentOpt = enrollmentRepository.findById(
+                    new UserCourseEnrollmentId(userId, subjectId));
+            if (enrollmentOpt.isPresent()) {
+                enrolled = true;
+                enrolledAt = enrollmentOpt.get().getEnrolledAt();
+            }
+        }
+
+        if (!enrolled && !isAdmin) {
+            return SubjectStudyOverviewResponse.builder()
+                    .subjectId(subject.getSubjectId())
+                    .name(subject.getName())
+                    .courseCode(subject.getCourseCode())
+                    .imageUrl(subject.getImageUrl())
+                    .description(subject.getDescription())
+                    .enrolled(false)
+                    .enrolledAt(null)
+                    .chapters(List.of())
+                    .build();
+        }
+
+        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        List<String> chapterIds = chapters.stream().map(Chapter::getChapterId).toList();
+
+        Map<String, List<ChapterSkill>> requirementsByChapter = chapterSkillRepository == null ? Map.of() :
+                chapterSkillRepository.findByChapterIdIn(chapterIds).stream()
+                        .collect(Collectors.groupingBy(ChapterSkill::getChapterId));
+        Set<String> skillIds = requirementsByChapter.values().stream().flatMap(List::stream)
+                .map(ChapterSkill::getSkillId).collect(Collectors.toSet());
+        Map<String, String> skillNames = (skillRepository == null || skillIds.isEmpty()) ? Map.of() :
+                skillRepository.findByIds(skillIds).stream()
+                        .collect(Collectors.toMap(Skill::getSkillId, Skill::getName));
+
+        Set<String> saved = (userId == null || unlockedChapterRepository == null) ? Set.of() :
+                unlockedChapterRepository.findByUserIdAndChapterIdIn(userId, chapterIds).stream()
+                        .map(UserUnlockedChapter::getChapterId).collect(Collectors.toSet());
+        Map<String, Double> thetaBySkill = (userId == null || userSkillAbilityRepository == null) ? Map.of() :
+                userSkillAbilityRepository.findByUserId(userId).stream().collect(Collectors.toMap(
+                        UserSkillAbility::getSkillId,
+                        ability -> ability.getTheta() == null ? 0.0 : ability.getTheta()));
+        Set<String> unlockedIds = computeUnlockedChapterIds(userId, chapters, requirementsByChapter, thetaBySkill, saved);
+
+        List<Theory> allTheories = contentRepository.findAllTheories(chapterIds);
+        Map<String, List<Theory>> theoriesByChapter = allTheories.stream()
+                .collect(Collectors.groupingBy(Theory::getChapterId));
+
+        List<Quiz> allQuizzes = quizRepository != null
+                ? quizRepository.findNonAdaptiveQuizzesBySubjectId(subjectId)
+                : List.of();
+        Map<String, List<Quiz>> quizzesByChapter = allQuizzes.stream()
+                .collect(Collectors.groupingBy(Quiz::getChapterId));
+
+        List<ChapterStudyOverviewResponse> chapterResponses = chapters.stream().map(chapter -> {
+            String chId = chapter.getChapterId();
+            boolean unlocked = unlockedIds.contains(chId);
+
+            List<ChapterSkill> reqs = requirementsByChapter.getOrDefault(chId, List.of());
+            List<ChapterSkillResponse> skills = reqs.stream()
+                    .map(item -> new ChapterSkillResponse(
+                            item.getSkillId(),
+                            skillNames.getOrDefault(item.getSkillId(), "Kỹ năng"),
+                            item.getRequiredTheta(),
+                            thetaBySkill.get(item.getSkillId())))
+                    .toList();
+
+            List<Theory> chapterTheoryList = theoriesByChapter.getOrDefault(chId, List.of());
+            List<TheoryStudyOverviewResponse> theoryResponses = new ArrayList<>();
+            for (int i = 0; i < chapterTheoryList.size(); i++) {
+                Theory theory = chapterTheoryList.get(i);
+                String title = extractTheoryTitle(theory, i + 1);
+                theoryResponses.add(TheoryStudyOverviewResponse.builder()
+                        .theoryId(theory.getTheoryId())
+                        .chapterId(theory.getChapterId())
+                        .title(title)
+                        .displayOrder(i + 1)
+                        .build());
+            }
+
+            List<Quiz> chapterQuizList = quizzesByChapter.getOrDefault(chId, List.of());
+            List<QuizStudyOverviewResponse> quizResponses = chapterQuizList.stream().map(quiz ->
+                    QuizStudyOverviewResponse.builder()
+                            .quizId(quiz.getQuizId())
+                            .chapterId(quiz.getChapterId())
+                            .name(quiz.getName())
+                            .totalQuestions(quiz.getTotalQuestion())
+                            .durationMinutes(quiz.getDuration())
+                            .build()
+            ).toList();
+
+            return ChapterStudyOverviewResponse.builder()
+                    .chapterId(chId)
+                    .subjectId(chapter.getSubjectId())
+                    .name(chapter.getName())
+                    .displayOrder(chapter.getDisplayOrder())
+                    .unlocked(unlocked)
+                    .theories(theoryResponses)
+                    .quizzes(quizResponses)
+                    .requiredSkills(skills)
+                    .build();
+        }).toList();
+
+        return SubjectStudyOverviewResponse.builder()
+                .subjectId(subject.getSubjectId())
+                .name(subject.getName())
+                .courseCode(subject.getCourseCode())
+                .imageUrl(subject.getImageUrl())
+                .description(subject.getDescription())
+                .enrolled(enrolled)
+                .enrolledAt(enrolledAt)
+                .chapters(chapterResponses)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TheoryReaderViewResponse getTheoryReaderView(String theoryId) {
+        Theory theory = visibilityGuard.requireVisibleTheoryEntity(theoryId);
+        Chapter chapter = visibilityGuard.requireVisibleChapterEntity(theory.getChapterId());
+        visibilityGuard.requireAccessibleSubject(chapter.getSubjectId());
+
+        Subject subject = contentRepository.findSubjectById(chapter.getSubjectId()).orElse(null);
+        String subjectName = subject != null ? subject.getName() : null;
+
+        List<Chapter> allChapters = contentRepository.findAllChapter(chapter.getSubjectId());
+        int chapterIndex = -1;
+        for (int i = 0; i < allChapters.size(); i++) {
+            if (allChapters.get(i).getChapterId().equals(chapter.getChapterId())) {
+                chapterIndex = i;
+                break;
+            }
+        }
+
+        List<Theory> siblingTheories = contentRepository.findAllTheory(chapter.getChapterId());
+        List<TheoryReaderViewResponse.TheorySummaryItem> items = new ArrayList<>();
+        String currentTitle = null;
+        for (int i = 0; i < siblingTheories.size(); i++) {
+            Theory item = siblingTheories.get(i);
+            String title = extractTheoryTitle(item, i + 1);
+            if (item.getTheoryId().equals(theory.getTheoryId())) {
+                currentTitle = title;
+            }
+            items.add(TheoryReaderViewResponse.TheorySummaryItem.builder()
+                    .theoryId(item.getTheoryId())
+                    .title(title)
+                    .displayOrder(i + 1)
+                    .build());
+        }
+
+        if (currentTitle == null) {
+            currentTitle = extractTheoryTitle(theory, 1);
+        }
+
+        return TheoryReaderViewResponse.builder()
+                .theoryId(theory.getTheoryId())
+                .chapterId(theory.getChapterId())
+                .subjectId(chapter.getSubjectId())
+                .subjectName(subjectName)
+                .title(currentTitle)
+                .content(theory.getContent())
+                .contentFormat(theory.getContentFormat())
+                .createdAt(theory.getCreatedAt())
+                .chapter(TheoryReaderViewResponse.ChapterInfo.builder()
+                        .chapterId(chapter.getChapterId())
+                        .name(chapter.getName())
+                        .displayOrder(chapter.getDisplayOrder())
+                        .build())
+                .chapterIndex(chapterIndex)
+                .chapterTheories(items)
+                .build();
+    }
+
+    private String extractTheoryTitle(Theory theory, int defaultIndex) {
+        if (theory == null) return "Bài lý thuyết " + defaultIndex;
+        String content = theory.getContent();
+        String format = theory.getContentFormat();
+        if (content == null || content.isBlank()) {
+            return "Bài lý thuyết " + defaultIndex;
+        }
+
+        if ("blocknote".equalsIgnoreCase(format)) {
+            try {
+                JsonNode root = JSON_MAPPER.readTree(content);
+                if (root.isArray()) {
+                    for (JsonNode block : root) {
+                        if (block.has("type") && "heading".equalsIgnoreCase(block.get("type").asText())) {
+                            StringBuilder sb = new StringBuilder();
+                            appendBlockNodeText(block, sb);
+                            String text = sb.toString().trim();
+                            if (!text.isEmpty()) return text;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        String plain = BlockNoteTextExtractor.toPlainText(content, format);
+        if (!plain.isBlank()) {
+            String firstLine = plain.lines().filter(line -> !line.isBlank()).findFirst().orElse("");
+            firstLine = firstLine.replaceAll("^#+\\s*", "").replaceAll("^\\*+\\s*", "").replaceAll("\\*+$", "").trim();
+            if (!firstLine.isEmpty()) {
+                return firstLine.length() > 100 ? firstLine.substring(0, 100).trim() + "..." : firstLine;
+            }
+        }
+
+        return "Bài lý thuyết " + defaultIndex;
+    }
+
+    private void appendBlockNodeText(JsonNode node, StringBuilder builder) {
+        if (node == null || node.isNull()) return;
+        if (node.isArray()) {
+            for (JsonNode child : node) {
+                appendBlockNodeText(child, builder);
+            }
+            return;
+        }
+        if (!node.isObject()) return;
+        JsonNode textNode = node.get("text");
+        if (textNode != null && textNode.isTextual()) {
+            builder.append(textNode.asText()).append(' ');
+        }
+        JsonNode content = node.get("content");
+        if (content != null) appendBlockNodeText(content, builder);
+        JsonNode children = node.get("children");
+        if (children != null) appendBlockNodeText(children, builder);
     }
 
     @Override
