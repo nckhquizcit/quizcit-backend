@@ -12,6 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.AbilityHistoryResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.UserProgressOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.UserProgressSkillResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.UserSkillDetailOverviewResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.UserSkillAbilityResponse;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.AbilityHistory;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility;
@@ -107,6 +111,127 @@ public class ProgressServiceImplement implements ProgressService {
 
         return progressRepository
                 .getAverageAbility(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProgressOverviewResponse getUserProgressOverview(String userId) {
+        List<UserSkillAbility> abilities = progressRepository.findUserSkillAbilities(userId);
+        int trackedSkillCount = abilities.size();
+        Double averageTheta = trackedSkillCount > 0 ? progressRepository.getAverageAbility(userId) : null;
+        Double averageThetaScaled = averageTheta != null
+                ? Math.max(0.0, Math.min(4.0, (averageTheta + 3.0) / 6.0 * 4.0))
+                : null;
+
+        Map<String, Skill> skillsById = skillRepository.findAll().stream()
+                .collect(Collectors.toMap(Skill::getSkillId, s -> s, (s1, s2) -> s1));
+
+        List<UserProgressSkillResponse> skills = abilities.stream().map(ability -> {
+            Skill skill = skillsById.get(ability.getSkillId());
+            String name = skill != null && skill.getName() != null ? skill.getName() : "Kỹ năng";
+            String description = skill != null && skill.getDescription() != null ? skill.getDescription() : "";
+            return UserProgressSkillResponse.builder()
+                    .id(ability.getId())
+                    .skillId(ability.getSkillId())
+                    .name(name)
+                    .description(description)
+                    .theta(ability.getTheta())
+                    .updatedAt(ability.getUpdatedAt())
+                    .build();
+        }).toList();
+
+        List<AbilityHistory> allHistories = progressRepository.findAbilityHistoriesByUserId(userId);
+        int totalHistoryCount = allHistories.size();
+        List<AbilityHistoryResponse> recentHistories = allHistories.stream()
+                .limit(12)
+                .map(history -> {
+                    Skill skill = skillsById.get(history.getSkillId());
+                    String skillName = skill != null ? skill.getName() : null;
+                    return toHistoryResponse(history, skillName);
+                })
+                .toList();
+
+        return UserProgressOverviewResponse.builder()
+                .averageTheta(averageTheta)
+                .averageThetaScaled(averageThetaScaled)
+                .trackedSkillCount(trackedSkillCount)
+                .totalHistoryCount(totalHistoryCount)
+                .skills(skills)
+                .recentHistories(recentHistories)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserProgressSkillResponse> getUserSkillsSummary(String userId) {
+        List<UserSkillAbility> abilities = progressRepository.findUserSkillAbilities(userId);
+        if (abilities.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, Skill> skillsById = skillRepository.findAll().stream()
+                .collect(Collectors.toMap(Skill::getSkillId, s -> s, (s1, s2) -> s1));
+
+        return abilities.stream().map(ability -> {
+            Skill skill = skillsById.get(ability.getSkillId());
+            String name = skill != null && skill.getName() != null ? skill.getName() : "Kỹ năng";
+            String description = skill != null && skill.getDescription() != null ? skill.getDescription() : "";
+            return UserProgressSkillResponse.builder()
+                    .id(ability.getId())
+                    .skillId(ability.getSkillId())
+                    .name(name)
+                    .description(description)
+                    .theta(ability.getTheta())
+                    .updatedAt(ability.getUpdatedAt())
+                    .build();
+        }).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserSkillDetailOverviewResponse getUserSkillDetailOverview(String userId, String skillId) {
+        Skill targetSkill = skillRepository.findById(skillId)
+                .orElseThrow(() -> new AppException("Không tìm thấy kỹ năng", HttpStatus.NOT_FOUND));
+
+        java.util.Optional<UserSkillAbility> abilityOpt = progressRepository.findUserSkillAbility(userId, skillId);
+        Double currentTheta = abilityOpt.map(UserSkillAbility::getTheta).orElse(null);
+        java.time.ZonedDateTime updatedAt = abilityOpt.map(UserSkillAbility::getUpdatedAt).orElse(null);
+
+        List<AbilityHistory> histories = progressRepository.findAbilityHistoriesByUserIdAndSkillId(userId, skillId);
+        List<AbilityHistoryResponse> historyResponses = histories.stream()
+                .map(h -> toHistoryResponse(h, targetSkill.getName()))
+                .toList();
+
+        List<UserSkillAbility> allAbilities = progressRepository.findUserSkillAbilities(userId);
+        Map<String, Skill> skillsById = skillRepository.findAll().stream()
+                .collect(Collectors.toMap(Skill::getSkillId, s -> s, (s1, s2) -> s1));
+
+        List<UserProgressSkillResponse> otherSkills = allAbilities.stream()
+                .filter(a -> !targetSkill.getSkillId().equalsIgnoreCase(a.getSkillId()))
+                .map(ability -> {
+                    Skill skill = skillsById.get(ability.getSkillId());
+                    String name = skill != null && skill.getName() != null ? skill.getName() : "Kỹ năng";
+                    String description = skill != null && skill.getDescription() != null ? skill.getDescription() : "";
+                    return UserProgressSkillResponse.builder()
+                            .id(ability.getId())
+                            .skillId(ability.getSkillId())
+                            .name(name)
+                            .description(description)
+                            .theta(ability.getTheta())
+                            .updatedAt(ability.getUpdatedAt())
+                            .build();
+                })
+                .toList();
+
+        return UserSkillDetailOverviewResponse.builder()
+                .skillId(targetSkill.getSkillId())
+                .name(targetSkill.getName())
+                .description(targetSkill.getDescription())
+                .currentTheta(currentTheta)
+                .updatedAt(updatedAt)
+                .histories(historyResponses)
+                .otherSkills(otherSkills)
+                .build();
     }
 
     private Map<String, String> loadSkillNames(Collection<String> skillIds) {

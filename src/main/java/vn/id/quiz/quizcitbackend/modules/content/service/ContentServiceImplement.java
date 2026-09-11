@@ -48,6 +48,8 @@ import vn.id.quiz.quizcitbackend.modules.progress.repository.persistence.JpaUser
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.shared.security.CustomUserPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.ChapterPreviewResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectCatalogSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
@@ -93,6 +95,73 @@ public class ContentServiceImplement implements ContentService {
     }
 
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SubjectCatalogSummaryResponse> getSubjectCatalogSummary() {
+        List<Subject> subjects = contentRepository.findAllSubject().stream()
+                .filter(s -> (visibilityGuard.isAdministrator() || s.isVisible())
+                        && !ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(s.getCourseCode())
+                        && !ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(s.getName()))
+                .sorted(java.util.Comparator.comparingInt(Subject::getDisplayOrder)
+                        .thenComparing(Subject::getCreatedAt, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                        .thenComparing(Subject::getSubjectId))
+                .toList();
+
+        if (subjects.isEmpty()) {
+            return List.of();
+        }
+
+        String userId = currentUserId();
+        Map<String, java.time.ZonedDateTime> enrolledMap = new java.util.HashMap<>();
+        if (userId != null && enrollmentRepository != null) {
+            enrollmentRepository.findAllByUserIdWithSubject(userId).forEach(enrollment -> {
+                enrolledMap.put(enrollment.getSubjectId(), enrollment.getEnrolledAt());
+            });
+        }
+
+        List<ChapterResponse> accessibleChapters = getAllAccessibleChapters();
+        Map<String, List<ChapterResponse>> accessibleBySubject = accessibleChapters.stream()
+                .collect(Collectors.groupingBy(ChapterResponse::subjectId));
+
+        List<String> subjectIds = subjects.stream().map(Subject::getSubjectId).toList();
+        Map<String, Long> totalChapterCounts = contentRepository.findAllChapters(subjectIds).stream()
+                .collect(Collectors.groupingBy(Chapter::getSubjectId, Collectors.counting()));
+
+        boolean isAdmin = visibilityGuard.isAdministrator();
+
+        return subjects.stream().map(subject -> {
+            String sId = subject.getSubjectId();
+            List<ChapterResponse> openChapters = accessibleBySubject.getOrDefault(sId, List.of());
+            int openCount = openChapters.size();
+            int totalCount = totalChapterCounts.getOrDefault(sId, 0L).intValue();
+            boolean enrolled = isAdmin || enrolledMap.containsKey(sId);
+            java.time.ZonedDateTime enrolledAt = enrolledMap.get(sId);
+
+            List<ChapterPreviewResponse> previews = openChapters.stream()
+                    .limit(3)
+                    .map(ch -> ChapterPreviewResponse.builder()
+                            .chapterId(ch.chapterId())
+                            .name(ch.name())
+                            .displayOrder(ch.displayOrder())
+                            .build())
+                    .toList();
+
+            return SubjectCatalogSummaryResponse.builder()
+                    .subjectId(sId)
+                    .courseCode(subject.getCourseCode())
+                    .name(subject.getName())
+                    .description(subject.getDescription())
+                    .imageUrl(subject.getImageUrl())
+                    .displayOrder(subject.getDisplayOrder())
+                    .openChapterCount(openCount)
+                    .totalChapterCount(totalCount)
+                    .enrolled(enrolled)
+                    .enrolledAt(enrolledAt)
+                    .chapterPreview(previews)
+                    .build();
+        }).toList();
+    }
 
     @Override
     @Transactional

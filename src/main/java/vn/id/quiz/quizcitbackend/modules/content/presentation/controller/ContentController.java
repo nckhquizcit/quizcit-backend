@@ -16,6 +16,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.Create
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.UpdateChapterRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.CreateSubjectRequest;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectResponse;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectCatalogSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectStudyOverviewResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryReaderViewResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.UpdateSubjectRequest;
@@ -46,7 +47,13 @@ public class ContentController {
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
-    @GetMapping("/chapters")
+    /**
+     * Lấy danh sách chương người dùng có thể truy cập.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang danh mục môn học, hãy sử dụng {@code /content/subjects/catalog-summary}. Đối với trang chủ, hãy sử dụng {@code /pages/home-summary}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
+    @GetMapping({"/chapters", "/v1/chapters"})
     public ResponseEntity<ApiResponse<List<ChapterResponse>>> getAllAccessibleChapters() {
         return ResponseEntity.ok(ApiResponse.success(subjectUseCase.getAllAccessibleChapters()));
     }
@@ -304,6 +311,20 @@ public class ContentController {
             @PathVariable String subjectId) {
         SubjectStudyOverviewResponse response = subjectUseCase.getSubjectStudyOverview(subjectId);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // =========================================================================
+    // Phase 4: CATALOG MÔN HỌC TỔNG HỢP
+    // =========================================================================
+    @GetMapping({
+            "/content/subjects/catalog-summary",
+            "/v1/content/subjects/catalog-summary",
+            "/subjects/catalog-summary",
+            "/v1/subjects/catalog-summary"
+    })
+    public ResponseEntity<ApiResponse<List<SubjectCatalogSummaryResponse>>> getSubjectCatalogSummary() {
+        List<SubjectCatalogSummaryResponse> responses = subjectUseCase.getSubjectCatalogSummary();
+        return ResponseEntity.ok(ApiResponse.success(responses));
     }
 
     @GetMapping({

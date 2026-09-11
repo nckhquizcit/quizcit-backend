@@ -21,6 +21,7 @@ import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Theory;
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectCatalogSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaChapterSkillRepository;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.JpaUserUnlockedChapterRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
@@ -614,5 +615,31 @@ class ContentServiceImplementTest {
         assertThat(readerView.getChapterIndex()).isEqualTo(0);
         assertThat(readerView.getChapterTheories()).hasSize(1);
         assertThat(readerView.getChapterTheories().get(0).getTheoryId()).isEqualTo(theoryId);
+    }
+    @Test
+    void getSubjectCatalogSummaryShouldReturnEnrolledAndOpenChapterCounts() {
+        String subjectId = "sub-1";
+        Subject subject = Subject.builder()
+                .subjectId(subjectId)
+                .courseCode("CS101")
+                .name("Computer Science")
+                .description("Intro")
+                .displayOrder(1)
+                .visible(true)
+                .build();
+
+        when(content.findAllSubject()).thenReturn(List.of(subject));
+        when(visibility.isAdministrator()).thenReturn(true);
+        when(content.findAllChapters(List.of(subjectId))).thenReturn(List.of(
+                Chapter.builder().chapterId("ch-1").subjectId(subjectId).name("Chapter 1").displayOrder(1).build(),
+                Chapter.builder().chapterId("ch-2").subjectId(subjectId).name("Chapter 2").displayOrder(2).build()
+        ));
+
+        List<SubjectCatalogSummaryResponse> summary = service.getSubjectCatalogSummary();
+
+        assertThat(summary).hasSize(1);
+        assertThat(summary.get(0).subjectId()).isEqualTo(subjectId);
+        assertThat(summary.get(0).totalChapterCount()).isEqualTo(2);
+        assertThat(summary.get(0).enrolled()).isTrue();
     }
 }

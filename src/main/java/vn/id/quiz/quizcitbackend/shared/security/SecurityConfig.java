@@ -86,6 +86,8 @@ public class SecurityConfig {
                         // Các endpoint còn lại (bao gồm admin) - yêu cầu ADMINISTRATOR
                         .requestMatchers("/api/admin/**", "/api/v1/admin/**").hasRole("ADMINISTRATOR")
                         .requestMatchers("/api/users/**", "/api/v1/users/**").hasAnyRole("ADMINISTRATOR", "USER")
+                        .requestMatchers("/api/pages/**", "/api/v1/pages/**").hasAnyRole("ADMINISTRATOR", "USER")
+                        .requestMatchers("/api/progress/**", "/api/v1/progress/**").hasAnyRole("ADMINISTRATOR", "USER")
 
                         // Mặc định: yêu cầu đã authenticated cho các route còn lại
                         .anyRequest().authenticated())

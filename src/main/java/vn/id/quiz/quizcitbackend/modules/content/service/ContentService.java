@@ -1,6 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.content.service;
 
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectCatalogSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.subject.SubjectStudyOverviewResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryReaderViewResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterEditContextResponse;
@@ -52,6 +53,11 @@ public interface ContentService {
      * Phase 3: Nội dung chi tiết bài học lý thuyết kèm danh sách bài học cùng chương để render điều hướng bài đọc.
      */
     TheoryReaderViewResponse getTheoryReaderView(String theoryId);
+
+    /**
+     * Phase 4: Danh mục môn học tổng hợp kèm số chương đã mở, tổng chương và trạng thái đăng ký của sinh viên.
+     */
+    List<SubjectCatalogSummaryResponse> getSubjectCatalogSummary();
 
     void updateSubject(String subjectId, UpdateSubjectRequest request);
     void updateChapter(String chapterId, UpdateChapterRequest request);
