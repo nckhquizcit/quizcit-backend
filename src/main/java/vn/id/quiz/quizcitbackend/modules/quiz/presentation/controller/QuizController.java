@@ -96,8 +96,11 @@ public class QuizController {
     }
 
     /**
-     * Phase 2 (P0 - Blocker): API trả về câu hỏi + lựa chọn cho FE làm bài.
+     * Lấy danh sách câu hỏi của một đề thi.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang quản trị hiển thị đề thi kèm câu hỏi, hãy sử dụng {@code /admin/quizzes/{quizId}/detail-with-questions}. Đối với làm bài thi, hãy sử dụng {@code /quizzes/{quizId}/start}.
      */
+    @Deprecated(since = "v1.1", forRemoval = false)
     @GetMapping("/quizzes/{quizId}/questions")
     public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestionsByQuiz(
             @PathVariable String quizId) {

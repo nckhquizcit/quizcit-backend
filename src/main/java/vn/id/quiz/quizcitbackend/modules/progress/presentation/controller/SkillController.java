@@ -44,11 +44,23 @@ public class SkillController {
     private final SkillService skillService;
     private final Validator validator;
 
+    /**
+     * Lấy toàn bộ danh sách kỹ năng.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử hoặc quản trị. Đối với trang kỹ năng người học, hãy sử dụng {@code /progress/skills/summary-list}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
     @GetMapping
     public ResponseEntity<ApiResponse<List<SkillResponse>>> getAllSkills() {
         return ResponseEntity.ok(ApiResponse.success(skillService.getAllSkills()));
     }
 
+    /**
+     * Lấy chi tiết một kỹ năng theo ID.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử hoặc quản trị. Đối với trang chi tiết kỹ năng người học, hãy sử dụng {@code /progress/users/{userId}/skills/{skillId}/detail-overview}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
     @GetMapping("/{skillId}")
     public ResponseEntity<ApiResponse<SkillResponse>> getSkillById(
             @PathVariable String skillId) {

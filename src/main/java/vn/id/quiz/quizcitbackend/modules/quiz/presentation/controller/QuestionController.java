@@ -54,6 +54,12 @@ public class QuestionController {
         return ResponseEntity.ok(ApiResponse.success(questionService.getQuestions(subjectId, chapterId)));
     }
 
+    /**
+     * Lấy danh sách câu hỏi theo chương.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang quản trị câu hỏi phân trang hoặc lọc, hãy sử dụng {@code /api/v1/questions?chapterId={chapterId}&page={page}&size={size}}. Đối với quản trị đề thi, hãy sử dụng {@code /admin/quizzes/{quizId}/detail-with-questions}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
     @GetMapping("/chapters/{chapterId}/questions")
     public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestionsByChapter(
             @PathVariable String chapterId) {
