@@ -513,4 +513,43 @@ class ContentServiceImplementTest {
         assertThat(results.get(0).chapterName()).isEqualTo("Chương 1");
         assertThat(results.get(0).subjectName()).isEqualTo("Môn 1");
     }
+
+    @Test
+    void getChapterEditContextShouldReturnFullEditingContext() {
+        String chapterId = "ch-1";
+        String subjectId = "sub-1";
+        Subject subject = Subject.builder().subjectId(subjectId).courseCode("CS101")
+                .name("Computer Science").displayOrder(1).build();
+        Chapter chapter = Chapter.builder().chapterId(chapterId).subjectId(subjectId)
+                .name("Introduction").displayOrder(1).build();
+        Chapter sibling = Chapter.builder().chapterId("ch-2").subjectId(subjectId)
+                .name("Data Types").displayOrder(2).build();
+        Theory theory = Theory.builder().theoryId("th-1").chapterId(chapterId)
+                .content("Content").contentFormat("plain").build();
+        var skill = vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill.builder()
+                .skillId("sk-1").name("Variables").description("Desc").build();
+
+        when(visibility.requireVisibleChapterEntity(chapterId)).thenReturn(chapter);
+        when(content.findSubjectById(subjectId)).thenReturn(Optional.of(subject));
+        when(content.findAllChapter(subjectId)).thenReturn(List.of(chapter, sibling));
+        when(skills.findAll()).thenReturn(List.of(skill));
+        when(content.findAllTheory(chapterId)).thenReturn(List.of(theory));
+        when(chapterSkills.findByChapterId(chapterId)).thenReturn(List.of());
+        when(abilities.findByUserId(org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
+        when(mapper.toTheoryResponseList(List.of(theory))).thenReturn(List.of(
+                new vn.id.quiz.quizcitbackend.modules.content.presentation.dto.theory.TheoryResponse(
+                        "th-1", chapterId, "Content", "plain", null)));
+
+        var context = service.getChapterEditContext(chapterId);
+
+        assertThat(context.chapter().chapterId()).isEqualTo(chapterId);
+        assertThat(context.subjectId()).isEqualTo(subjectId);
+        assertThat(context.subjectName()).isEqualTo("Computer Science");
+        assertThat(context.siblingChaptersCount()).isEqualTo(2);
+        assertThat(context.siblingChapters()).hasSize(2);
+        assertThat(context.availableSkills()).hasSize(1);
+        assertThat(context.availableSkills().get(0).getSkillId()).isEqualTo("sk-1");
+        assertThat(context.theories()).hasSize(1);
+        assertThat(context.theories().get(0).theoryId()).isEqualTo("th-1");
+    }
 }

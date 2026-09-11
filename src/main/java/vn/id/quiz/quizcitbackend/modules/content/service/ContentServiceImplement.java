@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterEditContextResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
+import vn.id.quiz.quizcitbackend.modules.progress.presentation.dto.SkillResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
@@ -99,6 +101,43 @@ public class ContentServiceImplement implements ContentService {
         }
         return mapper.toSubjectResponse(subject);
     }
+    @Override
+    @Transactional(readOnly = true)
+    public ChapterEditContextResponse getChapterEditContext(String chapterId) {
+        Chapter chapter = visibilityGuard.requireVisibleChapterEntity(chapterId);
+        Subject parentSubject = contentRepository.findSubjectById(chapter.getSubjectId())
+                .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
+
+        if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(parentSubject.getCourseCode())
+                || ContentConstants.QUESTION_BANK_NAME.equalsIgnoreCase(parentSubject.getName())) {
+            throw new AppException(ErrorMessages.CHAPTER_NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+
+        ChapterResponse chapterResponse = toChapterResponse(chapter);
+        List<Chapter> siblingChapterEntities = contentRepository.findAllChapter(chapter.getSubjectId());
+        List<ChapterResponse> siblingChapters = siblingChapterEntities.stream()
+                .map(this::toChapterResponse)
+                .toList();
+        int siblingChaptersCount = siblingChapters.size();
+
+        List<SkillResponse> availableSkills = skillRepository.findAll().stream()
+                .map(SkillResponse::from)
+                .toList();
+
+        List<TheoryResponse> theories = mapper.toTheoryResponseList(
+                contentRepository.findAllTheory(chapterId));
+
+        return new ChapterEditContextResponse(
+                chapterResponse,
+                parentSubject.getSubjectId(),
+                parentSubject.getName(),
+                siblingChaptersCount,
+                siblingChapters,
+                availableSkills,
+                theories
+        );
+    }
+
     @Override
     @Transactional(readOnly = true)
     public ChapterResponse getChapterById(String chapterId){

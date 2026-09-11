@@ -12,7 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import vn.id.quiz.quizcitbackend.modules.content.repository.ContentRepository;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Chapter;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.model.Subject;
 import vn.id.quiz.quizcitbackend.modules.content.service.SubjectVisibilityGuard;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.question.QuestionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.ChapterQuizzesSummaryResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizDetailWithQuestionsResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubjectQuizzesOverviewResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.CreateQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.UpdateQuizRequest;
@@ -36,6 +42,7 @@ public class QuizServiceImplement implements QuizService {
     private final ContentRepository contentRepository;
     private final QuizMapper mapper;
     private final SubjectVisibilityGuard visibilityGuard;
+    private final QuestionService questionService;
 
     @Override
     @Transactional
@@ -233,6 +240,39 @@ public class QuizServiceImplement implements QuizService {
             quiz.updateDisplayOrder(item.displayOrder());
             quizRepository.save(quiz);
         });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SubjectQuizzesOverviewResponse getSubjectQuizzesOverview(String subjectId) {
+        visibilityGuard.requireAccessibleSubject(subjectId);
+        Subject subject = contentRepository.findSubjectById(subjectId)
+                .orElseThrow(() -> new AppException(ErrorMessages.SUBJECT_NOT_FOUND, HttpStatus.NOT_FOUND));
+
+        List<Chapter> chapters = contentRepository.findAllChapter(subjectId);
+        List<Quiz> quizzes = quizRepository.findNonAdaptiveQuizzesBySubjectId(subjectId);
+        List<QuizResponse> quizResponses = mapper.toResponseList(quizzes);
+
+        Map<String, List<QuizResponse>> quizzesByChapter = quizResponses.stream()
+                .collect(java.util.stream.Collectors.groupingBy(QuizResponse::getChapterId));
+
+        List<ChapterQuizzesSummaryResponse> chapterSummaries = chapters.stream()
+                .map(ch -> new ChapterQuizzesSummaryResponse(
+                        ch.getChapterId(),
+                        ch.getName(),
+                        ch.getDisplayOrder(),
+                        quizzesByChapter.getOrDefault(ch.getChapterId(), List.of())))
+                .toList();
+
+        return new SubjectQuizzesOverviewResponse(subject.getSubjectId(), subject.getName(), chapterSummaries);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuizDetailWithQuestionsResponse getQuizDetailWithQuestions(String quizId) {
+        QuizResponse quiz = getQuizById(quizId);
+        List<QuestionResponse> questions = questionService.getQuestionsByQuiz(quizId);
+        return new QuizDetailWithQuestionsResponse(quiz, questions);
     }
 
     private int positiveOrDefault(Integer requested, int fallback) {

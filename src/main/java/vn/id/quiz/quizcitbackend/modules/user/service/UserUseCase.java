@@ -2,6 +2,7 @@ package vn.id.quiz.quizcitbackend.modules.user.service;
 
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangePasswordRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.AdminResetPasswordRequest;
+import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.AccessMatrixResponse;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ChangeUserRoleRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserProfileRequest;
 import vn.id.quiz.quizcitbackend.modules.user.presentation.dto.UpdateUserStatusRequest;
@@ -38,6 +39,7 @@ public interface UserUseCase {
     UserResponse changeUserRole(String actorUserId, String userId, ChangeUserRoleRequest request);
 
     // ===== Role & Permission Management =====
+    AccessMatrixResponse getAccessMatrix();
     List<vn.id.quiz.quizcitbackend.modules.user.presentation.model.Role> getAllRoles();
     void deleteRole(String roleId);
     void hardDeleteRole(String roleId);

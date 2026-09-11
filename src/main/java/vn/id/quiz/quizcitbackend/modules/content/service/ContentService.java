@@ -1,6 +1,7 @@
 package vn.id.quiz.quizcitbackend.modules.content.service;
 
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.*;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterEditContextResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.CreateChapterRequest;
@@ -20,6 +21,7 @@ public interface ContentService {
     List<SubjectResponse> getAllSubject();
     SubjectResponse getSubjectById(String subjectId);
     ChapterResponse getChapterById(String chapterId);
+    ChapterEditContextResponse getChapterEditContext(String chapterId);
     TheoryResponse getTheoryById(String theoryId);
     SubjectResponse createSubject(CreateSubjectRequest request);
     ChapterResponse addChapter(String subjectId, CreateChapterRequest request);

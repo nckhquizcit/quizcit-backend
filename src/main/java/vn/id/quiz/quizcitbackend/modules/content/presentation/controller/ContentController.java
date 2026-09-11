@@ -8,6 +8,7 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterEditContextResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.ChapterSummaryResponse;
 import vn.id.quiz.quizcitbackend.modules.content.presentation.dto.chapter.FlatChapterResponse;
@@ -135,10 +136,23 @@ public class ContentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
-    // Flat Route: Lấy chi tiết 1 chương bằng ID
-    @GetMapping("/chapters/{chapterId}")
+    /**
+     * Lấy chi tiết 1 chương bằng ID.
+     *
+     * @deprecated Dành cho tác vụ nguyên tử. Đối với trang quản trị soạn thảo/chỉnh sửa chương, hãy sử dụng {@code /admin/chapters/{chapterId}/edit-context}.
+     */
+    @Deprecated(since = "v1.1", forRemoval = false)
+    @GetMapping({"/chapters/{chapterId}", "/v1/chapters/{chapterId}"})
     public ResponseEntity<ApiResponse<ChapterResponse>> getChapterById(@PathVariable String chapterId) {
         ChapterResponse response = subjectUseCase.getChapterById(chapterId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping({"/admin/chapters/{chapterId}/edit-context", "/v1/admin/chapters/{chapterId}/edit-context"})
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<ChapterEditContextResponse>> getChapterEditContext(
+            @PathVariable String chapterId) {
+        ChapterEditContextResponse response = subjectUseCase.getChapterEditContext(chapterId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
