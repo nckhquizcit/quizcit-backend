@@ -81,16 +81,16 @@ public class ContentRepositoryAdapter implements ContentRepository {
     }
 
     @Override
-    public Subject save(Subject subject) { return jpaSubjectRepository.save(subject); }
+    public Subject save(Subject subject) { return jpaSubjectRepository.saveAndFlush(subject); }
 
     @Override
     public Chapter save(Chapter chapter) {
-        return jpaChapterRepository.save(chapter);
+        return jpaChapterRepository.saveAndFlush(chapter);
     }
 
     @Override
     public Theory save(Theory theory) {
-        return jpaTheoryRepository.save(theory);
+        return jpaTheoryRepository.saveAndFlush(theory);
     }
 
     @Override
