@@ -18,7 +18,7 @@ class AdminDataStatsControllerTest {
         when(entityManager.createNativeQuery(anyString())).thenReturn(query);
         when(query.getSingleResult()).thenReturn(new Object[]{11L, 12L, 13L, 14L, 15L, 16L});
 
-        var stats = new AdminDataStatsController(entityManager).getDataStats().data();
+        var stats = new AdminDataStatsController(entityManager, null).getDataStats().data();
 
         assertThat(stats.totalUsers()).isEqualTo(11);
         assertThat(stats.totalSubjects()).isEqualTo(12);

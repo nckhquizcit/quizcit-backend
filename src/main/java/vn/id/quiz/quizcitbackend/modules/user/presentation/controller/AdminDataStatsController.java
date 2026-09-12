@@ -24,10 +24,6 @@ public class AdminDataStatsController {
     private final EntityManager entityManager;
     private final UserUseCase userUseCase;
 
-    public AdminDataStatsController(EntityManager entityManager) {
-        this(entityManager, null);
-    }
-
     @GetMapping("/data-stats")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional(readOnly = true)
