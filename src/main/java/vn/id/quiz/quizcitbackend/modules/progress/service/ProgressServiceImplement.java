@@ -120,7 +120,7 @@ public class ProgressServiceImplement implements ProgressService {
         int trackedSkillCount = abilities.size();
         Double averageTheta = trackedSkillCount > 0 ? progressRepository.getAverageAbility(userId) : null;
         Double averageThetaScaled = averageTheta != null
-                ? Math.max(0.0, Math.min(4.0, (averageTheta + 3.0) / 6.0 * 4.0))
+                ? Math.max(0.0, Math.min(4.0, (averageTheta + 4.0) / 8.0 * 4.0))
                 : null;
 
         Map<String, Skill> skillsById = skillRepository.findAll().stream()

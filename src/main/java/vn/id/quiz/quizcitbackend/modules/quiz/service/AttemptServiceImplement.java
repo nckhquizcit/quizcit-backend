@@ -349,11 +349,20 @@ public class AttemptServiceImplement
         if (progressRepository.saveAbilityHistories(historiesToSave) == null) {
             historiesToSave.forEach(progressRepository::save);
         }
-        double overallTheta = skillThetaMap.values()
-                .stream()
-                .mapToDouble(Double::doubleValue)
-                .average()
-                .orElse(0.0);
+        double sum = 0.0;
+        int count = 0;
+        for (UserSkillAbility a : loadedAbilities) {
+            if (!skillThetaMap.containsKey(a.getSkillId())) {
+                sum += (a.getTheta() == null ? 0.0 : a.getTheta());
+                count++;
+            }
+        }
+        for (UserSkillAbility a : abilitiesToSave) {
+            sum += (a.getTheta() == null ? 0.0 : a.getTheta());
+            count++;
+        }
+        double overallTheta = count > 0 ? sum / count : 0.0;
+
         double rawScore = correctCount;
         attempt.complete(
                 rawScore,
