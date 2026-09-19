@@ -14,4 +14,7 @@ public interface JpaResponseRepository extends JpaRepository<Response, String> {
     void deleteByQuestionId(String questionId);
     void deleteByAttemptId(String attemptId);
     void deleteByAttemptIdIn(Collection<String> attemptIds);
+
+    @org.springframework.data.jpa.repository.Query("SELECT r.attemptId AS attemptId, COUNT(r) AS count FROM Response r WHERE r.attemptId IN :attemptIds GROUP BY r.attemptId")
+    List<AttemptResponseCountProjection> countResponsesByAttemptIds(@org.springframework.data.repository.query.Param("attemptIds") Collection<String> attemptIds);
 }

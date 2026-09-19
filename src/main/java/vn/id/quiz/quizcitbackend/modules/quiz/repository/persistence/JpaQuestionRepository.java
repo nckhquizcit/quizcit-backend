@@ -33,6 +33,15 @@ public interface JpaQuestionRepository extends JpaRepository<Question, String> {
 
     // Batch: lấy nhiều câu hỏi trong 1 truy vấn (tránh N+1).
     List<Question> findByQuestionIdIn(Collection<String> questionIds);
+    
+    @Query("""
+        SELECT q
+        FROM Question q
+        WHERE q.chapterId IN :chapterIds
+        AND (SELECT COUNT(o) FROM Option o WHERE o.questionId = q.questionId) >= 2
+        AND (SELECT COUNT(o) FROM Option o WHERE o.questionId = q.questionId AND o.isCorrected = true) >= 1
+    """)
+    List<Question> findAnswerableQuestionsByChapterIds(@Param("chapterIds") Collection<String> chapterIds);
 
     @Query("""
             select q from Question q, QuizQuestion qq

@@ -34,6 +34,11 @@ public interface QuizRepository {
         return chapterIds == null ? List.of() : chapterIds.stream()
                 .flatMap(id -> findQuestionsByChapterId(id).stream()).toList();
     }
+    
+    default List<Question> findAnswerableQuestionsByChapterIds(Collection<String> chapterIds) {
+        return findQuestionsByChapterIds(chapterIds);
+    }
+    
     default List<Question> findAllQuestions() { return List.of(); }
 
     default Map<String, Long> countQuestionsByChapterIds(Collection<String> chapterIds) { return Map.of(); }
@@ -177,7 +182,10 @@ public interface QuizRepository {
         return attemptIds == null ? List.of() : attemptIds.stream()
                 .flatMap(id -> findResponsesByAttemptId(id).stream()).toList();
     }
-
+    
+    default Map<String, Long> countResponsesByAttemptIds(Collection<String> attemptIds) {
+        return Map.of();
+    }
 
     void deleteResponsesByQuestionId(
             String questionId);

@@ -64,6 +64,7 @@ public class AttemptServiceImplement
     private final AIService aiService;
     private final AdaptiveQuizService adaptiveQuizService;
     private final SubjectVisibilityGuard visibilityGuard;
+    private final vn.id.quiz.quizcitbackend.modules.ai.service.AdviceGeneratorTask adviceGeneratorTask;
 
     // Giữ constructor này để tương thích các unit test/service consumer cũ.
     AttemptServiceImplement(
@@ -75,7 +76,7 @@ public class AttemptServiceImplement
             AIService aiService) {
         this(quizRepository, contentRepository, mapper, progressRepository,
                 skillRepository, aiService, null,
-                new SubjectVisibilityGuard(contentRepository, quizRepository));
+                new SubjectVisibilityGuard(contentRepository, quizRepository), null);
     }
 
     @Override
@@ -370,9 +371,10 @@ public class AttemptServiceImplement
 
         // MỚI: sinh lời khuyên cải thiện dựa trên delta theta từng skill vừa tính,
         // lưu 1 lần tại thời điểm nộp bài (không tính lại mỗi lần xem kết quả).
-        String adviceText = aiService.generateAdvice(buildSkillDeltaItems(historiesToSave));
-        attempt.attachAdvice(adviceText);
-
+        if (adviceGeneratorTask != null) {
+            adviceGeneratorTask.generateAndAttachAdvice(attempt.getAttemptId(), buildSkillDeltaItems(historiesToSave));
+        }
+        
         quizRepository.save(
                 attempt);
 
@@ -513,11 +515,7 @@ public class AttemptServiceImplement
         List<Attempt> attempts = quizRepository.findAttemptsByUserId(
                 userId);
         List<String> attemptIds = attempts.stream().map(Attempt::getAttemptId).toList();
-        List<Response> loadedResponses = quizRepository.findResponsesByAttemptIds(attemptIds);
-        if (loadedResponses == null) loadedResponses = attemptIds.stream()
-                .flatMap(id -> quizRepository.findResponsesByAttemptId(id).stream()).toList();
-        Map<String, Long> responseCountByAttempt = loadedResponses
-                .stream().collect(Collectors.groupingBy(Response::getAttemptId, Collectors.counting()));
+        Map<String, Long> responseCountByAttempt = quizRepository.countResponsesByAttemptIds(attemptIds);
         List<String> quizIds = attempts.stream().map(Attempt::getQuizId).distinct().toList();
         List<Quiz> loadedQuizzes = quizRepository.findQuizzesByIds(quizIds);
         if (loadedQuizzes == null) loadedQuizzes = quizIds.stream().map(quizRepository::findQuizById)
