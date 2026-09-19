@@ -21,6 +21,7 @@ public record RegisterRequest(
         @Size(max = 100, message = ErrorMessages.EMAIL_LENGTH)
         String email,
 
+        @NotBlank(message = ErrorMessages.DISPLAY_NAME_REQUIRED)
         @Size(max = 100, message = ErrorMessages.DISPLAY_NAME_LENGTH)
         String displayName
 ) {
