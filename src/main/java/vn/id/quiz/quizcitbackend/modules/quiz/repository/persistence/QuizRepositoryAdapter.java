@@ -43,6 +43,11 @@ public class QuizRepositoryAdapter implements QuizRepository {
     public List<Question> findQuestionsByChapterIds(java.util.Collection<String> chapterIds) {
         return chapterIds == null || chapterIds.isEmpty() ? List.of() : jpaQuestionRepository.findByChapterIdIn(chapterIds);
     }
+    
+    @Override
+    public List<Question> findAnswerableQuestionsByChapterIds(java.util.Collection<String> chapterIds) {
+        return chapterIds == null || chapterIds.isEmpty() ? List.of() : jpaQuestionRepository.findAnswerableQuestionsByChapterIds(chapterIds);
+    }
 
     @Override
     public List<Question> findAllQuestions() {
@@ -300,6 +305,17 @@ public class QuizRepositoryAdapter implements QuizRepository {
     public List<Response> findResponsesByAttemptIds(java.util.Collection<String> attemptIds) {
         return attemptIds == null || attemptIds.isEmpty()
                 ? List.of() : jpaResponseRepository.findByAttemptIdIn(attemptIds);
+    }
+    
+    @Override
+    public Map<String, Long> countResponsesByAttemptIds(java.util.Collection<String> attemptIds) {
+        if (attemptIds == null || attemptIds.isEmpty()) {
+            return Map.of();
+        }
+        return jpaResponseRepository.countResponsesByAttemptIds(attemptIds).stream()
+                .collect(Collectors.toMap(
+                        vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.AttemptResponseCountProjection::getAttemptId, 
+                        vn.id.quiz.quizcitbackend.modules.quiz.repository.persistence.AttemptResponseCountProjection::getCount));
     }
 
     @Override

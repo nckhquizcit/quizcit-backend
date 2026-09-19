@@ -71,6 +71,7 @@ public class AdaptiveQuizService {
     private final JpaAdaptiveQuestionSelectionRepository adaptiveQuestionSelectionRepository;
     private final SubjectVisibilityGuard visibilityGuard;
     private final JpaUserAdaptiveQuizTrackingRepository adaptiveQuizTrackingRepository;
+    private final vn.id.quiz.quizcitbackend.modules.ai.service.AdviceGeneratorTask adviceGeneratorTask;
 
     /** Compatibility constructor for isolated service tests. */
     AdaptiveQuizService(
@@ -87,7 +88,7 @@ public class AdaptiveQuizService {
                 unlockedChapterRepository, questionMapper, aiService, chapterSkillRepository,
                 adaptiveQuestionSelectionRepository,
                 new SubjectVisibilityGuard(contentRepository, quizRepository),
-                null);
+                null, null);
     }
 
     public AdaptiveQuizService(
@@ -105,7 +106,7 @@ public class AdaptiveQuizService {
                 unlockedChapterRepository, questionMapper, aiService, chapterSkillRepository,
                 adaptiveQuestionSelectionRepository,
                 visibilityGuard,
-                null);
+                null, null);
     }
 
     @Transactional(readOnly = true)
@@ -284,19 +285,11 @@ public class AdaptiveQuizService {
                 .collect(Collectors.toMap(UserSkillAbility::getSkillId,
                         ability -> ability.getTheta() == null ? 0.0 : ability.getTheta(), (a, b) -> a));
         if (theta.isEmpty()) return List.of();
-        List<Question> pool = quizRepository.findQuestionsByChapterIds(
+        
+        List<Question> pool = quizRepository.findAnswerableQuestionsByChapterIds(
                 chapters.stream().map(Chapter::getChapterId).toList()).stream()
                 .filter(question -> !excluded.contains(question.getQuestionId())).collect(Collectors.toCollection(ArrayList::new));
-        Set<String> answerableQuestionIds = quizRepository
-                .findOptionsByQuestionIds(pool.stream().map(Question::getQuestionId).toList())
-                .stream()
-                .collect(Collectors.groupingBy(Option::getQuestionId))
-                .entrySet().stream()
-                .filter(entry -> entry.getValue().size() >= 2
-                        && entry.getValue().stream().anyMatch(Option::isCorrected))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
-        pool.removeIf(question -> !answerableQuestionIds.contains(question.getQuestionId()));
+                
         Collections.shuffle(pool); // trộn trước mỗi lần chọn để tie không thiên vị thứ tự DB
         Map<String, Set<String>> chapterSkillIds = chapterSkillRepository.findByChapterIdIn(
                 chapters.stream().map(Chapter::getChapterId).toList()).stream()
@@ -429,7 +422,9 @@ public class AdaptiveQuizService {
         // Sinh lời khuyên dựa trên delta theta MỚI NHẤT của từng skill xuất hiện
         // trong toàn bộ attempt này (adaptive quiz cập nhật theta theo từng batch
         // 5 câu, nên phải gom theo skillId rồi lấy bản ghi mới nhất).
-        attempt.attachAdvice(aiService.generateAdvice(buildSkillDeltaItemsForAttempt(attempt.getAttemptId())));
+        if (adviceGeneratorTask != null) {
+            adviceGeneratorTask.generateAndAttachAdvice(attempt.getAttemptId(), buildSkillDeltaItemsForAttempt(attempt.getAttemptId()));
+        }
 
         quizRepository.save(attempt);
 
