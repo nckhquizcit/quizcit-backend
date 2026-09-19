@@ -43,8 +43,10 @@ public class AdminDataStatsController {
                                >= a.total_question)),
                   (SELECT COUNT(*) FROM skills WHERE deleted_at IS NULL)
                 """).getSingleResult();
+        long subjectCount = number(row[1]);
+        long actualSubjectCount = subjectCount > 0 ? subjectCount - 1 : 0;
         return ApiResponse.success(new AdminDataStatsResponse(
-                number(row[0]), number(row[1]), number(row[2]), number(row[3]), number(row[4]), number(row[5])));
+                number(row[0]), actualSubjectCount, number(row[2]), number(row[3]), number(row[4]), number(row[5])));
     }
 
     @GetMapping({"/profile", "/profile/me"})
