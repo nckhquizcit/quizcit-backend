@@ -41,6 +41,10 @@ public class EmailOutbox {
     public void markFailed(String error) {
         attemptCount++;
         lastError = error == null ? "Lỗi gửi email" : error.substring(0, Math.min(error.length(), 1000));
-        availableAt = ZonedDateTime.now().plusSeconds(Math.min(300, 5L * (1L << Math.min(attemptCount, 6))));
+        if (attemptCount >= 5) {
+            sentAt = ZonedDateTime.now(); // Đánh dấu hoàn tất (failed) để ngừng retry
+        } else {
+            availableAt = ZonedDateTime.now().plusSeconds(Math.min(300, 5L * (1L << Math.min(attemptCount, 6))));
+        }
     }
 }
