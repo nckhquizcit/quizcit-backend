@@ -80,6 +80,12 @@ class AttemptServiceImplementTest {
         when(contentRepository.findSubjectById(any())).thenReturn(Optional.of(
                 Subject.builder().subjectId("subject-1").name("Subject").build()));
 
+        when(quizRepository.countResponsesByAttemptIds(any())).thenReturn(java.util.Map.of(
+                "normal-complete", 1L,
+                "adaptive-partial", 5L,
+                "adaptive-complete", 40L
+        ));
+        
         List<QuizResultResponse> results = service.getUserResults("user-1");
 
         assertThat(results).extracting(QuizResultResponse::getAttemptId)

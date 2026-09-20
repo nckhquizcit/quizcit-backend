@@ -104,7 +104,7 @@ class AdaptiveQuizServiceTest {
             return mappings.stream().filter(mapping -> ids.contains(mapping.getQuestionId())).toList();
         });
         when(quizRepository.findQuestionsByChapterId("chapter-1")).thenReturn(bank);
-        when(quizRepository.findQuestionsByChapterIds(any())).thenReturn(bank);
+        when(quizRepository.findAnswerableQuestionsByChapterIds(any())).thenReturn(bank);
         when(quizRepository.findOptionsByQuestionIds(any())).thenAnswer(invocation -> {
             Collection<String> ids = invocation.getArgument(0);
             return options.stream().filter(option -> ids.contains(option.getQuestionId())).toList();
@@ -255,7 +255,7 @@ class AdaptiveQuizServiceTest {
                 .thenAnswer(invocation -> List.copyOf(persistedResponses));
         when(quizRepository.findQuizQuestionsByQuizId("quiz-1")).thenReturn(assigned);
         when(quizRepository.findQuestionsByChapterId("chapter-1")).thenReturn(questions);
-        when(quizRepository.findQuestionsByChapterIds(any())).thenReturn(questions);
+        when(quizRepository.findAnswerableQuestionsByChapterIds(any())).thenReturn(questions);
         when(quizRepository.findQuestionsByIds(any())).thenAnswer(invocation -> {
             Collection<String> ids = invocation.getArgument(0);
             return questions.stream().filter(question -> ids.contains(question.getQuestionId())).toList();
@@ -422,7 +422,7 @@ class AdaptiveQuizServiceTest {
                 mock(JpaUserUnlockedChapterRepository.class), mock(QuestionMapper.class), mock(AIService.class),
                 mock(JpaChapterSkillRepository.class), mock(JpaAdaptiveQuestionSelectionRepository.class),
                 new SubjectVisibilityGuard(contentRepository, quizRepository),
-                trackingRepository);
+                trackingRepository, null);
 
         AdaptiveEligibilityResponse eligibility = service.getEligibility("user-1", "subject-1");
 
@@ -454,7 +454,7 @@ class AdaptiveQuizServiceTest {
                 mock(JpaUserUnlockedChapterRepository.class), mock(QuestionMapper.class), mock(AIService.class),
                 mock(JpaChapterSkillRepository.class), mock(JpaAdaptiveQuestionSelectionRepository.class),
                 new SubjectVisibilityGuard(contentRepository, quizRepository),
-                trackingRepository);
+                trackingRepository, null);
 
         AdaptiveEligibilityResponse eligibility = service.getEligibility("user-1", "subject-1");
 
@@ -485,7 +485,7 @@ class AdaptiveQuizServiceTest {
                 mock(JpaUserUnlockedChapterRepository.class), mock(QuestionMapper.class), mock(AIService.class),
                 mock(JpaChapterSkillRepository.class), mock(JpaAdaptiveQuestionSelectionRepository.class),
                 new SubjectVisibilityGuard(contentRepository, quizRepository),
-                trackingRepository);
+                trackingRepository, null);
 
         assertThatThrownBy(() -> service.start("user-1", "subject-1", 15))
                 .isInstanceOf(AppException.class)
@@ -503,7 +503,7 @@ class AdaptiveQuizServiceTest {
                 mock(JpaUserUnlockedChapterRepository.class), mock(QuestionMapper.class), mock(AIService.class),
                 mock(JpaChapterSkillRepository.class), mock(JpaAdaptiveQuestionSelectionRepository.class),
                 new SubjectVisibilityGuard(contentRepository, quizRepository),
-                trackingRepository);
+                trackingRepository, null);
 
         service.recordStandardQuizCompleted("user-1", "subject-1");
 

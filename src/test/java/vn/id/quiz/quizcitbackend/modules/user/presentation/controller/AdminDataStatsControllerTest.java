@@ -21,7 +21,7 @@ class AdminDataStatsControllerTest {
         var stats = new AdminDataStatsController(entityManager, null).getDataStats().data();
 
         assertThat(stats.totalUsers()).isEqualTo(11);
-        assertThat(stats.totalSubjects()).isEqualTo(12);
+        assertThat(stats.totalSubjects()).isEqualTo(11);
         assertThat(stats.totalQuestions()).isEqualTo(13);
         assertThat(stats.totalQuizzes()).isEqualTo(14);
         assertThat(stats.totalAttempts()).isEqualTo(15);
