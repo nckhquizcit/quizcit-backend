@@ -148,6 +148,116 @@ public class AdminDataStatsController {
         return ApiResponse.success(response);
     }
 
+    @GetMapping("/questions/performance-stats")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional(readOnly = true)
+    public ApiResponse<java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse>> getQuestionPerformanceStats() {
+        return ApiResponse.success(fetchPerformanceStats(null, null));
+    }
+
+    @GetMapping("/questions/difficulty-tuning-preview")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional(readOnly = true)
+    public ApiResponse<java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse>> getDifficultyTuningPreview(
+            @org.springframework.web.bind.annotation.RequestParam double x,
+            @org.springframework.web.bind.annotation.RequestParam double y
+    ) {
+        return ApiResponse.success(fetchPerformanceStats(x, y));
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/questions/apply-difficulty-tuning")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional
+    public ApiResponse<Void> applyDifficultyTuning(@org.springframework.web.bind.annotation.RequestBody vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ApplyDifficultyTuningRequest request) {
+        java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse> stats = fetchPerformanceStats(request.x(), request.y());
+        for (vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse stat : stats) {
+            if (stat.newDifficulty() != null) {
+                entityManager.createNativeQuery("UPDATE questions SET difficulty_b = :newB WHERE question_id = :qId")
+                        .setParameter("newB", stat.newDifficulty())
+                        .setParameter("qId", stat.questionId())
+                        .executeUpdate();
+            }
+        }
+        return ApiResponse.success(null);
+    }
+
+    private java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse> fetchPerformanceStats(Double x, Double y) {
+        String nativeQuery = """
+                WITH eligible_responses AS (
+                    SELECT r.question_id, r.score
+                    FROM responses r
+                    JOIN attempts a ON a.attempt_id = r.attempt_id
+                    JOIN questions q ON q.question_id = r.question_id
+                    WHERE a.overall_theta IS NOT NULL 
+                      AND ABS(a.overall_theta - q.difficulty_b) <= 0.5
+                      AND q.deleted_at IS NULL
+                ),
+                stats AS (
+                    SELECT 
+                        question_id,
+                        COUNT(*) as total_eligible,
+                        SUM(CASE WHEN score = true THEN 1 ELSE 0 END) as correct_count,
+                        SUM(CASE WHEN score = false THEN 1 ELSE 0 END) as incorrect_count
+                    FROM eligible_responses
+                    GROUP BY question_id
+                )
+                SELECT 
+                    q.question_id, 
+                    q.content, 
+                    s.name as subject_name, 
+                    q.difficulty_b,
+                    st.correct_count,
+                    st.incorrect_count,
+                    st.total_eligible
+                FROM questions q
+                JOIN stats st ON st.question_id = q.question_id
+                LEFT JOIN subjects s ON s.subject_id = q.subject_id
+                WHERE q.deleted_at IS NULL
+                """;
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Object[]> results = entityManager.createNativeQuery(nativeQuery).getResultList();
+
+        java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse> list = new java.util.ArrayList<>();
+        for (Object[] row : results) {
+            String questionId = (String) row[0];
+            String content = (String) row[1];
+            String subjectName = (String) row[2];
+            double difficultyB = row[3] != null ? ((Number) row[3]).doubleValue() : 0.0;
+            long correctCount = row[4] != null ? ((Number) row[4]).longValue() : 0;
+            long incorrectCount = row[5] != null ? ((Number) row[5]).longValue() : 0;
+            long totalEligible = row[6] != null ? ((Number) row[6]).longValue() : 0;
+
+            double correctRate = totalEligible > 0 ? (double) correctCount / totalEligible * 100 : 0;
+            double incorrectRate = totalEligible > 0 ? (double) incorrectCount / totalEligible * 100 : 0;
+
+            Double newDifficulty = null;
+            if (x != null && y != null) {
+                if (correctRate > x) {
+                    newDifficulty = difficultyB > 0 ? difficultyB - (difficultyB * y / 100.0) : difficultyB - (y / 100.0);
+                } else if (incorrectRate > x) {
+                    newDifficulty = difficultyB > 0 ? difficultyB + (difficultyB * y / 100.0) : difficultyB + (y / 100.0);
+                } else {
+                    continue; 
+                }
+            }
+
+            list.add(new vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse(
+                    questionId,
+                    content,
+                    subjectName,
+                    difficultyB,
+                    correctCount,
+                    incorrectCount,
+                    totalEligible,
+                    correctRate,
+                    incorrectRate,
+                    newDifficulty
+            ));
+        }
+        return list;
+    }
+
     private long number(Object value) {
         return ((Number) value).longValue();
     }
