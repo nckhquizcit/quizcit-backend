@@ -73,6 +73,7 @@ class AttemptServiceImplementTest {
                 List.of(Response.create("normal-complete", "q1", "o1", true)),
                 responses("adaptive-partial", 5), responses("adaptive-complete", 40))
                 .flatMap(List::stream).toList());
+        when(quizRepository.countResponsesByAttemptIds(any())).thenReturn(java.util.Map.of("normal-complete", 1L, "adaptive-partial", 5L, "adaptive-complete", 40L));
         when(quizRepository.findQuizzesByIds(any())).thenReturn(List.of(
                 Quiz.builder().quizId("normal-quiz").type(QuizType.CHAPTER).build(),
                 Quiz.builder().quizId("adaptive-quiz").type(QuizType.ADAPTIVE).build()));
