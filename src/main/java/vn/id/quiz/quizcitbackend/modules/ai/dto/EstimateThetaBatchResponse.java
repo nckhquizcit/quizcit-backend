@@ -22,6 +22,7 @@ public record EstimateThetaBatchResponse(
     public record Item(
             @JsonProperty("key") String key,
             @JsonProperty("theta") double theta,
-            @JsonProperty("theta_scaled") double thetaScaled) {
+            @JsonProperty("theta_scaled") double thetaScaled,
+            @JsonProperty("theta_variance") double thetaVariance) {
     }
 }

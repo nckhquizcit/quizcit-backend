@@ -15,7 +15,7 @@ class AIServiceTest {
     @Test
     void estimateThetaShouldAddScaledThetaForRemoteResponse() {
         EstimateThetaRequest request = request(List.of(1), List.of(0.0), List.of(1.0));
-        AIService service = new AIService(new FakeAIClient(new EstimateThetaResponse(0.0, 0.0)));
+        AIService service = new AIService(new FakeAIClient(new EstimateThetaResponse(0.0, 2.0, 1.0)));
 
         EstimateThetaResponse response = service.estimateTheta(request);
 
@@ -42,7 +42,7 @@ class AIServiceTest {
             List<Double> difficulties,
             List<Double> weights) {
 
-        return new EstimateThetaRequest(0.0, responses, difficulties, weights);
+        return new EstimateThetaRequest(0.0, 1.0, responses, difficulties, weights);
     }
 
     private static final class FakeAIClient extends AIClient {

@@ -365,44 +365,47 @@ public class AdaptiveQuizService {
         }
     }
 
+    private static final double DEFAULT_THETA_VARIANCE = 1.0;
+
     private void updateTheta(Attempt attempt, Map<String, Question> questions, List<Response> responses) {
         Map<String, Response> responseMap = responses.stream().collect(Collectors.toMap(Response::getQuestionId, r -> r));
         Map<String, UserSkillAbility> abilitiesBySkill = progressRepository
                 .findUserSkillAbilities(attempt.getUserId()).stream()
                 .collect(Collectors.toMap(UserSkillAbility::getSkillId, ability -> ability));
-        Set<String> existingSkillIds = abilitiesBySkill.values().stream().map(UserSkillAbility::getSkillId)
-                .collect(Collectors.toSet());
+                
+        // Lọc đi dòng filter existingSkillIds để skill mới cũng được track
         Map<String, List<QuestionSkill>> mappings = progressRepository
                 .findQuestionSkillsByQuestionIds(questions.keySet()).stream()
-                .filter(mapping -> existingSkillIds.contains(mapping.getSkillId()))
                 .collect(Collectors.groupingBy(QuestionSkill::getSkillId));
+                
         Map<String, EstimateThetaRequest> requests = new LinkedHashMap<>();
         mappings.forEach((skillId, values) -> {
             UserSkillAbility ability = abilitiesBySkill.get(skillId);
             double oldTheta = (ability != null && ability.getTheta() != null) ? ability.getTheta() : 0.0;
+            double oldThetaVar = (ability != null && ability.getThetaVariance() != null) ? ability.getThetaVariance() : DEFAULT_THETA_VARIANCE;
             requests.put(skillId, new EstimateThetaRequest(
                 oldTheta,
+                oldThetaVar,
                 values.stream().map(value -> responseMap.get(value.getQuestionId()).isScore() ? 1 : 0).toList(),
                 values.stream().map(value -> questions.get(value.getQuestionId()).getDifficultyB()).toList(),
                 values.stream().map(QuestionSkill::getWeight).toList()));
         });
-        Map<String, Double> estimated = aiService.estimateThetaBatch(requests);
+        
+        Map<String, vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse> estimated = aiService.estimateThetaBatch(requests);
         List<UserSkillAbility> abilitiesToSave = new ArrayList<>();
         List<AbilityHistory> historiesToSave = new ArrayList<>();
-        estimated.forEach((skillId, newTheta) -> {
+        
+        estimated.forEach((skillId, result) -> {
             UserSkillAbility ability = abilitiesBySkill.computeIfAbsent(skillId,
                     ignored -> UserSkillAbility.create(attempt.getUserId(), skillId));
             double old = ability.getTheta() == null ? 0 : ability.getTheta();
-            double blendedTheta = newTheta; // Prior is already factored in via Bayesian updating
-            ability.updateAbility(blendedTheta);
+            
+            ability.updateAbility(result.theta(), result.thetaVariance());
             abilitiesToSave.add(ability);
             historiesToSave.add(AbilityHistory.create(
-                    attempt.getUserId(),
-                    skillId,
-                    blendedTheta,
-                    blendedTheta - old,
-                    attempt.getAttemptId()));
+                    attempt.getUserId(), skillId, result.theta(), result.theta() - old, attempt.getAttemptId()));
         });
+
         progressRepository.saveUserSkillAbilities(abilitiesToSave);
         progressRepository.saveAbilityHistories(historiesToSave);
     }

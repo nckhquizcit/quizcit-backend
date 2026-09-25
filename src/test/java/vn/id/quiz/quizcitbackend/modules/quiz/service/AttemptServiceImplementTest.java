@@ -105,14 +105,14 @@ class AttemptServiceImplementTest {
             public EstimateThetaResponse estimateTheta(
                     EstimateThetaRequest request) {
 
-                return new EstimateThetaResponse(2.5, 3.25);
+                return new EstimateThetaResponse(2.5, 3.25, 1.0);
             }
 
             @Override
             public EstimateThetaBatchResponse estimateThetaBatch(
                     EstimateThetaBatchRequest request) {
                 List<EstimateThetaBatchResponse.Item> items = request.items().stream()
-                        .map(item -> new EstimateThetaBatchResponse.Item(item.key(), 2.5, 3.25))
+                        .map(item -> new EstimateThetaBatchResponse.Item(item.key(), 2.5, 3.25, 1.0))
                         .toList();
                 return new EstimateThetaBatchResponse(items);
             }
@@ -157,7 +157,7 @@ class AttemptServiceImplementTest {
                 .visible(true)
                 .build();
         UserSkillAbility ability = UserSkillAbility.create("user-1", "skill-1");
-        ability.updateAbility(0.5);
+        ability.updateAbility(0.5, 1.0);
         List<AbilityHistory> savedHistories = new ArrayList<>();
 
         when(quizRepository.findAttemptByIdForUpdate("attempt-1"))
