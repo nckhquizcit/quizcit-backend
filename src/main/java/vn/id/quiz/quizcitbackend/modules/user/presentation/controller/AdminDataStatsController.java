@@ -152,24 +152,21 @@ public class AdminDataStatsController {
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional(readOnly = true)
     public ApiResponse<java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse>> getQuestionPerformanceStats() {
-        return ApiResponse.success(fetchPerformanceStats(null, null));
+        return ApiResponse.success(fetchPerformanceStats(false));
     }
 
     @GetMapping("/questions/difficulty-tuning-preview")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional(readOnly = true)
-    public ApiResponse<java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse>> getDifficultyTuningPreview(
-            @org.springframework.web.bind.annotation.RequestParam double x,
-            @org.springframework.web.bind.annotation.RequestParam double y
-    ) {
-        return ApiResponse.success(fetchPerformanceStats(x, y));
+    public ApiResponse<java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse>> getDifficultyTuningPreview() {
+        return ApiResponse.success(fetchPerformanceStats(true));
     }
 
     @org.springframework.web.bind.annotation.PostMapping("/questions/apply-difficulty-tuning")
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional
-    public ApiResponse<Void> applyDifficultyTuning(@org.springframework.web.bind.annotation.RequestBody vn.id.quiz.quizcitbackend.modules.user.presentation.dto.ApplyDifficultyTuningRequest request) {
-        java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse> stats = fetchPerformanceStats(request.x(), request.y());
+    public ApiResponse<Void> applyDifficultyTuning() {
+        java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse> stats = fetchPerformanceStats(true);
         for (vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse stat : stats) {
             if (stat.newDifficulty() != null) {
                 entityManager.createNativeQuery("UPDATE questions SET difficulty_b = :newB WHERE question_id = :qId")
@@ -181,10 +178,10 @@ public class AdminDataStatsController {
         return ApiResponse.success(null);
     }
 
-    private java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse> fetchPerformanceStats(Double x, Double y) {
+    private java.util.List<vn.id.quiz.quizcitbackend.modules.user.presentation.dto.QuestionPerformanceStatResponse> fetchPerformanceStats(boolean onlyShowTuned) {
         String nativeQuery = """
                 WITH eligible_responses AS (
-                    SELECT r.question_id, r.score
+                    SELECT r.question_id, r.score, a.overall_theta
                     FROM responses r
                     JOIN attempts a ON a.attempt_id = r.attempt_id
                     JOIN questions q ON q.question_id = r.question_id
@@ -197,7 +194,9 @@ public class AdminDataStatsController {
                         question_id,
                         COUNT(*) as total_eligible,
                         SUM(CASE WHEN score = true THEN 1 ELSE 0 END) as correct_count,
-                        SUM(CASE WHEN score = false THEN 1 ELSE 0 END) as incorrect_count
+                        SUM(CASE WHEN score = false THEN 1 ELSE 0 END) as incorrect_count,
+                        ARRAY_AGG(overall_theta)::text as theta_array_str,
+                        ARRAY_AGG(score)::text as score_array_str
                     FROM eligible_responses
                     GROUP BY question_id
                 )
@@ -208,7 +207,9 @@ public class AdminDataStatsController {
                     q.difficulty_b,
                     st.correct_count,
                     st.incorrect_count,
-                    st.total_eligible
+                    st.total_eligible,
+                    st.theta_array_str,
+                    st.score_array_str
                 FROM questions q
                 JOIN stats st ON st.question_id = q.question_id
                 LEFT JOIN subjects s ON s.subject_id = q.subject_id
@@ -227,18 +228,20 @@ public class AdminDataStatsController {
             long correctCount = row[4] != null ? ((Number) row[4]).longValue() : 0;
             long incorrectCount = row[5] != null ? ((Number) row[5]).longValue() : 0;
             long totalEligible = row[6] != null ? ((Number) row[6]).longValue() : 0;
+            String thetaStr = (String) row[7];
+            String scoreStr = (String) row[8];
 
             double correctRate = totalEligible > 0 ? (double) correctCount / totalEligible * 100 : 0;
             double incorrectRate = totalEligible > 0 ? (double) incorrectCount / totalEligible * 100 : 0;
 
             Double newDifficulty = null;
-            if (x != null && y != null) {
-                if (correctRate > x) {
-                    newDifficulty = difficultyB > 0 ? difficultyB - (difficultyB * y / 100.0) : difficultyB - (y / 100.0);
-                } else if (incorrectRate > x) {
-                    newDifficulty = difficultyB > 0 ? difficultyB + (difficultyB * y / 100.0) : difficultyB + (y / 100.0);
-                } else {
-                    continue; 
+            if (totalEligible >= 20 && thetaStr != null && scoreStr != null) {
+                newDifficulty = calculateNewDifficulty(difficultyB, thetaStr, scoreStr);
+            }
+            
+            if (onlyShowTuned) {
+                if (newDifficulty == null || Math.abs(newDifficulty - difficultyB) < 1e-4) {
+                    continue;
                 }
             }
 
@@ -256,6 +259,52 @@ public class AdminDataStatsController {
             ));
         }
         return list;
+    }
+
+    private Double calculateNewDifficulty(double bOld, String thetaStr, String scoreStr) {
+        String tStr = thetaStr.replace("{", "").replace("}", "");
+        String sStr = scoreStr.replace("{", "").replace("}", "");
+        if (tStr.isBlank() || sStr.isBlank()) return null;
+
+        String[] thetasRaw = tStr.split(",");
+        String[] scoresRaw = sStr.split(",");
+        int n = thetasRaw.length;
+        if (n < 20) return null;
+
+        double[] thetas = new double[n];
+        boolean[] scores = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            thetas[i] = Double.parseDouble(thetasRaw[i].trim());
+            scores[i] = scoresRaw[i].trim().equalsIgnoreCase("t") || scoresRaw[i].trim().equalsIgnoreCase("true");
+        }
+
+        double b = bOld;
+        for (int i = 0; i < 20; i++) {
+            double gradient = 0;
+            double hessian = 0;
+            for (int j = 0; j < n; j++) {
+                double p = 1.0 / (1.0 + Math.exp(-(thetas[j] - b)));
+                double y = scores[j] ? 1.0 : 0.0;
+                gradient -= (y - p);
+                hessian -= p * (1.0 - p);
+            }
+            if (hessian == 0) break;
+
+            double bNew = b - gradient / hessian;
+            bNew = Math.max(-4.0, Math.min(4.0, bNew));
+
+            if (Math.abs(bNew - b) < 1e-4) {
+                b = bNew;
+                break;
+            }
+            b = bNew;
+        }
+
+        double weightData = (double) n / (n + 30.0);
+        double bFinal = bOld * (1.0 - weightData) + b * weightData;
+        
+        bFinal = Math.max(-4.0, Math.min(4.0, bFinal));
+        return Math.round(bFinal * 10000.0) / 10000.0;
     }
 
     private long number(Object value) {
