@@ -280,7 +280,7 @@ class AdaptiveQuizServiceTest {
         when(aiService.estimateThetaBatch(anyMap())).thenAnswer(invocation -> {
             Map<String, EstimateThetaRequest> request = invocation.getArgument(0);
             thetaRequests.putAll(request);
-            return Map.of("owned-skill", 2.5);
+            return Map.of("owned-skill", new vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse(2.5, 3.5, 1.0));
         });
         when(progressRepository.save(any(AbilityHistory.class))).thenAnswer(invocation -> {
             AbilityHistory history = invocation.getArgument(0);
