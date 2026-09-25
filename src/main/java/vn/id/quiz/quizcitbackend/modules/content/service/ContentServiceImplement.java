@@ -85,7 +85,7 @@ public class ContentServiceImplement implements ContentService {
     // Phase 2 (P1): Lấy danh sách đề thi thuộc về 1 môn học
     // =========================================================================
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<QuizSummaryResponse> getQuizzesBySubject(String subjectId) {
         visibilityGuard.requireAccessibleSubject(subjectId);
         List<Quiz> quizzes = quizRepository.findNonAdaptiveQuizzesBySubjectId(subjectId);
@@ -97,7 +97,7 @@ public class ContentServiceImplement implements ContentService {
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<SubjectCatalogSummaryResponse> getSubjectCatalogSummary() {
         List<Subject> subjects = contentRepository.findAllSubject().stream()
                 .filter(s -> (visibilityGuard.isAdministrator() || s.isVisible())
@@ -288,7 +288,7 @@ public class ContentServiceImplement implements ContentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public TheoryReaderViewResponse getTheoryReaderView(String theoryId) {
         Theory theory = visibilityGuard.requireVisibleTheoryEntity(theoryId);
         Chapter chapter = visibilityGuard.requireVisibleChapterEntity(theory.getChapterId());
@@ -402,7 +402,7 @@ public class ContentServiceImplement implements ContentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     @Cacheable(value = CacheConfig.CACHE_SUBJECTS, key = "@subjectVisibilityGuard.isAdministrator() ? 'admin' : 'user'")
     public List<SubjectResponse> getAllSubject(){
         List<Subject> subjects = visibilityGuard.isAdministrator()
@@ -414,7 +414,7 @@ public class ContentServiceImplement implements ContentService {
                 .toList());
     }
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     @Cacheable(value = CacheConfig.CACHE_SUBJECT_DETAIL, key = "#subjectId")
     public SubjectResponse getSubjectById(String subjectId){
         Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
@@ -425,7 +425,7 @@ public class ContentServiceImplement implements ContentService {
         return mapper.toSubjectResponse(subject);
     }
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ChapterEditContextResponse getChapterEditContext(String chapterId) {
         Chapter chapter = visibilityGuard.requireVisibleChapterEntity(chapterId);
         Subject parentSubject = contentRepository.findSubjectById(chapter.getSubjectId())
@@ -462,7 +462,7 @@ public class ContentServiceImplement implements ContentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ChapterResponse getChapterById(String chapterId){
         Chapter chapter = visibilityGuard.requireVisibleChapterEntity(chapterId);
         contentRepository.findSubjectById(chapter.getSubjectId()).ifPresent(parentSubject -> {
@@ -474,7 +474,7 @@ public class ContentServiceImplement implements ContentService {
         return toChapterResponse(chapter);
     }
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public TheoryResponse getTheoryById(String theoryId){
         Theory theory = visibilityGuard.requireVisibleTheoryEntity(theoryId);
         return mapper.toTheoryResponse(theory);
@@ -546,7 +546,7 @@ public class ContentServiceImplement implements ContentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ChapterSummaryResponse> getChaptersSummary(String subjectId) {
         Subject subject = visibilityGuard.requireVisibleSubjectEntity(subjectId);
         if (ContentConstants.QUESTION_BANK_COURSE_CODE.equalsIgnoreCase(subject.getCourseCode())
@@ -605,7 +605,7 @@ public class ContentServiceImplement implements ContentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<FlatChapterResponse> getAllFlatChapters() {
         return contentRepository.findAllFlatChapters();
     }
@@ -624,7 +624,7 @@ public class ContentServiceImplement implements ContentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<TheoryResponse> getAllTheories(String chapterId){
         visibilityGuard.requireVisibleChapter(chapterId);
         List<Theory> theories = contentRepository.findAllTheory(chapterId);
