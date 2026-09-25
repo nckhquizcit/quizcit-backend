@@ -147,7 +147,7 @@ class SubjectVisibilityGuardTest {
         when(requirements.findByChapterIdIn(List.of("chapter-1", "chapter-2")))
                 .thenReturn(List.of(ChapterSkill.create("chapter-1", "skill-1", 0.5)));
         UserSkillAbility ability = UserSkillAbility.create("user-1", "skill-1");
-        ability.updateAbility(0.5);
+        ability.updateAbility(0.5, 1.0);
         when(abilities.findByUserId("user-1")).thenReturn(List.of(ability));
 
         accessGuard.requireVisibleChapter("chapter-2");
@@ -165,7 +165,7 @@ class SubjectVisibilityGuardTest {
         when(requirements.findByChapterIdIn(List.of("chapter-1", "chapter-2")))
                 .thenReturn(List.of(ChapterSkill.create("chapter-1", "skill-1", 0.5)));
         UserSkillAbility ability = UserSkillAbility.create("user-1", "skill-1");
-        ability.updateAbility(0.2);
+        ability.updateAbility(0.2, 1.0);
         when(abilities.findByUserId("user-1")).thenReturn(List.of(ability));
 
         assertThat(accessGuard.canAccessChapter("user-1", "chapter-2")).isFalse();
@@ -221,9 +221,9 @@ class SubjectVisibilityGuardTest {
                 ));
 
         // User có skill-1: 0.8 (đủ ch1, ch2), skill-2: 0.1 (CHƯA ĐỦ ch3), nhưng skill-3: 1.5 (làm ch5 điểm cao)
-        UserSkillAbility s1 = UserSkillAbility.create("user-1", "skill-1"); s1.updateAbility(0.8);
-        UserSkillAbility s2 = UserSkillAbility.create("user-1", "skill-2"); s2.updateAbility(0.1);
-        UserSkillAbility s3 = UserSkillAbility.create("user-1", "skill-3"); s3.updateAbility(1.5);
+        UserSkillAbility s1 = UserSkillAbility.create("user-1", "skill-1"); s1.updateAbility(0.8, 1.0);
+        UserSkillAbility s2 = UserSkillAbility.create("user-1", "skill-2"); s2.updateAbility(0.1, 1.0);
+        UserSkillAbility s3 = UserSkillAbility.create("user-1", "skill-3"); s3.updateAbility(1.5, 1.0);
         when(abilities.findByUserId("user-1")).thenReturn(List.of(s1, s2, s3));
 
         // Kiểm tra mở khóa:

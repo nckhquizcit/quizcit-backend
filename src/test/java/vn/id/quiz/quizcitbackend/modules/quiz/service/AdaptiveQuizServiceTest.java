@@ -83,7 +83,7 @@ class AdaptiveQuizServiceTest {
             mappings.add(QuestionSkill.create(id, "skill-1", 1.0, true));
         }
         UserSkillAbility ability = UserSkillAbility.create("user-1", "skill-1");
-        ability.updateAbility(0.0);
+        ability.updateAbility(0.0, 1.0);
         List<QuizQuestion> assigned = new ArrayList<>();
         List<AdaptiveQuestionSelection> selectionSnapshots = new ArrayList<>();
         AtomicReference<Quiz> savedQuiz = new AtomicReference<>();
@@ -239,7 +239,7 @@ class AdaptiveQuizServiceTest {
         }
 
         UserSkillAbility ability = UserSkillAbility.create("user-1", "owned-skill");
-        ability.updateAbility(0.5);
+        ability.updateAbility(0.5, 1.0);
         List<Response> persistedResponses = new ArrayList<>();
         List<AbilityHistory> histories = new ArrayList<>();
         List<AdaptiveQuestionSelection> selectionSnapshots = new ArrayList<>();

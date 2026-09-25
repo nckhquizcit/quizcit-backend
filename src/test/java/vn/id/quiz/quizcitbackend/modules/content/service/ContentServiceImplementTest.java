@@ -183,7 +183,7 @@ class ContentServiceImplementTest {
                         .skillId("skill-1").name("Skill 1").description("Desc").build()
         ));
         var ability = vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAbility.create("user-1", "skill-1");
-        ability.updateAbility(1.5);
+        ability.updateAbility(1.5, 1.0);
         when(abilities.findByUserId("user-1")).thenReturn(List.of(ability));
         when(unlocked.findByUserIdAndChapterIdIn("user-1", List.of("chapter-1"))).thenReturn(List.of());
 

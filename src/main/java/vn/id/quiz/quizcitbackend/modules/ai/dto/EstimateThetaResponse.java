@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record EstimateThetaResponse(
         @JsonProperty("theta") double theta,
-        @JsonProperty("theta_scaled") double thetaScaled
+        @JsonProperty("theta_scaled") double thetaScaled,
+        @JsonProperty("theta_variance") double thetaVariance
 ) {
 }

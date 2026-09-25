@@ -86,17 +86,18 @@ public class AIService {
         try {
             EstimateThetaResponse response = aiClient.estimateTheta(request);
             if (response != null) {
-                return withScaledTheta(response.theta());
+                return response;
             }
         } catch (RuntimeException ex) {
             log.warn("AI theta service unavailable, using local IRT fallback: {}", ex.getMessage());
         }
 
-        return withScaledTheta(computeThetaLocally(
+        return computeThetaLocally(
                 request == null ? DEFAULT_THETA : request.oldTheta(),
+                request == null ? 1.0 : request.oldThetaVar(),
                 request == null ? null : request.responses(),
                 request == null ? null : request.difficulties(),
-                request == null ? null : request.weights()));
+                request == null ? null : request.weights());
     }
 
     /**
@@ -110,8 +111,8 @@ public class AIService {
      * @param items map {@code skillId -> dữ liệu theta}
      * @return map {@code skillId -> theta raw}
      */
-    public Map<String, Double> estimateThetaBatch(Map<String, EstimateThetaRequest> items) {
-        Map<String, Double> result = new LinkedHashMap<>();
+    public Map<String, EstimateThetaResponse> estimateThetaBatch(Map<String, EstimateThetaRequest> items) {
+        Map<String, EstimateThetaResponse> result = new LinkedHashMap<>();
         if (items == null || items.isEmpty()) {
             return result;
         }
@@ -122,6 +123,7 @@ public class AIService {
             payload.add(new EstimateThetaBatchRequest.Item(
                     entry.getKey(),
                     req.oldTheta(),
+                    req.oldThetaVar(),
                     req.responses(),
                     req.difficulties(),
                     req.weights()));
@@ -133,23 +135,20 @@ public class AIService {
 
             if (response != null && response.results() != null) {
                 for (EstimateThetaBatchResponse.Item item : response.results()) {
-                    if (item != null && item.key() != null) {
-                        result.put(item.key(), item.theta());
-                    }
+                    result.put(item.key(), new EstimateThetaResponse(item.theta(), item.thetaScaled(), item.thetaVariance()));
                 }
             }
         } catch (RuntimeException ex) {
-            log.warn("AI theta batch service unavailable, using local IRT fallback: {}",
-                    ex.getMessage());
+            log.warn("AI batch theta service unavailable, using local IRT fallback: {}", ex.getMessage());
         }
 
-        // Bù các skill mà AI Service không trả về (batch lỗi 1 phần hoặc toàn bộ):
-        // tính bằng fallback nội bộ để đảm bảo mọi skill đều có theta.
+        // Điền thiếu bằng tính toán nội bộ
         for (Map.Entry<String, EstimateThetaRequest> entry : items.entrySet()) {
             result.computeIfAbsent(entry.getKey(), key -> {
                 EstimateThetaRequest req = entry.getValue();
                 return computeThetaLocally(
                         req.oldTheta(),
+                        req.oldThetaVar(),
                         req.responses(),
                         req.difficulties(),
                         req.weights());
@@ -268,22 +267,20 @@ public class AIService {
      * {@code [-4, 4]} rồi kiểm tra hội tụ trên {@code |new_theta - theta|}.
      */
 
-    double computeThetaLocally(
-            double oldTheta,
-            List<Integer> responses,
-            List<Double> difficulties,
-            List<Double> weights) {
+    EstimateThetaResponse computeThetaLocally(double oldTheta, double oldThetaVar, List<Integer> responses, List<Double> difficulties, List<Double> weights) {
 
         int itemCount = usableItemCount(responses, difficulties, weights);
+        double priorVar = oldThetaVar + 0.05;
         if (itemCount == 0) {
-            return oldTheta;
+            return new EstimateThetaResponse(oldTheta, ThetaUtils.toScaled(oldTheta), priorVar);
         }
 
         double theta = oldTheta;
+        double hessian = -1.0 / priorVar;
 
         for (int iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
             double gradient = 0.0;
-            double hessian = 0.0;
+            hessian = 0.0;
 
             for (int index = 0; index < itemCount; index++) {
                 int response = sanitizeResponse(responses.get(index));
@@ -295,15 +292,15 @@ public class AIService {
                 hessian -= weight * probability * (1.0 - probability);
             }
 
-            gradient -= (theta - oldTheta) / PRIOR_VARIANCE;
-            hessian -= 1.0 / PRIOR_VARIANCE;
+            gradient -= (theta - oldTheta) / priorVar;
+            hessian -= 1.0 / priorVar;
+
+            if (hessian == 0) break;
 
             double newTheta = theta - gradient / hessian;
-            // clamp về [-4, 4] mỗi vòng lặp, khớp np.clip trong AI/main.py.
             newTheta = Math.max(THETA_MIN, Math.min(THETA_MAX, newTheta));
 
             if (Math.abs(newTheta - theta) < CONVERGENCE_THRESHOLD) {
-
                 theta = newTheta;
                 break;
             }
@@ -311,7 +308,10 @@ public class AIService {
             theta = newTheta;
         }
 
-        return theta;
+        double thetaVariance = hessian != 0 ? -1.0 / hessian : priorVar;
+        thetaVariance = Math.max(1e-4, Math.min(4.0, thetaVariance));
+
+        return new EstimateThetaResponse(theta, ThetaUtils.toScaled(theta), thetaVariance);
     }
 
     private int usableItemCount(
@@ -327,7 +327,7 @@ public class AIService {
     }
 
     private EstimateThetaResponse withScaledTheta(double theta) {
-        return new EstimateThetaResponse(theta, ThetaUtils.toScaled(theta));
+        return new EstimateThetaResponse(theta, ThetaUtils.toScaled(theta), 1.0);
     }
 
     private int sanitizeResponse(Integer response) {

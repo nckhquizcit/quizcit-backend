@@ -37,6 +37,9 @@ public class UserSkillAbility {
 
     private Double theta;
 
+    @Column(name = "theta_variance")
+    private Double thetaVariance;
+
     @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
 
@@ -48,13 +51,16 @@ public class UserSkillAbility {
                 .userId(userId)
                 .skillId(skillId)
                 .theta(0.0)
+                .thetaVariance(1.0)
                 .updatedAt(ZonedDateTime.now())
                 .build();
     }
 
     public void updateAbility(
-            double theta) {
+            double theta,
+            double thetaVariance) {
         this.theta = theta;
+        this.thetaVariance = thetaVariance;
         this.updatedAt = ZonedDateTime.now();
     }
 }

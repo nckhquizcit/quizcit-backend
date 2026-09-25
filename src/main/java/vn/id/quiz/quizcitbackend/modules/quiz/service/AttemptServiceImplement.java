@@ -287,17 +287,19 @@ public class AttemptServiceImplement
             SkillThetaData data = entry.getValue();
             UserSkillAbility ability = abilityBySkill.get(skillId);
             double oldTheta = ability == null || ability.getTheta() == null ? 0.0 : ability.getTheta();
+            double oldThetaVar = ability == null || ability.getThetaVariance() == null ? 1.0 : ability.getThetaVariance();
 
             thetaRequests.put(
                     skillId,
                     new EstimateThetaRequest(
                             oldTheta,
+                            oldThetaVar,
                             data.getResponses(),
                             data.getDifficulties(),
                             data.getWeights()));
         }
 
-        Map<String, Double> estimatedThetaBySkill = aiService.estimateThetaBatch(thetaRequests);
+        Map<String, vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse> estimatedThetaBySkill = aiService.estimateThetaBatch(thetaRequests);
 
         Map<String, Double> skillThetaMap = new HashMap<>();
         List<UserSkillAbility> abilitiesToSave = new ArrayList<>();
@@ -305,7 +307,10 @@ public class AttemptServiceImplement
 
         for (var entry : skillMap.entrySet()) {
             String skillId = entry.getKey();
-            double estimatedTheta = estimatedThetaBySkill.getOrDefault(skillId, 0.0);
+            vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse estimatedTheta = estimatedThetaBySkill.get(skillId);
+            double newTheta = estimatedTheta != null ? estimatedTheta.theta() : 0.0;
+            double newThetaVar = estimatedTheta != null ? estimatedTheta.thetaVariance() : 1.0;
+            
             UserSkillAbility ability = abilityBySkill.get(skillId);
             double oldTheta = ability == null || ability.getTheta() == null ? 0.0 : ability.getTheta();
 
@@ -313,10 +318,10 @@ public class AttemptServiceImplement
                 ability = UserSkillAbility.create(attempt.getUserId(), skillId);
             }
 
-            double blendedTheta = estimatedTheta; // Prior is already factored in via Bayesian updating
+            double blendedTheta = newTheta; // Prior is already factored in via Bayesian updating
 
             skillThetaMap.put(skillId, blendedTheta);
-            ability.updateAbility(blendedTheta);
+            ability.updateAbility(blendedTheta, newThetaVar);
 
             abilitiesToSave.add(ability);
 

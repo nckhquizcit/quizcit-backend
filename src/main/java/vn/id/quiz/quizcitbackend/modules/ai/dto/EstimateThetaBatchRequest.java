@@ -27,6 +27,7 @@ public record EstimateThetaBatchRequest(
     public record Item(
             @NotNull String key,
             double oldTheta,
+            double oldThetaVar,
             @NotNull @NotEmpty List<Integer> responses,
             @NotNull @NotEmpty List<Double> difficulties,
             @NotNull @NotEmpty List<Double> weights) {
