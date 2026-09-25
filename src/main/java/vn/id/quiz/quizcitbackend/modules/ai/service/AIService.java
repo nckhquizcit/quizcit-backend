@@ -93,6 +93,7 @@ public class AIService {
         }
 
         return withScaledTheta(computeThetaLocally(
+                request == null ? DEFAULT_THETA : request.oldTheta(),
                 request == null ? null : request.responses(),
                 request == null ? null : request.difficulties(),
                 request == null ? null : request.weights()));
@@ -120,6 +121,7 @@ public class AIService {
             EstimateThetaRequest req = entry.getValue();
             payload.add(new EstimateThetaBatchRequest.Item(
                     entry.getKey(),
+                    req.oldTheta(),
                     req.responses(),
                     req.difficulties(),
                     req.weights()));
@@ -147,6 +149,7 @@ public class AIService {
             result.computeIfAbsent(entry.getKey(), key -> {
                 EstimateThetaRequest req = entry.getValue();
                 return computeThetaLocally(
+                        req.oldTheta(),
                         req.responses(),
                         req.difficulties(),
                         req.weights());
@@ -266,16 +269,17 @@ public class AIService {
      */
 
     double computeThetaLocally(
+            double oldTheta,
             List<Integer> responses,
             List<Double> difficulties,
             List<Double> weights) {
 
         int itemCount = usableItemCount(responses, difficulties, weights);
         if (itemCount == 0) {
-            return DEFAULT_THETA;
+            return oldTheta;
         }
 
-        double theta = DEFAULT_THETA;
+        double theta = oldTheta;
 
         for (int iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
             double gradient = 0.0;
@@ -291,7 +295,7 @@ public class AIService {
                 hessian -= weight * probability * (1.0 - probability);
             }
 
-            gradient -= theta / PRIOR_VARIANCE;
+            gradient -= (theta - oldTheta) / PRIOR_VARIANCE;
             hessian -= 1.0 / PRIOR_VARIANCE;
 
             double newTheta = theta - gradient / hessian;

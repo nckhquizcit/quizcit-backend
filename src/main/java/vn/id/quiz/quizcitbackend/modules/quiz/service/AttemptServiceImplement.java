@@ -52,9 +52,6 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 public class AttemptServiceImplement
         implements AttemptService {
 
-    private static final double NEW_THETA_WEIGHT = 0.3;
-    private static final double EXISTING_THETA_WEIGHT = 0.7;
-
     private final QuizRepository quizRepository;
     private final ContentRepository contentRepository;
     private final AttemptMapper mapper;
@@ -270,24 +267,6 @@ public class AttemptServiceImplement
         // Lưu tất cả response trong 1 batch insert.
         quizRepository.saveResponses(responsesToSave);
 
-        // Ước lượng theta cho TẤT CẢ skill trong 1 lần gọi AI (batch) thay vì
-        // gọi lặp từng skill → loại bỏ N lần round-trip HTTP (rất nặng khi
-        // AI Service cold start). Fallback nội bộ được áp dụng tự động cho
-        // các skill mà AI Service không trả về.
-        Map<String, EstimateThetaRequest> thetaRequests = new LinkedHashMap<>();
-        for (var entry : skillMap.entrySet()) {
-            SkillThetaData data = entry.getValue();
-            thetaRequests.put(
-                    entry.getKey(),
-                    new EstimateThetaRequest(
-                            data.getResponses(),
-                            data.getDifficulties(),
-                            data.getWeights()));
-        }
-
-        Map<String, Double> estimatedThetaBySkill = aiService.estimateThetaBatch(thetaRequests);
-
-        Map<String, Double> skillThetaMap = new HashMap<>();
         List<UserSkillAbility> loadedAbilities = progressRepository.findUserSkillAbilities(attempt.getUserId());
         if (loadedAbilities == null) {
             loadedAbilities = skillMap.keySet().stream().map(skillId -> progressRepository
@@ -297,40 +276,47 @@ public class AttemptServiceImplement
         Map<String, UserSkillAbility> abilityBySkill = loadedAbilities.stream()
                 .filter(ability -> skillMap.containsKey(ability.getSkillId()))
                 .collect(Collectors.toMap(UserSkillAbility::getSkillId, ability -> ability));
+
+        // Ước lượng theta cho TẤT CẢ skill trong 1 lần gọi AI (batch) thay vì
+        // gọi lặp từng skill → loại bỏ N lần round-trip HTTP (rất nặng khi
+        // AI Service cold start). Fallback nội bộ được áp dụng tự động cho
+        // các skill mà AI Service không trả về.
+        Map<String, EstimateThetaRequest> thetaRequests = new LinkedHashMap<>();
+        for (var entry : skillMap.entrySet()) {
+            String skillId = entry.getKey();
+            SkillThetaData data = entry.getValue();
+            UserSkillAbility ability = abilityBySkill.get(skillId);
+            double oldTheta = ability == null || ability.getTheta() == null ? 0.0 : ability.getTheta();
+
+            thetaRequests.put(
+                    skillId,
+                    new EstimateThetaRequest(
+                            oldTheta,
+                            data.getResponses(),
+                            data.getDifficulties(),
+                            data.getWeights()));
+        }
+
+        Map<String, Double> estimatedThetaBySkill = aiService.estimateThetaBatch(thetaRequests);
+
+        Map<String, Double> skillThetaMap = new HashMap<>();
         List<UserSkillAbility> abilitiesToSave = new ArrayList<>();
         List<AbilityHistory> historiesToSave = new ArrayList<>();
 
         for (var entry : skillMap.entrySet()) {
-
             String skillId = entry.getKey();
-
             double estimatedTheta = estimatedThetaBySkill.getOrDefault(skillId, 0.0);
-
             UserSkillAbility ability = abilityBySkill.get(skillId);
-
-            double oldTheta = 0.0;
+            double oldTheta = ability == null || ability.getTheta() == null ? 0.0 : ability.getTheta();
 
             if (ability == null) {
-
-                ability = UserSkillAbility.create(
-                        attempt.getUserId(),
-                        skillId);
-
-            } else {
-
-                oldTheta = ability.getTheta() == null ? 0.0 : ability.getTheta();
+                ability = UserSkillAbility.create(attempt.getUserId(), skillId);
             }
 
-            double blendedTheta = blendTheta(
-                    oldTheta,
-                    estimatedTheta);
+            double blendedTheta = estimatedTheta; // Prior is already factored in via Bayesian updating
 
-            skillThetaMap.put(
-                    skillId,
-                    blendedTheta);
-
-            ability.updateAbility(
-                    blendedTheta);
+            skillThetaMap.put(skillId, blendedTheta);
+            ability.updateAbility(blendedTheta);
 
             abilitiesToSave.add(ability);
 
@@ -448,6 +434,11 @@ public class AttemptServiceImplement
                                 : second,
                         LinkedHashMap::new));
 
+        Map<String, Double> totalDeltaBySkill = histories.stream()
+                .collect(Collectors.groupingBy(
+                        AbilityHistory::getSkillId,
+                        Collectors.summingDouble(AbilityHistory::getDelta)));
+
         Map<String, String> skillNames = skillRepository.findSkillNamesByIds(latestHistoryBySkill.keySet());
         if (skillNames == null || skillNames.isEmpty()) {
             List<Skill> loadedSkills = skillRepository.findByIds(latestHistoryBySkill.keySet());
@@ -462,7 +453,7 @@ public class AttemptServiceImplement
                         .skillId(history.getSkillId())
                         .skillName(finalSkillNames.get(history.getSkillId()))
                         .theta(history.getTheta())
-                        .delta(history.getDelta())
+                        .delta(totalDeltaBySkill.getOrDefault(history.getSkillId(), history.getDelta()))
                         .build())
                 .toList();
         Quiz quiz = quizRepository.findQuizById(attempt.getQuizId())
@@ -564,14 +555,6 @@ public class AttemptServiceImplement
                 .skillResults(List.of())
                 .questionResults(List.of())
                 .build();
-    }
-
-    private double blendTheta(
-            double oldTheta,
-            double newTheta) {
-
-        return newTheta * NEW_THETA_WEIGHT
-                + oldTheta * EXISTING_THETA_WEIGHT;
     }
 
     private List<QuestionResultResponse> buildQuestionResults(
