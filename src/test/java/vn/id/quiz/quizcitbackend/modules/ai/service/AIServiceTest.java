@@ -42,7 +42,7 @@ class AIServiceTest {
             List<Double> difficulties,
             List<Double> weights) {
 
-        return new EstimateThetaRequest(responses, difficulties, weights);
+        return new EstimateThetaRequest(0.0, responses, difficulties, weights);
     }
 
     private static final class FakeAIClient extends AIClient {

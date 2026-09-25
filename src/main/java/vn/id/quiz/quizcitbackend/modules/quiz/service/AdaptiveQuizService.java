@@ -57,8 +57,6 @@ import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
 public class AdaptiveQuizService {
     private static final int PAGE_SIZE = 5;
     private static final int INITIAL_BUFFER_SIZE = 10;
-    private static final double NEW_THETA_WEIGHT = 0.3;
-    private static final double OLD_THETA_WEIGHT = 0.7;
 
     private final QuizRepository quizRepository;
     private final ContentRepository contentRepository;
@@ -379,10 +377,15 @@ public class AdaptiveQuizService {
                 .filter(mapping -> existingSkillIds.contains(mapping.getSkillId()))
                 .collect(Collectors.groupingBy(QuestionSkill::getSkillId));
         Map<String, EstimateThetaRequest> requests = new LinkedHashMap<>();
-        mappings.forEach((skillId, values) -> requests.put(skillId, new EstimateThetaRequest(
+        mappings.forEach((skillId, values) -> {
+            UserSkillAbility ability = abilitiesBySkill.get(skillId);
+            double oldTheta = (ability != null && ability.getTheta() != null) ? ability.getTheta() : 0.0;
+            requests.put(skillId, new EstimateThetaRequest(
+                oldTheta,
                 values.stream().map(value -> responseMap.get(value.getQuestionId()).isScore() ? 1 : 0).toList(),
                 values.stream().map(value -> questions.get(value.getQuestionId()).getDifficultyB()).toList(),
-                values.stream().map(QuestionSkill::getWeight).toList())));
+                values.stream().map(QuestionSkill::getWeight).toList()));
+        });
         Map<String, Double> estimated = aiService.estimateThetaBatch(requests);
         List<UserSkillAbility> abilitiesToSave = new ArrayList<>();
         List<AbilityHistory> historiesToSave = new ArrayList<>();
@@ -390,7 +393,7 @@ public class AdaptiveQuizService {
             UserSkillAbility ability = abilitiesBySkill.computeIfAbsent(skillId,
                     ignored -> UserSkillAbility.create(attempt.getUserId(), skillId));
             double old = ability.getTheta() == null ? 0 : ability.getTheta();
-            double blendedTheta = blendTheta(old, newTheta);
+            double blendedTheta = newTheta; // Prior is already factored in via Bayesian updating
             ability.updateAbility(blendedTheta);
             abilitiesToSave.add(ability);
             historiesToSave.add(AbilityHistory.create(
@@ -402,10 +405,6 @@ public class AdaptiveQuizService {
         });
         progressRepository.saveUserSkillAbilities(abilitiesToSave);
         progressRepository.saveAbilityHistories(historiesToSave);
-    }
-
-    static double blendTheta(double oldTheta, double newTheta) {
-        return newTheta * NEW_THETA_WEIGHT + oldTheta * OLD_THETA_WEIGHT;
     }
 
     private void complete(Attempt attempt) {
@@ -452,6 +451,11 @@ public class AdaptiveQuizService {
                         (first, second) -> first.getCreatedAt().isAfter(second.getCreatedAt()) ? first : second,
                         LinkedHashMap::new));
 
+        Map<String, Double> totalDeltaBySkill = histories.stream()
+                .collect(Collectors.groupingBy(
+                        AbilityHistory::getSkillId,
+                        Collectors.summingDouble(AbilityHistory::getDelta)));
+
         Map<String, String> skillNames = skillRepository.findSkillNamesByIds(latestBySkill.keySet());
         if (skillNames == null || skillNames.isEmpty()) {
             List<Skill> skills = skillRepository.findByIds(latestBySkill.keySet());
@@ -461,11 +465,14 @@ public class AdaptiveQuizService {
         Map<String, String> finalSkillNames = skillNames;
 
         return latestBySkill.values().stream()
-                .map(history -> new SkillDeltaItem(
-                        finalSkillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
-                        history.getTheta() - history.getDelta(),
-                        history.getTheta(),
-                        history.getDelta()))
+                .map(history -> {
+                    double totalDelta = totalDeltaBySkill.getOrDefault(history.getSkillId(), history.getDelta());
+                    return new SkillDeltaItem(
+                            finalSkillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
+                            history.getTheta() - totalDelta,
+                            history.getTheta(),
+                            totalDelta);
+                })
                 .toList();
     }
     private Attempt requireAttempt(String userId, String attemptId) {

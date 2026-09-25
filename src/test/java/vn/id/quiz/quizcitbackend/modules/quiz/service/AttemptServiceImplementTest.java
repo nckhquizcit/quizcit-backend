@@ -208,18 +208,18 @@ class AttemptServiceImplementTest {
 
         QuizResultResponse result = service.submitQuiz(submitRequest());
 
-        double blendedTheta = 0.5 * 0.7 + 2.5 * 0.3;
-        assertThat(ability.getTheta()).isCloseTo(blendedTheta, within(0.0001));
+        double expectedTheta = 2.5; // No blending anymore, uses Bayesian update
+        assertThat(ability.getTheta()).isCloseTo(expectedTheta, within(0.0001));
         assertThat(savedHistories).hasSize(1);
         assertThat(savedHistories.get(0).getTheta())
-                .isCloseTo(blendedTheta, within(0.0001));
+                .isCloseTo(expectedTheta, within(0.0001));
         assertThat(savedHistories.get(0).getDelta())
-                .isCloseTo(blendedTheta - 0.5, within(0.0001));
+                .isCloseTo(expectedTheta - 0.5, within(0.0001));
         assertThat(attempt.getOverallTheta())
-                .isCloseTo(blendedTheta, within(0.0001));
+                .isCloseTo(expectedTheta, within(0.0001));
         assertThat(result.getSkillResults()).hasSize(1);
         assertThat(result.getSkillResults().get(0).getTheta())
-                .isCloseTo(blendedTheta, within(0.0001));
+                .isCloseTo(expectedTheta, within(0.0001));
     }
 
     @Test

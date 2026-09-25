@@ -19,12 +19,14 @@ public record EstimateThetaBatchRequest(
 
     /**
      * @param key          định danh item (skillId) để map kết quả
+     * @param oldTheta     theta cũ
      * @param responses    danh sách đáp án đúng (1) / sai (0)
      * @param difficulties danh sách độ khó (b) tương ứng từng câu
      * @param weights      danh sách trọng số tương ứng từng câu
      */
     public record Item(
             @NotNull String key,
+            double oldTheta,
             @NotNull @NotEmpty List<Integer> responses,
             @NotNull @NotEmpty List<Double> difficulties,
             @NotNull @NotEmpty List<Double> weights) {
