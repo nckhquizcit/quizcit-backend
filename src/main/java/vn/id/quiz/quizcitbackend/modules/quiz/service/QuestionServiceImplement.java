@@ -100,6 +100,10 @@ public class QuestionServiceImplement implements QuestionService {
         validateOptions(request.getOptions());
         validateSkillMappings(request.getSkills(), chapterId);
 
+        if (quizRepository.existsQuestionByChapterIdAndContent(chapterId, request.getContent())) {
+            throw new AppException("Câu hỏi với nội dung này đã tồn tại trong chương.", HttpStatus.CONFLICT);
+        }
+
         Question question = Question.create(
                 subjectId,
                 chapterId,

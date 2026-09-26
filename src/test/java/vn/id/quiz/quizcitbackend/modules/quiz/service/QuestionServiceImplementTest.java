@@ -397,6 +397,12 @@ class QuestionServiceImplementTest {
         private final List<QuestionSkill> savedQuestionSkills = new ArrayList<>();
         private List<Question> filteredQuestions = new ArrayList<>();
 
+
+        @Override
+        public boolean existsQuestionByChapterIdAndContent(String chapterId, String content) {
+            return false;
+        }
+
         @Override
         public List<Question> findQuestionsBySubjectIdAndChapterId(String subjectId, String chapterId) {
             return filteredQuestions;

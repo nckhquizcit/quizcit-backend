@@ -18,7 +18,7 @@ public interface JpaChapterSkillRepository extends JpaRepository<ChapterSkill, C
     @Query(value = """
         SELECT EXISTS (
           SELECT 1 FROM questions q JOIN question_skills qs ON qs.question_id = q.question_id
-          WHERE q.chapter_id = :chapterId AND qs.skill_id IN (:skillIds)
+          WHERE q.chapter_id = :chapterId AND qs.skill_id IN (:skillIds) AND q.deleted_at IS NULL
         )
         """, nativeQuery = true)
     boolean existsQuestionUsingRemovedSkills(String chapterId, Collection<String> skillIds);

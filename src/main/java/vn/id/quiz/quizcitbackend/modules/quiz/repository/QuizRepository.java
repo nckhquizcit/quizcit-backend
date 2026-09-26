@@ -30,6 +30,8 @@ public interface QuizRepository {
 
     List<Question> findQuestionsByChapterId(
             String chapterId);
+            
+    boolean existsQuestionByChapterIdAndContent(String chapterId, String content);
     default List<Question> findQuestionsByChapterIds(Collection<String> chapterIds) {
         return chapterIds == null ? List.of() : chapterIds.stream()
                 .flatMap(id -> findQuestionsByChapterId(id).stream()).toList();

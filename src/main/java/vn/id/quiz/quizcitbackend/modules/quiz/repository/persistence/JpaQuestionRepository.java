@@ -20,6 +20,7 @@ public interface JpaQuestionRepository extends JpaRepository<Question, String> {
     List<Question> findByChapterIdIn(Collection<String> chapterIds);
     List<Question> findBySubjectId(String subjectId);
     List<Question> findBySubjectIdAndChapterId(String subjectId, String chapterId);
+    boolean existsByChapterIdAndContent(String chapterId, String content);
 
     Page<Question> findBySubjectId(String subjectId, Pageable pageable);
     Page<Question> findByChapterId(String chapterId, Pageable pageable);

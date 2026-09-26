@@ -40,6 +40,11 @@ public class QuizRepositoryAdapter implements QuizRepository {
     }
 
     @Override
+    public boolean existsQuestionByChapterIdAndContent(String chapterId, String content) {
+        return jpaQuestionRepository.existsByChapterIdAndContent(chapterId, content);
+    }
+
+    @Override
     public List<Question> findQuestionsByChapterIds(java.util.Collection<String> chapterIds) {
         return chapterIds == null || chapterIds.isEmpty() ? List.of() : jpaQuestionRepository.findByChapterIdIn(chapterIds);
     }
