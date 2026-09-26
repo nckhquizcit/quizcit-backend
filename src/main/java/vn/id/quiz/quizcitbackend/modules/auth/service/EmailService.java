@@ -43,10 +43,15 @@ public class EmailService {
                         + "Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.\n\n"
                         + "Nếu bạn không yêu cầu thao tác này, hãy bỏ qua email."
         );
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
+            Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
             mailSender.send(message);
         } catch (MailException ex) {
+            log.error("Failed to send OTP email", ex);
             throw new AppException(ErrorMessages.EMAIL_SEND_FAILED, HttpStatus.INTERNAL_SERVER_ERROR);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
     }
 
@@ -65,10 +70,15 @@ public class EmailService {
                         + "Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.\n\n"
                         + "Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này."
         );
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
+            Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
             mailSender.send(message);
         } catch (MailException ex) {
+            log.error("Failed to send password reset OTP email", ex);
             throw new AppException(ErrorMessages.PASSWORD_RESET_EMAIL_SEND_FAILED, HttpStatus.INTERNAL_SERVER_ERROR);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
     }
 
