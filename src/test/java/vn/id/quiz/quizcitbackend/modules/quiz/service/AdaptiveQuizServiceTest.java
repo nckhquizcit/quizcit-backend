@@ -332,7 +332,7 @@ class AdaptiveQuizServiceTest {
             assertThat(snapshot.getBatchNumber()).isEqualTo(3);
         });
         assertThat(assigned.stream().map(QuizQuestion::getQuestionId).distinct().count()).isEqualTo(15);
-        assertThat(thetaRequests).containsOnlyKeys("owned-skill");
+        assertThat(thetaRequests).containsKeys("owned-skill", "unowned-skill");
         assertThat(thetaRequests.get("owned-skill").responses()).containsExactly(1, 1, 1, 1, 1);
         assertThat(ability.getTheta()).isCloseTo(2.5, within(0.000001));
         assertThat(histories).hasSize(1);

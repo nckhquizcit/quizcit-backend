@@ -45,9 +45,9 @@ public class EmailService {
         );
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+            Thread.currentThread().setContextClassLoader(jakarta.mail.Session.class.getClassLoader());
             mailSender.send(message);
-        } catch (MailException ex) {
+        } catch (Throwable ex) {
             log.error("Failed to send OTP email", ex);
             throw new AppException(ErrorMessages.EMAIL_SEND_FAILED, HttpStatus.INTERNAL_SERVER_ERROR);
         } finally {
@@ -72,9 +72,9 @@ public class EmailService {
         );
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+            Thread.currentThread().setContextClassLoader(jakarta.mail.Session.class.getClassLoader());
             mailSender.send(message);
-        } catch (MailException ex) {
+        } catch (Throwable ex) {
             log.error("Failed to send password reset OTP email", ex);
             throw new AppException(ErrorMessages.PASSWORD_RESET_EMAIL_SEND_FAILED, HttpStatus.INTERNAL_SERVER_ERROR);
         } finally {
