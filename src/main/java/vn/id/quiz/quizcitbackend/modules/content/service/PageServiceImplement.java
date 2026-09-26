@@ -37,7 +37,7 @@ public class PageServiceImplement implements PageService {
     private final ProgressRepository progressRepository;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public HomeSummaryResponse getHomeSummary(String userId) {
         if (userId == null || userId.isBlank()) {
             throw new AppException("Bạn cần đăng nhập để thực hiện thao tác này.", HttpStatus.UNAUTHORIZED);
