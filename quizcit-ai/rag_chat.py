@@ -243,10 +243,19 @@ def generate_chat_answer(data: ChatData) -> str:
 def _build_advice_prompt(data: AdviceData) -> str:
     lines = []
     for skill in data.skills:
-        direction = "tăng" if skill.delta > 0 else ("giảm" if skill.delta < 0 else "không đổi")
+        # Chuẩn hóa theta từ [-4, 4] sang [0, 4] để AI sinh nhận xét thân thiện với người dùng
+        old_scaled = (skill.old_theta + 4.0) / 2.0
+        new_scaled = (skill.new_theta + 4.0) / 2.0
+        
+        # Đảm bảo giá trị nằm trong [0, 4]
+        old_scaled = max(0.0, min(4.0, old_scaled))
+        new_scaled = max(0.0, min(4.0, new_scaled))
+        delta_scaled = new_scaled - old_scaled
+        
+        direction = "tăng" if delta_scaled > 0 else ("giảm" if delta_scaled < 0 else "không đổi")
         lines.append(
-            f"- {skill.skill_name}: theta {skill.old_theta:.2f} -> {skill.new_theta:.2f} "
-            f"({direction} {abs(skill.delta):.2f})"
+            f"- {skill.skill_name}: năng lực (thang 0-4) {old_scaled:.2f} -> {new_scaled:.2f} "
+            f"({direction} {abs(delta_scaled):.2f})"
         )
     skills_block = "\n".join(lines) if lines else "(không có dữ liệu kỹ năng)"
 
