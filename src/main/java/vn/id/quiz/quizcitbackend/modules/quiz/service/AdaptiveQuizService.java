@@ -470,11 +470,15 @@ public class AdaptiveQuizService {
         return latestBySkill.values().stream()
                 .map(history -> {
                     double totalDelta = totalDeltaBySkill.getOrDefault(history.getSkillId(), history.getDelta());
+                    double rawOld = history.getTheta() - totalDelta;
+                    double rawNew = history.getTheta();
+                    double scaledOld = vn.id.quiz.quizcitbackend.modules.ai.utils.ThetaUtils.toScaled(rawOld);
+                    double scaledNew = vn.id.quiz.quizcitbackend.modules.ai.utils.ThetaUtils.toScaled(rawNew);
                     return new SkillDeltaItem(
                             finalSkillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
-                            history.getTheta() - totalDelta,
-                            history.getTheta(),
-                            totalDelta);
+                            scaledOld,
+                            scaledNew,
+                            scaledNew - scaledOld);
                 })
                 .toList();
     }

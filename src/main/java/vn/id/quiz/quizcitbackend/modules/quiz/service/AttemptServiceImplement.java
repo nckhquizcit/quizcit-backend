@@ -403,11 +403,17 @@ public class AttemptServiceImplement
 
         Map<String, String> finalSkillNames = skillNames;
         return historiesToSave.stream()
-                .map(history -> new SkillDeltaItem(
-                        finalSkillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
-                        history.getTheta() - history.getDelta(),
-                        history.getTheta(),
-                        history.getDelta()))
+                .map(history -> {
+                    double rawOld = history.getTheta() - history.getDelta();
+                    double rawNew = history.getTheta();
+                    double scaledOld = vn.id.quiz.quizcitbackend.modules.ai.utils.ThetaUtils.toScaled(rawOld);
+                    double scaledNew = vn.id.quiz.quizcitbackend.modules.ai.utils.ThetaUtils.toScaled(rawNew);
+                    return new SkillDeltaItem(
+                            finalSkillNames.getOrDefault(history.getSkillId(), history.getSkillId()),
+                            scaledOld,
+                            scaledNew,
+                            scaledNew - scaledOld);
+                })
                 .toList();
     }
 

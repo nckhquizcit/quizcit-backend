@@ -243,14 +243,9 @@ def generate_chat_answer(data: ChatData) -> str:
 def _build_advice_prompt(data: AdviceData) -> str:
     lines = []
     for skill in data.skills:
-        # Chuẩn hóa theta từ [-4, 4] sang [0, 4] để AI sinh nhận xét thân thiện với người dùng
-        old_scaled = (skill.old_theta + 4.0) / 2.0
-        new_scaled = (skill.new_theta + 4.0) / 2.0
-        
-        # Đảm bảo giá trị nằm trong [0, 4]
-        old_scaled = max(0.0, min(4.0, old_scaled))
-        new_scaled = max(0.0, min(4.0, new_scaled))
-        delta_scaled = new_scaled - old_scaled
+        old_scaled = skill.old_theta
+        new_scaled = skill.new_theta
+        delta_scaled = skill.delta
         
         direction = "tăng" if delta_scaled > 0 else ("giảm" if delta_scaled < 0 else "không đổi")
         lines.append(
