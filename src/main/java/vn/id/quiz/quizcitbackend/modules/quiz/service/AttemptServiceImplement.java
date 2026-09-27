@@ -184,6 +184,9 @@ public class AttemptServiceImplement
                         .quizName(resumableQuizById.get(attempt.getQuizId()).getName())
                         .subjectName(subjectNameById.getOrDefault(
                                 resumableQuizById.get(attempt.getQuizId()).getSubjectId(), "Môn học"))
+                        .totalQuestion(attempt.getTotalQuestion())
+                        .answeredQuestion(attempt.getDraftAnswers().size())
+                        .startedAt(attempt.getCreatedAt())
                         .deadlineAt(attempt.getDeadlineAt())
                         .build())
                 .toList();

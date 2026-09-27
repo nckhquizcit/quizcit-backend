@@ -12,5 +12,8 @@ public class ActiveAttemptResponse {
     private String quizId;
     private String quizName;
     private String subjectName;
+    private int totalQuestion;
+    private int answeredQuestion;
+    private ZonedDateTime startedAt;
     private ZonedDateTime deadlineAt;
 }

@@ -109,11 +109,17 @@ class AttemptServiceImplementTest {
                 .containsExactly("sooner", "later");
         assertThat(result.getFirst().getQuizName()).isEqualTo("Quiz sooner");
         assertThat(result.getFirst().getSubjectName()).isEqualTo("Subject two");
+        assertThat(result.getFirst().getTotalQuestion()).isEqualTo(4);
+        assertThat(result.getFirst().getAnsweredQuestion()).isEqualTo(1);
+        assertThat(result.getFirst().getStartedAt()).isNotNull();
     }
 
     private static Attempt activeAttempt(String attemptId, String quizId, ZonedDateTime deadlineAt) {
         return Attempt.builder().attemptId(attemptId).userId("user-1").quizId(quizId)
-                .status(AttemptStatus.IN_PROGRESS).deadlineAt(deadlineAt).build();
+                .status(AttemptStatus.IN_PROGRESS).totalQuestion(4)
+                .createdAt(ZonedDateTime.now().minusMinutes(2))
+                .draftAnswers(Map.of("question-1", "option-1"))
+                .deadlineAt(deadlineAt).build();
     }
 
     private static Quiz quiz(String quizId, String name, String subjectId, QuizType type) {
