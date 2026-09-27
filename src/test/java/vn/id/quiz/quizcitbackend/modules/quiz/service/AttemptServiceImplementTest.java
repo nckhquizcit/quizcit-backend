@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,10 +28,12 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAb
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.ActiveAttemptResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitAnswerRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.AttemptStatus;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
@@ -40,6 +43,47 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 
 class AttemptServiceImplementTest {
+
+    @Test
+    void activeAttemptsListsEveryUnexpiredStandardAttemptInDeadlineOrder() {
+        QuizRepository quizRepository = mock(QuizRepository.class);
+        ContentRepository contentRepository = mock(ContentRepository.class);
+        AttemptServiceImplement service = new AttemptServiceImplement(
+                quizRepository, contentRepository, mock(AttemptMapper.class),
+                mock(ProgressRepository.class), mock(SkillRepository.class), mock(AIService.class));
+        ZonedDateTime now = ZonedDateTime.now();
+        Attempt later = activeAttempt("later", "quiz-later", now.plusMinutes(8));
+        Attempt sooner = activeAttempt("sooner", "quiz-sooner", now.plusMinutes(3));
+        Attempt expired = activeAttempt("expired", "quiz-expired", now.minusSeconds(1));
+        Attempt adaptive = activeAttempt("adaptive", "quiz-adaptive", now.plusMinutes(1));
+
+        when(quizRepository.findInProgressAttemptsByUserId("user-1"))
+                .thenReturn(List.of(later, adaptive, expired, sooner));
+        when(quizRepository.findQuizzesByIds(any())).thenReturn(List.of(
+                quiz("quiz-later", "Quiz later", "subject-1", QuizType.CHAPTER),
+                quiz("quiz-sooner", "Quiz sooner", "subject-2", QuizType.CHAPTER),
+                quiz("quiz-expired", "Quiz expired", "subject-1", QuizType.CHAPTER),
+                quiz("quiz-adaptive", "Adaptive", "subject-2", QuizType.ADAPTIVE)));
+        when(contentRepository.findSubjectsByIds(any())).thenReturn(List.of(
+                Subject.builder().subjectId("subject-1").name("Subject one").build(),
+                Subject.builder().subjectId("subject-2").name("Subject two").build()));
+
+        List<ActiveAttemptResponse> result = service.getActiveAttempts("user-1");
+
+        assertThat(result).extracting(ActiveAttemptResponse::getAttemptId)
+                .containsExactly("sooner", "later");
+        assertThat(result.getFirst().getQuizName()).isEqualTo("Quiz sooner");
+        assertThat(result.getFirst().getSubjectName()).isEqualTo("Subject two");
+    }
+
+    private static Attempt activeAttempt(String attemptId, String quizId, ZonedDateTime deadlineAt) {
+        return Attempt.builder().attemptId(attemptId).userId("user-1").quizId(quizId)
+                .status(AttemptStatus.IN_PROGRESS).deadlineAt(deadlineAt).build();
+    }
+
+    private static Quiz quiz(String quizId, String name, String subjectId, QuizType type) {
+        return Quiz.builder().quizId(quizId).name(name).subjectId(subjectId).type(type).build();
+    }
 
     @Test
     void expiredAttemptSubmitsTheServerSavedDraftInsteadOfLateClientAnswers() {

@@ -10,5 +10,7 @@ import lombok.Getter;
 public class ActiveAttemptResponse {
     private String attemptId;
     private String quizId;
+    private String quizName;
+    private String subjectName;
     private ZonedDateTime deadlineAt;
 }

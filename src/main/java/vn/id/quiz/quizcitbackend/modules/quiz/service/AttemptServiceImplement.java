@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Comparator;
 
 import java.util.List;
 import java.util.Map;
@@ -142,17 +143,44 @@ public class AttemptServiceImplement
     @Override
     @Transactional(readOnly = true)
     public List<ActiveAttemptResponse> getActiveAttempts(String userId) {
-        List<Attempt> active = quizRepository.findInProgressAttemptsByUserId(userId);
-        Set<String> quizIds = active.stream().map(Attempt::getQuizId).collect(Collectors.toSet());
-        Set<String> adaptiveQuizIds = quizRepository.findQuizzesByIds(quizIds).stream()
-                .filter(quiz -> quiz.getType() == QuizType.ADAPTIVE)
-                .map(Quiz::getQuizId)
-                .collect(Collectors.toSet());
-        return active.stream()
-                .filter(attempt -> !adaptiveQuizIds.contains(attempt.getQuizId()))
+        ZonedDateTime now = ZonedDateTime.now();
+        List<Attempt> active = quizRepository.findInProgressAttemptsByUserId(userId).stream()
+                .filter(attempt -> attempt.getDeadlineAt() == null || attempt.getDeadlineAt().isAfter(now))
+                .toList();
+        if (active.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, Quiz> quizById = quizRepository.findQuizzesByIds(
+                        active.stream().map(Attempt::getQuizId).collect(Collectors.toSet())).stream()
+                .collect(Collectors.toMap(Quiz::getQuizId, quiz -> quiz, (first, ignored) -> first));
+        List<Attempt> resumable = active.stream()
+                .filter(attempt -> {
+                    Quiz quiz = quizById.get(attempt.getQuizId());
+                    return quiz != null && quiz.getType() != QuizType.ADAPTIVE;
+                })
+                .sorted(Comparator.comparing(Attempt::getDeadlineAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        if (resumable.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, Quiz> resumableQuizById = resumable.stream()
+                .map(attempt -> quizById.get(attempt.getQuizId()))
+                .collect(Collectors.toMap(Quiz::getQuizId, quiz -> quiz, (first, ignored) -> first));
+        Map<String, String> subjectNameById = contentRepository.findSubjectsByIds(
+                        resumableQuizById.values().stream().map(Quiz::getSubjectId).collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(Subject::getSubjectId, Subject::getName, (first, ignored) -> first));
+
+        return resumable.stream()
                 .map(attempt -> ActiveAttemptResponse.builder()
                         .attemptId(attempt.getAttemptId())
                         .quizId(attempt.getQuizId())
+                        .quizName(resumableQuizById.get(attempt.getQuizId()).getName())
+                        .subjectName(subjectNameById.getOrDefault(
+                                resumableQuizById.get(attempt.getQuizId()).getSubjectId(), "Môn học"))
                         .deadlineAt(attempt.getDeadlineAt())
                         .build())
                 .toList();
