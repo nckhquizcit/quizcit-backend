@@ -109,7 +109,7 @@ public class AttemptServiceImplement
                         : current.getQuizName();
                 throw new AppException(
                         "Bạn còn bài \"" + currentQuizName
-                                + "\" đang làm dở. Hãy hoàn thành bài này trước khi bắt đầu bài khác.",
+                                + "\" đang làm. Hãy hoàn thành bài này trước khi bắt đầu bài khác.",
                         HttpStatus.CONFLICT);
             }
 
