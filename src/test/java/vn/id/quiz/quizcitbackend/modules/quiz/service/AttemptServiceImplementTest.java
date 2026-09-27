@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.ZonedDateTime;
@@ -30,6 +31,7 @@ import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.Skill;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.ActiveAttemptResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResultResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.StartQuizResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitAnswerRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
@@ -43,6 +45,39 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 
 class AttemptServiceImplementTest {
+
+    @Test
+    void startQuizStartsFreshAttemptWhenPriorAttemptAlreadyExpired() {
+        QuizRepository quizRepository = mock(QuizRepository.class);
+        ContentRepository contentRepository = mock(ContentRepository.class);
+        AttemptMapper mapper = mock(AttemptMapper.class);
+        AttemptServiceImplement service = new AttemptServiceImplement(
+                quizRepository, contentRepository, mapper,
+                mock(ProgressRepository.class), mock(SkillRepository.class), mock(AIService.class));
+        ZonedDateTime now = ZonedDateTime.now();
+        Quiz quiz = Quiz.builder().quizId("quiz-1").name("Quiz").subjectId("subject-1")
+                .chapterId("chapter-1").type(QuizType.CHAPTER).duration(15).build();
+        Attempt expired = activeAttempt("expired-attempt", "quiz-1", now.minusSeconds(1));
+
+        when(quizRepository.findQuizById("quiz-1")).thenReturn(Optional.of(quiz));
+        when(contentRepository.findSubjectById("subject-1")).thenReturn(Optional.of(
+                Subject.builder().subjectId("subject-1").name("Subject").visible(true).build()));
+        when(quizRepository.findLatestInProgressAttempt("user-1", "quiz-1"))
+                .thenReturn(Optional.of(expired));
+        when(quizRepository.findQuizQuestionsByQuizId("quiz-1")).thenReturn(List.of(
+                QuizQuestion.builder().quizId("quiz-1").questionId("question-1").indexOrder(1).build()));
+        when(mapper.toStartQuizResponse(any(Attempt.class))).thenAnswer(invocation -> {
+            Attempt attempt = invocation.getArgument(0);
+            return StartQuizResponse.builder().attemptId(attempt.getAttemptId())
+                    .deadlineAt(attempt.getDeadlineAt()).build();
+        });
+
+        StartQuizResponse result = service.startQuiz("user-1", "quiz-1");
+
+        assertThat(result.getAttemptId()).isNotEqualTo("expired-attempt");
+        assertThat(result.getDeadlineAt()).isAfter(now);
+        verify(quizRepository).save(any(Attempt.class));
+    }
 
     @Test
     void activeAttemptsListsEveryUnexpiredStandardAttemptInDeadlineOrder() {

@@ -102,7 +102,10 @@ public class AttemptServiceImplement
 
         Optional<Attempt> activeAttempt = quizRepository.findLatestInProgressAttempt(userId, quizId);
         if (activeAttempt.isPresent()) {
-            return mapper.toStartQuizResponse(activeAttempt.get());
+            Attempt current = activeAttempt.get();
+            if (current.getDeadlineAt() == null || current.getDeadlineAt().isAfter(ZonedDateTime.now())) {
+                return mapper.toStartQuizResponse(current);
+            }
         }
 
         List<QuizQuestion> questions = quizRepository.findQuizQuestionsByQuizId(
