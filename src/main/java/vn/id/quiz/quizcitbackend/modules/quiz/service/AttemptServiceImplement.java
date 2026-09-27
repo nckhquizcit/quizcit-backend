@@ -100,12 +100,24 @@ public class AttemptServiceImplement
                     HttpStatus.BAD_REQUEST);
         }
 
-        Optional<Attempt> activeAttempt = quizRepository.findLatestInProgressAttempt(userId, quizId);
-        if (activeAttempt.isPresent()) {
-            Attempt current = activeAttempt.get();
-            if (current.getDeadlineAt() == null || current.getDeadlineAt().isAfter(ZonedDateTime.now())) {
-                return mapper.toStartQuizResponse(current);
+        List<ActiveAttemptResponse> activeAttempts = getActiveAttempts(userId);
+        if (!activeAttempts.isEmpty()) {
+            ActiveAttemptResponse current = activeAttempts.getFirst();
+            if (!current.getQuizId().equals(quizId)) {
+                String currentQuizName = current.getQuizName() == null
+                        ? "bài kiểm tra khác"
+                        : current.getQuizName();
+                throw new AppException(
+                        "Bạn còn bài \"" + currentQuizName
+                                + "\" đang làm dở. Hãy hoàn thành bài này trước khi bắt đầu bài khác.",
+                        HttpStatus.CONFLICT);
             }
+
+            return quizRepository.findAttemptById(current.getAttemptId())
+                    .map(mapper::toStartQuizResponse)
+                    .orElseThrow(() -> new AppException(
+                            "Không tìm thấy lượt làm bài đang tiếp tục",
+                            HttpStatus.NOT_FOUND));
         }
 
         List<QuizQuestion> questions = quizRepository.findQuizQuestionsByQuizId(
@@ -164,6 +176,7 @@ public class AttemptServiceImplement
                 })
                 .sorted(Comparator.comparing(Attempt::getDeadlineAt,
                         Comparator.nullsLast(Comparator.naturalOrder())))
+                .limit(1)
                 .toList();
         if (resumable.isEmpty()) {
             return List.of();

@@ -80,7 +80,7 @@ class AttemptServiceImplementTest {
     }
 
     @Test
-    void activeAttemptsListsEveryUnexpiredStandardAttemptInDeadlineOrder() {
+    void activeAttemptsListsOnlyTheSoonestExpiringUnexpiredStandardAttempt() {
         QuizRepository quizRepository = mock(QuizRepository.class);
         ContentRepository contentRepository = mock(ContentRepository.class);
         AttemptServiceImplement service = new AttemptServiceImplement(
@@ -106,7 +106,7 @@ class AttemptServiceImplementTest {
         List<ActiveAttemptResponse> result = service.getActiveAttempts("user-1");
 
         assertThat(result).extracting(ActiveAttemptResponse::getAttemptId)
-                .containsExactly("sooner", "later");
+                .containsExactly("sooner");
         assertThat(result.getFirst().getQuizName()).isEqualTo("Quiz sooner");
         assertThat(result.getFirst().getSubjectName()).isEqualTo("Subject two");
         assertThat(result.getFirst().getTotalQuestion()).isEqualTo(4);
