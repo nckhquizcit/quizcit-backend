@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Optional;
+import java.time.ZonedDateTime;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,8 @@ import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.UserSkillAb
 import vn.id.quiz.quizcitbackend.modules.progress.repository.ProgressRepository;
 import vn.id.quiz.quizcitbackend.modules.progress.repository.SkillRepository;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.option.OptionResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.ActiveAttemptResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.AttemptStateResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuestionResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.skill.SkillResultResponse;
@@ -38,6 +41,7 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.StartQuizRes
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitAnswerRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.AttemptStatus;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
@@ -95,6 +99,11 @@ public class AttemptServiceImplement
                     HttpStatus.BAD_REQUEST);
         }
 
+        Optional<Attempt> activeAttempt = quizRepository.findLatestInProgressAttempt(userId, quizId);
+        if (activeAttempt.isPresent()) {
+            return mapper.toStartQuizResponse(activeAttempt.get());
+        }
+
         List<QuizQuestion> questions = quizRepository.findQuizQuestionsByQuizId(
                 quizId);
 
@@ -107,11 +116,85 @@ public class AttemptServiceImplement
         Attempt attempt = Attempt.create(
                 userId,
                 quizId,
-                questions.size());
+                questions.size(),
+                quiz.getDuration());
 
         quizRepository.save(attempt);
 
         return mapper.toStartQuizResponse(attempt);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AttemptStateResponse getAttemptState(String attemptId) {
+        Attempt attempt = quizRepository.findAttemptById(attemptId)
+                .orElseThrow(() -> new AppException("Không tìm thấy attempt", HttpStatus.NOT_FOUND));
+        return AttemptStateResponse.builder()
+                .attemptId(attempt.getAttemptId())
+                .quizId(attempt.getQuizId())
+                .totalQuestion(attempt.getTotalQuestion())
+                .status(attempt.getStatus())
+                .deadlineAt(attempt.getDeadlineAt())
+                .answers(Map.copyOf(attempt.getDraftAnswers()))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ActiveAttemptResponse> getActiveAttempts(String userId) {
+        List<Attempt> active = quizRepository.findInProgressAttemptsByUserId(userId);
+        Set<String> quizIds = active.stream().map(Attempt::getQuizId).collect(Collectors.toSet());
+        Set<String> adaptiveQuizIds = quizRepository.findQuizzesByIds(quizIds).stream()
+                .filter(quiz -> quiz.getType() == QuizType.ADAPTIVE)
+                .map(Quiz::getQuizId)
+                .collect(Collectors.toSet());
+        return active.stream()
+                .filter(attempt -> !adaptiveQuizIds.contains(attempt.getQuizId()))
+                .map(attempt -> ActiveAttemptResponse.builder()
+                        .attemptId(attempt.getAttemptId())
+                        .quizId(attempt.getQuizId())
+                        .deadlineAt(attempt.getDeadlineAt())
+                        .build())
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void saveDraft(String userId, String attemptId, Map<String, String> answers) {
+        Attempt attempt = quizRepository.findAttemptByIdForUpdate(attemptId)
+                .orElseThrow(() -> new AppException("Không tìm thấy attempt", HttpStatus.NOT_FOUND));
+        if (!attempt.getUserId().equals(userId)) {
+            throw new AppException("Bạn không có quyền thực hiện thao tác này.", HttpStatus.FORBIDDEN);
+        }
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS
+                || (attempt.getDeadlineAt() != null && !attempt.getDeadlineAt().isAfter(ZonedDateTime.now()))) {
+            throw new AppException("Đã hết thời gian làm bài; hệ thống đang nộp bài.", HttpStatus.CONFLICT);
+        }
+
+        Set<String> questionIds = quizRepository.findQuizQuestionsByQuizId(attempt.getQuizId()).stream()
+                .map(QuizQuestion::getQuestionId)
+                .collect(Collectors.toSet());
+        Map<String, String> selectedAnswers = new HashMap<>();
+        for (var answer : answers.entrySet()) {
+            if (!questionIds.contains(answer.getKey())) {
+                throw new AppException("Câu trả lời không thuộc đề thi đang làm", HttpStatus.BAD_REQUEST);
+            }
+            if (answer.getValue() != null && !answer.getValue().isBlank()) {
+                selectedAnswers.put(answer.getKey(), answer.getValue());
+            }
+        }
+
+        Map<String, Set<String>> optionsByQuestion = quizRepository.findOptionsByQuestionIds(questionIds).stream()
+                .collect(Collectors.groupingBy(Option::getQuestionId,
+                        Collectors.mapping(Option::getOptionId, Collectors.toSet())));
+        for (var answer : selectedAnswers.entrySet()) {
+            if (!optionsByQuestion.getOrDefault(answer.getKey(), Set.of()).contains(answer.getValue())) {
+                throw new AppException("Đáp án đã chọn không thuộc câu hỏi trong đề thi", HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        attempt.saveDraftAnswers(selectedAnswers);
+        quizRepository.save(attempt);
     }
 
     @Override
@@ -155,6 +238,9 @@ public class AttemptServiceImplement
             return getResult(attempt.getAttemptId());
         }
 
+        boolean timedOut = attempt.getDeadlineAt() != null
+                && !attempt.getDeadlineAt().isAfter(ZonedDateTime.now());
+
         List<QuizQuestion> quizQuestions = quizRepository.findQuizQuestionsByQuizId(
                 attempt.getQuizId()); //lấy danh sách câu hỏi
 
@@ -170,18 +256,17 @@ public class AttemptServiceImplement
                     HttpStatus.BAD_REQUEST);
         }
 
-        Map<String, String> submittedAnswers = new HashMap<>();
+        Map<String, String> submittedAnswers = timedOut
+                ? new HashMap<>(attempt.getDraftAnswers())
+                : new HashMap<>();
 
-        for (SubmitAnswerRequest answer : request.getAnswers()) {
-            if (!quizQuestionIds.contains(answer.getQuestionId())) {
-                throw new AppException(
-                        "Câu trả lời không thuộc đề thi đang nộp",
-                        HttpStatus.BAD_REQUEST);
+        if (!timedOut) {
+            for (SubmitAnswerRequest answer : request.getAnswers()) {
+                if (!quizQuestionIds.contains(answer.getQuestionId())) {
+                    throw new AppException("Câu trả lời không thuộc đề thi đang nộp", HttpStatus.BAD_REQUEST);
+                }
+                submittedAnswers.putIfAbsent(answer.getQuestionId(), answer.getOptionId());
             }
-
-            submittedAnswers.putIfAbsent(
-                    answer.getQuestionId(),
-                    answer.getOptionId());
         }
 
         // Batch load: câu hỏi, option, skill mapping cho toàn bộ đề thi
@@ -247,6 +332,9 @@ public class AttemptServiceImplement
                     .getOrDefault(questionId, List.of());
 
             for (QuestionSkill qs : mappings) {
+                if (option == null) {
+                    continue;
+                }
 
                 SkillThetaData data = skillMap.computeIfAbsent(
                         qs.getSkillId(),
@@ -299,7 +387,9 @@ public class AttemptServiceImplement
                             data.getWeights()));
         }
 
-        Map<String, vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse> estimatedThetaBySkill = aiService.estimateThetaBatch(thetaRequests);
+        Map<String, vn.id.quiz.quizcitbackend.modules.ai.dto.EstimateThetaResponse> estimatedThetaBySkill = thetaRequests.isEmpty()
+                ? Map.of()
+                : aiService.estimateThetaBatch(thetaRequests);
 
         Map<String, Double> skillThetaMap = new HashMap<>();
         List<UserSkillAbility> abilitiesToSave = new ArrayList<>();
@@ -359,10 +449,13 @@ public class AttemptServiceImplement
         attempt.complete(
                 rawScore,
                 overallTheta);
+        if (timedOut) {
+            attempt.markTimedOut();
+        }
 
         // MỚI: sinh lời khuyên cải thiện dựa trên delta theta từng skill vừa tính,
         // lưu 1 lần tại thời điểm nộp bài (không tính lại mỗi lần xem kết quả).
-        if (adviceGeneratorTask != null) {
+        if (adviceGeneratorTask != null && !historiesToSave.isEmpty()) {
             adviceGeneratorTask.generateAndAttachAdvice(attempt.getAttemptId(), buildSkillDeltaItems(historiesToSave));
         }
         
@@ -487,7 +580,7 @@ public class AttemptServiceImplement
                 .quizName(resolvedQuizName)
                 .subjectName(resolvedSubjectName)
                 .durationMinutes(durationMinutes)
-                .submittedAt(attempt.getCreatedAt())
+                .submittedAt(attempt.getSubmittedAt() == null ? attempt.getCreatedAt() : attempt.getSubmittedAt())
                 .rawScore(attempt.getRawScore())
                 .totalQuestion(attempt.getTotalQuestion())
                 .overallTheta(attempt.getOverallTheta())
@@ -559,7 +652,7 @@ public class AttemptServiceImplement
                 .quizName(resolvedQuizName)
                 .subjectName(resolvedSubjectName)
                 .durationMinutes(durationMinutes)
-                .submittedAt(attempt.getCreatedAt())
+                .submittedAt(attempt.getSubmittedAt() == null ? attempt.getCreatedAt() : attempt.getSubmittedAt())
                 .rawScore(attempt.getRawScore())
                 .totalQuestion(attempt.getTotalQuestion())
                 .overallTheta(attempt.getOverallTheta())

@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.AttemptStatus;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
@@ -166,6 +167,22 @@ public interface QuizRepository {
 
     List<Attempt> findAttemptsByUserId(
             String userId);
+
+    default List<Attempt> findInProgressAttemptsByUserId(String userId) {
+        return findAttemptsByUserId(userId).stream()
+                .filter(attempt -> attempt.getStatus() == AttemptStatus.IN_PROGRESS)
+                .toList();
+    }
+
+    default Optional<Attempt> findLatestInProgressAttempt(String userId, String quizId) {
+        return findInProgressAttemptsByUserId(userId).stream()
+                .filter(attempt -> attempt.getQuizId().equals(quizId))
+                .findFirst();
+    }
+
+    default List<Attempt> findExpiredInProgressAttempts(java.time.ZonedDateTime now) {
+        return List.of();
+    }
 
     // =========================================================================
     // Response

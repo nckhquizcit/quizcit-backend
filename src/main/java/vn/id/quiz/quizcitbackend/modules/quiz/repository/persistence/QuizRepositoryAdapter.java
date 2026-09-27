@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import vn.id.quiz.quizcitbackend.modules.content.repository.persistence.ChapterCountProjection;
 import vn.id.quiz.quizcitbackend.modules.progress.presentation.model.QuestionSkill;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Attempt;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.AttemptStatus;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Option;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Question;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Quiz;
@@ -283,6 +284,24 @@ public class QuizRepositoryAdapter implements QuizRepository {
 
         return jpaAttemptRepository
                 .findByUserId(userId);
+    }
+
+    @Override
+    public List<Attempt> findInProgressAttemptsByUserId(String userId) {
+        return jpaAttemptRepository.findByUserIdAndStatusOrderByCreatedAtDesc(
+                userId, AttemptStatus.IN_PROGRESS);
+    }
+
+    @Override
+    public Optional<Attempt> findLatestInProgressAttempt(String userId, String quizId) {
+        return jpaAttemptRepository.findFirstByUserIdAndQuizIdAndStatusOrderByCreatedAtDesc(
+                userId, quizId, AttemptStatus.IN_PROGRESS);
+    }
+
+    @Override
+    public List<Attempt> findExpiredInProgressAttempts(java.time.ZonedDateTime now) {
+        return jpaAttemptRepository.findByStatusAndDeadlineAtLessThanEqual(
+                AttemptStatus.IN_PROGRESS, now);
     }
 
     // Response

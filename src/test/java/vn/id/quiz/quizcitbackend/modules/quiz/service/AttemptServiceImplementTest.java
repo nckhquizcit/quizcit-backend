@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,100 @@ import vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.Response;
 import vn.id.quiz.quizcitbackend.modules.quiz.repository.QuizRepository;
 
 class AttemptServiceImplementTest {
+
+    @Test
+    void expiredAttemptSubmitsTheServerSavedDraftInsteadOfLateClientAnswers() {
+        QuizRepository quizRepository = mock(QuizRepository.class);
+        ContentRepository contentRepository = mock(ContentRepository.class);
+        ProgressRepository progressRepository = mock(ProgressRepository.class);
+        SkillRepository skillRepository = mock(SkillRepository.class);
+        AIService aiService = mock(AIService.class);
+        AttemptMapper mapper = mock(AttemptMapper.class);
+        AttemptServiceImplement service = new AttemptServiceImplement(
+                quizRepository, contentRepository, mapper, progressRepository,
+                skillRepository, aiService);
+
+        Attempt attempt = Attempt.builder()
+                .attemptId("expired-1")
+                .userId("user-1")
+                .quizId("quiz-1")
+                .totalQuestion(1)
+                .status(vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.AttemptStatus.IN_PROGRESS)
+                .deadlineAt(java.time.ZonedDateTime.now().minusSeconds(1))
+                .draftAnswers(new java.util.HashMap<>(Map.of("question-1", "option-correct")))
+                .build();
+        Question question = Question.builder()
+                .questionId("question-1")
+                .subjectId("subject-1")
+                .chapterId("chapter-1")
+                .content("Question")
+                .difficultyB(0.5)
+                .build();
+        Option correctOption = Option.builder()
+                .optionId("option-correct")
+                .questionId("question-1")
+                .content("Correct")
+                .isCorrected(true)
+                .build();
+        Option lateOption = Option.builder()
+                .optionId("option-late")
+                .questionId("question-1")
+                .content("Late answer")
+                .isCorrected(false)
+                .build();
+        Quiz quiz = Quiz.builder()
+                .quizId("quiz-1")
+                .subjectId("subject-1")
+                .chapterId("chapter-1")
+                .name("Timed quiz")
+                .type(QuizType.CHAPTER)
+                .duration(10)
+                .build();
+        Subject subject = Subject.builder()
+                .subjectId("subject-1")
+                .name("Subject")
+                .visible(true)
+                .build();
+        List<Response> savedResponses = new ArrayList<>();
+
+        when(quizRepository.findAttemptByIdForUpdate("expired-1")).thenReturn(Optional.of(attempt));
+        when(quizRepository.findAttemptById("expired-1")).thenReturn(Optional.of(attempt));
+        when(quizRepository.findQuizById("quiz-1")).thenReturn(Optional.of(quiz));
+        when(contentRepository.findSubjectById("subject-1")).thenReturn(Optional.of(subject));
+        when(quizRepository.findQuizQuestionsByQuizId("quiz-1")).thenReturn(List.of(
+                QuizQuestion.builder().quizId("quiz-1").questionId("question-1").indexOrder(1).build()));
+        when(quizRepository.findQuestionsByIds(any())).thenReturn(List.of(question));
+        when(quizRepository.findOptionsByQuestionIds(any())).thenReturn(List.of(correctOption, lateOption));
+        when(quizRepository.findResponsesByAttemptId("expired-1")).thenAnswer(invocation -> List.copyOf(savedResponses));
+        when(quizRepository.saveResponses(any())).thenAnswer(invocation -> {
+            savedResponses.addAll(invocation.getArgument(0));
+            return List.copyOf(savedResponses);
+        });
+        when(progressRepository.findQuestionSkillsByQuestionIds(any())).thenReturn(List.of());
+        when(progressRepository.findUserSkillAbilities("user-1")).thenReturn(List.of());
+        when(progressRepository.findAbilityHistoriesByAttemptId("expired-1")).thenReturn(List.of());
+        when(skillRepository.findSkillNamesByIds(any())).thenReturn(Map.of());
+        when(skillRepository.findByIds(any())).thenReturn(List.of());
+
+        SubmitAnswerRequest lateAnswer = new SubmitAnswerRequest();
+        lateAnswer.setQuestionId("question-1");
+        lateAnswer.setOptionId("option-late");
+        SubmitQuizRequest request = new SubmitQuizRequest();
+        request.setAttemptId("expired-1");
+        request.setQuizId("quiz-1");
+        request.setAnswers(List.of(lateAnswer));
+
+        QuizResultResponse result = service.submitQuiz(request);
+
+        assertThat(savedResponses).singleElement()
+                .satisfies(response -> {
+                    assertThat(response.getOptionId()).isEqualTo("option-correct");
+                    assertThat(response.isScore()).isTrue();
+                });
+        assertThat(attempt.getStatus())
+                .isEqualTo(vn.id.quiz.quizcitbackend.modules.quiz.presentation.model.AttemptStatus.TIMED_OUT);
+        assertThat(result.getRawScore()).isEqualTo(1);
+    }
 
     @Test
     void historyContainsOnlyCompletedNormalAndAdaptiveAttempts() {

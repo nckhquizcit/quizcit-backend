@@ -4,6 +4,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.QuizResultResponse;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.StartQuizResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.ActiveAttemptResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.AttemptStateResponse;
+import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SaveAttemptDraftRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.presentation.dto.quiz.SubmitQuizRequest;
 import vn.id.quiz.quizcitbackend.modules.quiz.service.AttemptService;
 import vn.id.quiz.quizcitbackend.shared.exceptions.AppException;
@@ -37,6 +40,35 @@ public class AttemptController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/attempts/{attemptId}")
+    public ResponseEntity<ApiResponse<AttemptStateResponse>> getAttemptState(
+            @PathVariable String attemptId,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        assertCanAccessAttempt(principal, attemptId);
+        return ResponseEntity.ok(ApiResponse.success(attemptService.getAttemptState(attemptId)));
+    }
+
+    @PutMapping("/attempts/{attemptId}/draft")
+    public ResponseEntity<ApiResponse<Void>> saveDraft(
+            @PathVariable String attemptId,
+            @Valid @RequestBody SaveAttemptDraftRequest request,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        assertCanAccessAttempt(principal, attemptId);
+        String ownerId = principal.isAdministrator()
+                ? attemptService.getAttemptOwnerId(attemptId)
+                : principal.getUserId();
+        attemptService.saveDraft(ownerId, attemptId, request.getAnswers());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @GetMapping("/users/{userId}/active-attempts")
+    public ResponseEntity<ApiResponse<List<ActiveAttemptResponse>>> getActiveAttempts(
+            @PathVariable String userId,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success(
+                attemptService.getActiveAttempts(resolveUserId(principal, userId))));
     }
 
     @PostMapping("/attempts/submit")
