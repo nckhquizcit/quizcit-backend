@@ -13,5 +13,24 @@ services:
       - redis_data:/data
     restart: unless-stopped
 
+  quizcit-ai:
+    build:
+      context: ./quizcit-ai
+      dockerfile: Dockerfile
+    container_name: quizcit-ai
+    ports:
+      - "8000:8000"
+    environment:
+      # Đọc env từ hệ thống đang chạy docker (host OS) hoặc file .env của docker compose
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # Truyền biến xuống container chỉ khi có trên máy host, nếu không python sẽ dùng giá trị mặc định của nó
+      - GEMINI_CHAT_MODEL
+      - GEMINI_EMBED_MODEL
+    volumes:
+      - ./quizcit-ai:/app
+    # Ghi đè CMD của Dockerfile để bật chế độ tự động reload code khi có thay đổi
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    restart: unless-stopped
+
 volumes:
   redis_data:

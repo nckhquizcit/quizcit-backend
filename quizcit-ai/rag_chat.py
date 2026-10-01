@@ -22,7 +22,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-CHAT_MODEL_NAME = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash")
+CHAT_MODEL_NAME = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.1-flash-lite")
 EMBED_MODEL_NAME = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
 # Số chiều embedding phải khớp với cột `vector(EMBEDDING_DIM)` trong migration
 # SQL (theory_chunks.embedding). Đổi 1 chỗ này thì phải đổi cả migration.
