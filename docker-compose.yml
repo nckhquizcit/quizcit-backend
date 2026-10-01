@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: quizcit-redis
+    ports:
+      - "6379:6379"
+    # application.properties mặc định không yêu cầu mật khẩu
+    # Nếu cần set password, bạn có thể comment out dòng dưới đây:
+    # command: redis-server --requirepass your_password
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:
