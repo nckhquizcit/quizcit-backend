@@ -22,7 +22,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-CHAT_MODEL_NAME = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.1-flash-lite")
+CHAT_MODEL_NAME = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.5-flash-lite")
 EMBED_MODEL_NAME = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
 # Số chiều embedding phải khớp với cột `vector(EMBEDDING_DIM)` trong migration
 # SQL (theory_chunks.embedding). Đổi 1 chỗ này thì phải đổi cả migration.
@@ -42,14 +42,15 @@ def _generate_content(prompt: str, max_output_tokens: int):
     for attempt in range(len(GENERATION_RETRY_DELAYS) + 1):
         try:
             return client.models.generate_content(
-                model=CHAT_MODEL_NAME,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.3,
-                    max_output_tokens=max_output_tokens,
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
-                ),
-            )
+    model=CHAT_MODEL_NAME,
+    contents=prompt,
+    config=types.GenerateContentConfig(
+        max_output_tokens=max_output_tokens,
+        thinking_config=types.ThinkingConfig(
+            thinking_level="minimal"
+        ),
+    ),
+)
         except Exception as ex:  # noqa: BLE001 - SDK exposes status on multiple error types
             status_code = getattr(ex, "code", None) or getattr(ex, "status_code", None)
             if status_code not in TRANSIENT_STATUS_CODES or attempt >= len(GENERATION_RETRY_DELAYS):
